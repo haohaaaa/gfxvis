@@ -10,16 +10,20 @@ import {
   createPartialDerivScene,
   type FixMode,
 } from "../../visualizations/scenes/calculus/bivariate-partials";
-import CapsuleTabs from "../framework/CapsuleTabs";
 import CanvasToolbar from "../framework/CanvasToolbar";
-import Checkbox from "../framework/Checkbox";
+import CanvasResizer from "../framework/CanvasResizer";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import { AutoMath } from "../framework/AutoMath";
+import KdeWindowShell from "../framework/KdeWindowShell";
+import KdeCard from "../framework/KdeCard";
+import KdeTabs from "../framework/KdeTabs";
+import KdeCheckbox from "../framework/KdeCheckbox";
+import KdeReadout from "../framework/KdeReadout";
 import { useViewer3D } from "../framework/useViewer3D";
 
 const MODE_OPTIONS: { id: FixMode; label: string }[] = [
-  { id: "x", label: "固定 x" },
-  { id: "y", label: "固定 y" },
+  { id: "x", label: "固定 x 坐标 (截出 y 向曲线)" },
+  { id: "y", label: "固定 y 坐标 (截出 x 向曲线)" },
 ];
 
 export default function PartialDerivativesDemo({
@@ -40,7 +44,7 @@ export default function PartialDerivativesDemo({
   modeRef.current = mode;
   fixedRef.current = fixed;
 
-  const { containerRef } = useViewer3D(
+  const { containerRef, viewerRef } = useViewer3D(
     () => createPartialDerivScene(),
     ({ api, viewer }) => {
       api.setState(mode, fixed, free);
@@ -110,52 +114,73 @@ export default function PartialDerivativesDemo({
   return (
     <AutoMath>
       <ExpandableDemo id="partial-derivatives" height={height}>
-        <div className="space-y-3">
-          <div
-            ref={containerRef}
-            className="relative h-[var(--demo-height,28rem)] w-full overflow-hidden rounded-xl border border-border"
-          >
-            <CanvasToolbar />
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <CapsuleTabs
-                options={MODE_OPTIONS}
-                value={mode}
-                onChange={(id: FixMode) => setMode(id)}
-                label="固定:"
+        <KdeWindowShell
+          title="多元函数偏导数剖面与切线几何"
+          eyebrow="微积分 · 多元微分"
+          mark="∂f/∂x"
+          modeTag="剖面曲线与偏导切线"
+          tabs={
+            <KdeTabs
+              options={MODE_OPTIONS}
+              value={mode}
+              onChange={(id) => setMode(id as FixMode)}
+            />
+          }
+          display={
+            <div
+              ref={containerRef}
+              className="relative h-[var(--demo-height,28rem)] w-full overflow-hidden rounded border border-border/70 bg-surface"
+            >
+              <CanvasToolbar
+                onReset={() => viewerRef.current?.controls.reset()}
               />
+              <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <Checkbox
-                label="曲面透明"
-                checked={surfaceTransparent}
-                onChange={setSurfaceTransparent}
-              />
+          }
+          controls={
+            <div className="space-y-3">
+              <KdeCard title="剖面切片设置" variant="dense">
+                <div className="space-y-3">
+                  <KdeCheckbox
+                    label="曲面半透明渲染"
+                    checked={surfaceTransparent}
+                    onChange={setSurfaceTransparent}
+                    size="xs"
+                  />
+                  <p className="text-[11px] text-muted leading-relaxed">
+                    交互方式：直接拖拽蓝色切片平面改变固定值，拖拽曲面上的红点沿截面曲线移动；青色箭头为当前偏导切线。
+                  </p>
+                </div>
+              </KdeCard>
+
+              <KdeCard title="偏导数数值与截面读数" variant="dense">
+                <div className="space-y-2">
+                  <KdeReadout
+                    label={`采样点 (${mode === "x" ? "固定 x" : "固定 y"})`}
+                    value={`(${mode === "x" ? fixed.toFixed(2) : free.toFixed(2)}, ${mode === "x" ? free.toFixed(2) : fixed.toFixed(2)})`}
+                    subValue={`函数值 f = ${value.toFixed(3)}`}
+                    dense
+                  />
+                  <KdeReadout
+                    label={
+                      mode === "x"
+                        ? "偏导数 ∂f/∂y (沿 y 轴剖面斜率)"
+                        : "偏导数 ∂f/∂x (沿 x 轴剖面斜率)"
+                    }
+                    value={slope.toFixed(3)}
+                    variant="accent"
+                    dense
+                  />
+                  <KdeReadout
+                    label="截面自由变量"
+                    value={`${mode === "x" ? "y" : "x"} = ${free.toFixed(2)}`}
+                    dense
+                  />
+                </div>
+              </KdeCard>
             </div>
-          </div>
-          <div className="grid gap-2 text-sm text-muted sm:grid-cols-3">
-            <p>
-              {`$f(${fixed.toFixed(2)}, ${free.toFixed(2)}) = ${value.toFixed(3)}$`}
-            </p>
-            {mode === "x" ? (
-              <p>
-                {`$\\frac{\\partial f}{\\partial y}(${fixed.toFixed(2)}, ${free.toFixed(2)}) = ${slope.toFixed(3)}$`}
-              </p>
-            ) : (
-              <p>
-                {`$\\frac{\\partial f}{\\partial x}(${free.toFixed(2)}, ${fixed.toFixed(2)}) = ${slope.toFixed(3)}$`}
-              </p>
-            )}
-            <p>
-              自由变量 {`$${mode === "x" ? "y" : "x"} = ${free.toFixed(2)}$`}
-            </p>
-          </div>
-          <p className="text-xs text-muted">
-            拖拽蓝色切片平面改变固定值,拖拽红色圆点沿切片曲线移动(青色为切线);曲面默认半透明便于观察切片曲线与切线。
-            左键/中键旋转 · 滚轮缩放 · 右键平移。
-          </p>
-        </div>
+          }
+        />
       </ExpandableDemo>
     </AutoMath>
   );

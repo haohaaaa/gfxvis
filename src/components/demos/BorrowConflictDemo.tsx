@@ -11,7 +11,7 @@ import { actions } from "astro:actions";
 import { initMonaco, computeEditorHeight } from "../../lib/editor/monaco";
 import { resolveMonacoTheme } from "../../lib/editor/themes";
 import { useGfxSettings } from "../../lib/settings/settings-store";
-import CapsuleTabs from "../framework/CapsuleTabs";
+import KdeTabs from "../framework/KdeTabs";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import { AutoMath } from "../framework/AutoMath";
 import ParamSlider from "../framework/ParamSlider";
@@ -401,12 +401,11 @@ export default function BorrowConflictDemo() {
 
           {/* 场景选择 */}
           <div className="flex flex-wrap items-center gap-3">
-            <CapsuleTabs
+            <KdeTabs
               options={SCENARIOS}
               value={scenarioId}
               onChange={(id) => setScenarioId(id)}
               size="xs"
-              label="Place 场景："
             />
           </div>
           <p className="text-xs text-muted">
@@ -426,12 +425,11 @@ export default function BorrowConflictDemo() {
                   p₁ = {scenario.p1}
                 </span>
               </div>
-              <CapsuleTabs
+              <KdeTabs
                 options={PERMISSION_OPTIONS}
                 value={alpha1}
                 onChange={(val) => setAlpha1(val)}
                 size="xs"
-                label="权限 α₁："
               />
               <div className="space-y-1.5 pt-1">
                 <ParamSlider
@@ -468,12 +466,11 @@ export default function BorrowConflictDemo() {
                   p₂ = {scenario.p2}
                 </span>
               </div>
-              <CapsuleTabs
+              <KdeTabs
                 options={PERMISSION_OPTIONS}
                 value={alpha2}
                 onChange={(val) => setAlpha2(val)}
                 size="xs"
-                label="权限 α₂："
               />
               <div className="space-y-1.5 pt-1">
                 <ParamSlider

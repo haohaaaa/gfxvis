@@ -18,9 +18,13 @@ import {
 } from "three";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import CanvasToolbar from "../framework/CanvasToolbar";
+import CanvasResizer from "../framework/CanvasResizer";
 import ParamSlider from "../framework/ParamSlider";
 import { AutoMath } from "../framework/AutoMath";
 import PresetSelector from "../framework/PresetSelector";
+import KdeWindowShell from "../framework/KdeWindowShell";
+import KdeCard from "../framework/KdeCard";
+import KdeReadout from "../framework/KdeReadout";
 import { createControls } from "../../visualizations/core/3d/controls";
 import {
   addStandardLights,
@@ -195,6 +199,17 @@ export default function RotationViewDemo({ height }: { height?: string }) {
       setEye(p.eye);
       setTarget(p.target);
       setUpRaw(p.up);
+    }
+  };
+
+  const handleResetWorldCamera = () => {
+    if (worldViewerRef.current) {
+      const { camera, controls } = worldViewerRef.current;
+      const [initWx, initWy, initWz] = mathToWorld(6.5, -6.5, 5.0);
+      camera.position.set(initWx, initWy, initWz);
+      const [tWx, tWy, tWz] = mathToWorld(0, 0, 0.5);
+      controls.target.set(tWx, tWy, tWz);
+      controls.update();
     }
   };
 
@@ -566,33 +581,21 @@ ${fmt(-f.x)} & ${fmt(-f.y)} & ${fmt(-f.z)} & ${fmt(tz)} \\\\
   return (
     <AutoMath>
       <ExpandableDemo id="rotation-so3-view-demo" height={height}>
-        <div className="space-y-4">
-          {/* Preset Selector */}
-          <PresetSelector
-            label="相机观察姿态预设:"
-            options={PRESETS}
-            value={presetKey}
-            onChange={handlePreset}
-          />
-
-          {/* Dual Viewports (Grid 2-col) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {/* Left Viewport: Observer View */}
-            <div className="relative flex flex-col rounded-xl border border-border bg-surface overflow-hidden">
-              <div className="flex items-center justify-between border-b border-border/80 bg-surface-hover/80 px-3 py-2 text-xs font-semibold text-foreground">
-                <span className="flex items-center gap-1.5">
+        <KdeWindowShell
+          title="3D 相机视图变换与 LookAt 矩阵"
+          eyebrow="3D 几何与刚体变换"
+          mark="VIEW"
+          modeTag="双视口空间几何"
+          display={
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Left Viewport: Observer View */}
+              <div className="relative h-[var(--demo-height,24rem)] w-full overflow-hidden rounded border border-border/70 bg-surface">
+                <div className="absolute top-2 left-2 z-20 flex items-center gap-1.5 rounded bg-surface/90 px-2 py-1 text-[11px] font-semibold text-foreground border border-border/60 shadow-xs backdrop-blur-xs">
                   <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
                   第三人称观察视口（世界坐标系）
-                </span>
-                <span className="text-[11px] text-muted font-normal">
-                  左键旋转视角 / 滚轮缩放
-                </span>
-              </div>
-              <div
-                ref={worldContainerRef}
-                className="relative h-[18rem] md:h-[22rem] w-full"
-              >
-                <CanvasToolbar />
+                </div>
+                <CanvasToolbar onReset={handleResetWorldCamera} />
+                <div ref={worldContainerRef} className="h-full w-full" />
                 <div className="pointer-events-none absolute bottom-2 left-2 z-10 flex flex-col gap-1 rounded bg-surface/90 p-1.5 text-[11px] text-muted backdrop-blur-xs border border-border/60">
                   <div className="flex items-center gap-2">
                     <span className="text-red-500 font-bold">● r (Right)</span>
@@ -602,25 +605,16 @@ ${fmt(-f.x)} & ${fmt(-f.y)} & ${fmt(-f.z)} & ${fmt(tz)} \\\\
                     </span>
                   </div>
                 </div>
+                <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
               </div>
-            </div>
 
-            {/* Right Viewport: Camera View */}
-            <div className="relative flex flex-col rounded-xl border border-border bg-surface overflow-hidden">
-              <div className="flex items-center justify-between border-b border-border/80 bg-surface-hover/80 px-3 py-2 text-xs font-semibold text-foreground">
-                <span className="flex items-center gap-1.5">
+              {/* Right Viewport: Camera View */}
+              <div className="relative h-[var(--demo-height,24rem)] w-full overflow-hidden rounded border border-border/70 bg-surface">
+                <div className="absolute top-2 left-2 z-20 flex items-center gap-1.5 rounded bg-surface/90 px-2 py-1 text-[11px] font-semibold text-foreground border border-border/60 shadow-xs backdrop-blur-xs">
                   <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
                   第一人称相机视野（View 变换结果）
-                </span>
-                <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400">
-                  FOV: 50° | LookAt
-                </span>
-              </div>
-              <div
-                ref={cameraContainerRef}
-                className="relative h-[18rem] md:h-[22rem] w-full"
-              >
-                {/* Center Viewfinder Reticle */}
+                </div>
+                <div ref={cameraContainerRef} className="h-full w-full" />
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                   <div className="relative h-6 w-6">
                     <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-white/40 shadow-xs" />
@@ -629,197 +623,192 @@ ${fmt(-f.x)} & ${fmt(-f.y)} & ${fmt(-f.z)} & ${fmt(tz)} \\\\
                   </div>
                 </div>
                 <div className="pointer-events-none absolute bottom-2 right-2 z-10 rounded bg-surface/90 px-2 py-1 text-[11px] text-muted backdrop-blur-xs border border-border/60">
-                  实际光栅化相机输出
+                  FOV: 50° | LookAt
                 </div>
+                <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
               </div>
             </div>
-          </div>
-
-          {/* Camera Parameter Sliders */}
-          <div className="grid gap-3 rounded-lg border border-border bg-surface-hover/50 p-3.5 text-xs sm:grid-cols-3">
-            <div className="space-y-2">
-              <p className="font-semibold text-foreground">
-                相机位置 {"$\\mathbf{eye} = (x,y,z)$"}
-              </p>
-              <ParamSlider
-                label="Eye X (横向位移)"
-                value={eye.x}
-                min={-6}
-                max={6}
-                step={0.1}
-                onChange={(v) => {
-                  setEye({ ...eye, x: v });
-                  setPresetKey("custom");
-                }}
-              />
-              <ParamSlider
-                label="Eye Y (纵向深度)"
-                value={eye.y}
-                min={-6}
-                max={6}
-                step={0.1}
-                onChange={(v) => {
-                  setEye({ ...eye, y: v });
-                  setPresetKey("custom");
-                }}
-              />
-              <ParamSlider
-                label="Eye Z (垂直高度)"
-                value={eye.z}
-                min={-2}
-                max={6}
-                step={0.1}
-                onChange={(v) => {
-                  setEye({ ...eye, z: v });
-                  setPresetKey("custom");
-                }}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <p className="font-semibold text-foreground">
-                注视目标点 {"$\\mathbf{target} = (x,y,z)$"}
-              </p>
-              <ParamSlider
-                label="Target X"
-                value={target.x}
-                min={-4}
-                max={4}
-                step={0.1}
-                onChange={(v) => {
-                  setTarget({ ...target, x: v });
-                  setPresetKey("custom");
-                }}
-              />
-              <ParamSlider
-                label="Target Y"
-                value={target.y}
-                min={-4}
-                max={4}
-                step={0.1}
-                onChange={(v) => {
-                  setTarget({ ...target, y: v });
-                  setPresetKey("custom");
-                }}
-              />
-              <ParamSlider
-                label="Target Z"
-                value={target.z}
-                min={-1}
-                max={4}
-                step={0.1}
-                onChange={(v) => {
-                  setTarget({ ...target, z: v });
-                  setPresetKey("custom");
-                }}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <p className="font-semibold text-foreground">
-                上向倾斜/翻滚 (Roll Up)
-              </p>
-              <ParamSlider
-                label="Up X 倾斜分量"
-                value={upRaw.x}
-                min={-1}
-                max={1}
-                step={0.1}
-                onChange={(v) => {
-                  setUpRaw({ ...upRaw, x: v });
-                  setPresetKey("custom");
-                }}
-              />
-              <ParamSlider
-                label="Up Z 垂直分量"
-                value={upRaw.z}
-                min={0.1}
-                max={1}
-                step={0.1}
-                onChange={(v) => {
-                  setUpRaw({ ...upRaw, z: v });
-                  setPresetKey("custom");
-                }}
-              />
-              <div className="pt-2 text-[11px] text-muted border-t border-border/50">
-                {presetKey === "custom"
-                  ? "自定义相机姿态：根据滑块动态调整视点与朝向。"
-                  : PRESETS[presetKey]?.desc}
-              </div>
-            </div>
-          </div>
-
-          {/* Orthonormal Basis & 4x4 View Matrix Breakdown */}
-          <div className="grid gap-3 rounded-lg border border-border bg-surface-hover/50 p-3.5 text-xs sm:grid-cols-2">
-            {/* Basis Vectors Analysis */}
-            <div className="space-y-2.5">
-              <p className="font-semibold text-foreground">
-                Gram-Schmidt 构造的相机局部正交归一基底
-              </p>
-              <div className="space-y-1.5 font-mono text-[11px]">
-                <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
-                  <span className="font-sans font-medium text-muted">
-                    前向视线 (Forward)：
-                  </span>
-                  {`$\\mathbf{f} = (${fmt(f.x)},\\, ${fmt(f.y)},\\, ${fmt(f.z)})^\\top$`}
-                </div>
-                <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
-                  <span className="font-sans font-medium text-muted">
-                    横向右轴 (Right)：
-                  </span>
-                  {`$\\mathbf{r} = (${fmt(r.x)},\\, ${fmt(r.y)},\\, ${fmt(r.z)})^\\top$`}
-                </div>
-                <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-                  <span className="font-sans font-medium text-muted">
-                    垂直正交 (Up)：
-                  </span>
-                  {`$\\mathbf{u} = (${fmt(u.x)},\\, ${fmt(u.y)},\\, ${fmt(u.z)})^\\top$`}
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-border/50 space-y-1">
-                <div className="flex items-center justify-between text-muted">
-                  <span>正交归一性检验 (Dot Products)：</span>
-                  <span className="font-mono text-foreground">
-                    r·u={fmt(dot(r, u))}, r·f={fmt(dot(r, f))}, u·f=
-                    {fmt(dot(u, f))}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-muted">
-                  <span>特殊正交群行列式 (SO(3))：</span>
-                  <span className="font-mono font-semibold text-accent">
-                    {`$\\det(R_{\\text{view}}) = ${fmt(detR)}$`}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* 4x4 View Matrix Formula & Realtime Values */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="font-semibold text-foreground">
-                  4×4 LookAt 相机 View 矩阵实时展开
+          }
+          controls={
+            <div className="space-y-3">
+              <KdeCard title="相机姿态预设" variant="dense">
+                <PresetSelector
+                  options={PRESETS}
+                  value={presetKey}
+                  onChange={handlePreset}
+                  size="xs"
+                />
+                <p className="mt-2 text-[11px] text-muted leading-relaxed">
+                  {presetKey === "custom"
+                    ? "自定义相机姿态：根据滑块动态调整视点与朝向。"
+                    : PRESETS[presetKey]?.desc}
                 </p>
-                <span className="font-mono text-[10px] text-muted">
-                  V = R_view · T(-eye)
-                </span>
-              </div>
-              <div className="overflow-x-auto rounded border border-border bg-surface p-2.5 flex items-center justify-start min-h-[4rem]">
-                {`$${viewMatrixTex}$`}
-              </div>
-              <p className="text-[11px] text-muted leading-relaxed">
-                核心代数机制：世界到相机是<strong>基变换的逆变换</strong>
-                。因为旋转矩阵是正交矩阵，
-                <strong>
-                  {
-                    "$R_{\\text{view}} = R_{\\text{cam}}^{-1} = R_{\\text{cam}}^\\top$"
-                  }
-                </strong>
-                ，平移项则为相机在各轴的投影内积。
-              </p>
+              </KdeCard>
+
+              <KdeCard title="相机空间位置与朝向" variant="dense">
+                <div className="space-y-2">
+                  <div className="text-[11px] font-semibold text-foreground">
+                    {"相机位置 $\\mathbf{eye} = (x,y,z)$"}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <ParamSlider
+                      label="Eye X"
+                      value={eye.x}
+                      min={-6}
+                      max={6}
+                      step={0.1}
+                      onChange={(v) => {
+                        setEye({ ...eye, x: v });
+                        setPresetKey("custom");
+                      }}
+                    />
+                    <ParamSlider
+                      label="Eye Y"
+                      value={eye.y}
+                      min={-6}
+                      max={6}
+                      step={0.1}
+                      onChange={(v) => {
+                        setEye({ ...eye, y: v });
+                        setPresetKey("custom");
+                      }}
+                    />
+                    <ParamSlider
+                      label="Eye Z"
+                      value={eye.z}
+                      min={-2}
+                      max={6}
+                      step={0.1}
+                      onChange={(v) => {
+                        setEye({ ...eye, z: v });
+                        setPresetKey("custom");
+                      }}
+                    />
+                  </div>
+
+                  <div className="pt-2 text-[11px] font-semibold text-foreground">
+                    {"注视目标点 $\\mathbf{target} = (x,y,z)$"}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <ParamSlider
+                      label="Target X"
+                      value={target.x}
+                      min={-4}
+                      max={4}
+                      step={0.1}
+                      onChange={(v) => {
+                        setTarget({ ...target, x: v });
+                        setPresetKey("custom");
+                      }}
+                    />
+                    <ParamSlider
+                      label="Target Y"
+                      value={target.y}
+                      min={-4}
+                      max={4}
+                      step={0.1}
+                      onChange={(v) => {
+                        setTarget({ ...target, y: v });
+                        setPresetKey("custom");
+                      }}
+                    />
+                    <ParamSlider
+                      label="Target Z"
+                      value={target.z}
+                      min={-1}
+                      max={4}
+                      step={0.1}
+                      onChange={(v) => {
+                        setTarget({ ...target, z: v });
+                        setPresetKey("custom");
+                      }}
+                    />
+                  </div>
+
+                  <div className="pt-2 text-[11px] font-semibold text-foreground">
+                    上向倾斜/翻滚 (Roll Up)
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <ParamSlider
+                      label="Up X 倾斜"
+                      value={upRaw.x}
+                      min={-1}
+                      max={1}
+                      step={0.1}
+                      onChange={(v) => {
+                        setUpRaw({ ...upRaw, x: v });
+                        setPresetKey("custom");
+                      }}
+                    />
+                    <ParamSlider
+                      label="Up Z 垂直"
+                      value={upRaw.z}
+                      min={0.1}
+                      max={1}
+                      step={0.1}
+                      onChange={(v) => {
+                        setUpRaw({ ...upRaw, z: v });
+                        setPresetKey("custom");
+                      }}
+                    />
+                  </div>
+                </div>
+              </KdeCard>
+
+              <KdeCard title="Gram-Schmidt 正交归一基底" variant="dense">
+                <div className="space-y-1.5 font-mono text-[11px]">
+                  <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                    <span className="font-sans font-medium text-muted">
+                      前向视线 (Forward)：
+                    </span>
+                    {`$\\mathbf{f} = (${fmt(f.x)},\\, ${fmt(f.y)},\\, ${fmt(f.z)})^\\top$`}
+                  </div>
+                  <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                    <span className="font-sans font-medium text-muted">
+                      横向右轴 (Right)：
+                    </span>
+                    {`$\\mathbf{r} = (${fmt(r.x)},\\, ${fmt(r.y)},\\, ${fmt(r.z)})^\\top$`}
+                  </div>
+                  <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                    <span className="font-sans font-medium text-muted">
+                      垂直正交 (Up)：
+                    </span>
+                    {`$\\mathbf{u} = (${fmt(u.x)},\\, ${fmt(u.y)},\\, ${fmt(u.z)})^\\top$`}
+                  </div>
+                </div>
+                <div className="mt-2 pt-2 border-t border-border/50 grid grid-cols-2 gap-2">
+                  <KdeReadout
+                    label="正交性 (Dot Products)"
+                    value={`r·u=${fmt(dot(r, u))}, r·f=${fmt(dot(r, f))}`}
+                    dense
+                  />
+                  <KdeReadout
+                    label={"$\\det(R_{\\text{view}})$"}
+                    value={fmt(detR)}
+                    variant="accent"
+                    dense
+                  />
+                </div>
+              </KdeCard>
+
+              <KdeCard title="4×4 LookAt 相机 View 矩阵" variant="dense">
+                <div className="overflow-x-auto rounded border border-border/60 bg-surface/70 p-2 text-xs">
+                  {`$${viewMatrixTex}$`}
+                </div>
+                <p className="mt-2 text-[11px] text-muted leading-relaxed">
+                  世界到相机是<strong>基变换的逆变换</strong>
+                  。因为旋转矩阵正交，
+                  <strong>
+                    {
+                      "$R_{\\text{view}} = R_{\\text{cam}}^{-1} = R_{\\text{cam}}^\\top$"
+                    }
+                  </strong>
+                  ，平移项为相机在各轴的投影内积。
+                </p>
+              </KdeCard>
             </div>
-          </div>
-        </div>
+          }
+        />
       </ExpandableDemo>
     </AutoMath>
   );

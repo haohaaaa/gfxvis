@@ -14,8 +14,13 @@ import {
   tangentLineAt,
 } from "../../visualizations/scenes/calculus/tangent2d";
 import CanvasToolbar from "../framework/CanvasToolbar";
+import CanvasResizer from "../framework/CanvasResizer";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import { AutoMath } from "../framework/AutoMath";
+import KdeWindowShell from "../framework/KdeWindowShell";
+import KdeCard from "../framework/KdeCard";
+import KdeReadout from "../framework/KdeReadout";
+import ParamSlider from "../framework/ParamSlider";
 import { clamp } from "@math";
 import { useCanvas2D } from "../framework/useCanvas2D";
 import { useVectorDrag } from "../framework/useVectorDrag";
@@ -127,32 +132,79 @@ export default function TangentLineDemo({ height }: { height?: string }) {
   return (
     <AutoMath>
       <ExpandableDemo id="tangent-line" height={height}>
-        <div className="space-y-3">
-          <div
-            ref={containerRef}
-            className="relative h-[var(--demo-height,20rem)] w-full overflow-hidden rounded-xl border border-border"
-          >
-            <CanvasToolbar onReset={resetBounds} />
-            <canvas
-              ref={canvasRef}
-              className="absolute inset-0 h-full w-full"
-            />
-          </div>
-          <div className="grid gap-2 text-sm text-muted sm:grid-cols-3">
-            <p>切线斜率 {`$f'(${a.toFixed(2)}) = ${derivative.toFixed(3)}$`}</p>
-            <p>
-              割线斜率{" "}
-              {`$\\frac{f(${b.toFixed(2)})-f(${a.toFixed(2)})}{${b.toFixed(2)}-${a.toFixed(2)}} = ${secant.toFixed(3)}$`}
-            </p>
-            <p>
-              {`$h = |${a.toFixed(2)} - ${b.toFixed(2)}| = ${Math.abs(a - b).toFixed(3)}$`}
-            </p>
-          </div>
-          <p className="text-xs text-muted">
-            拖动两个圆点（实心为切点 A，空心为割线点
-            B）；函数曲线随视野无界自适应重采样；滚轮缩放，中键平移。
-          </p>
-        </div>
+        <KdeWindowShell
+          title="导数几何定义：割线极限逼近切线"
+          eyebrow="微积分 · 单变量微分"
+          mark="f'(x)"
+          modeTag="割线斜率趋近切线"
+          display={
+            <div
+              ref={containerRef}
+              className="relative h-[var(--demo-height,20rem)] w-full overflow-hidden rounded border border-border/70 bg-surface"
+            >
+              <CanvasToolbar onReset={resetBounds} />
+              <canvas
+                ref={canvasRef}
+                className="absolute inset-0 h-full w-full"
+              />
+              <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
+            </div>
+          }
+          controls={
+            <div className="space-y-3">
+              <KdeCard title="采样点坐标微调" variant="dense">
+                <div className="space-y-2">
+                  <ParamSlider
+                    label="切点 A 横坐标 a"
+                    value={a}
+                    min={-4.5}
+                    max={4.5}
+                    step={0.05}
+                    onChange={setA}
+                    widthClass="w-full"
+                    labelMode="adaptive"
+                  />
+                  <ParamSlider
+                    label="割线点 B 横坐标 b"
+                    value={b}
+                    min={-4.5}
+                    max={4.5}
+                    step={0.05}
+                    onChange={setB}
+                    widthClass="w-full"
+                    labelMode="adaptive"
+                  />
+                  <p className="pt-1 text-[11px] text-muted">
+                    可在画布上直接拖拽红点 A 与蓝点 B 移动；滚轮缩放，中键平移。
+                  </p>
+                </div>
+              </KdeCard>
+
+              <KdeCard title="导数与差商读数" variant="dense">
+                <div className="space-y-2">
+                  <KdeReadout
+                    label={`切点 A 斜率 f'(${a.toFixed(2)})`}
+                    value={derivative.toFixed(3)}
+                    variant="accent"
+                    dense
+                  />
+                  <KdeReadout
+                    label="割线斜率 Δy/Δx"
+                    value={secant.toFixed(3)}
+                    subValue={`h = |b - a| = ${Math.abs(a - b).toFixed(3)}`}
+                    variant={Math.abs(a - b) < 0.2 ? "success" : "default"}
+                    dense
+                  />
+                  <KdeReadout
+                    label="极限逼近误差 |斜率差|"
+                    value={Math.abs(derivative - secant).toFixed(4)}
+                    dense
+                  />
+                </div>
+              </KdeCard>
+            </div>
+          }
+        />
       </ExpandableDemo>
     </AutoMath>
   );

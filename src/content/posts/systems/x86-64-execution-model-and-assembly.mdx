@@ -1,0 +1,334 @@
+---
+title: "x86-64 体系执行模型：从指令状态机到调用栈帧控制流全景"
+description: "深入剖析 x86-64 Linux 体系结构下的程序执行本质，结合汇编指令流、16 个通用寄存器状态机与调用栈帧（Stack Frame）物理演化，深度拆解 RIP、.text 代码段寻址与 CALL/RET 原子等价微操作。"
+date: 2026-10-23
+tags:
+  - assembly
+  - systems
+  - x86-64
+  - compiler
+  - memory
+draft: false
+---
+
+import X86RegisterBitSliceDiagram from "../../../components/diagrams/X86RegisterBitSliceDiagram";
+import X86MemoryLayoutDiagram from "../../../components/diagrams/X86MemoryLayoutDiagram";
+
+在现代高级语言（C/C++、Rust）中，函数调用被抽象为整洁的独立作用域、显式传递的实参、类型安全以及自动管理的对象生命周期。然而，一旦穿透编译器的抽象屏障落入<strong>物理硬件视角</strong>，CPU 所见的世界中既没有“函数”的概念，也没有“局部变量”的边界。
+
+<strong>硬件的本质，只是一个不断读取内存机器码、变更寄存器状态、并在指令指针（RIP）驱动下前移或跳转的顺序状态机。</strong>
+
+本文将从物理体系结构出发，解析 x86-64 体系（遵循 Linux System V AMD64 ABI）下的指令控制流模型，深入剖析 16 个通用寄存器的协作分工、栈内存“向下生长”的物理事实，以及由 `call` 与 `ret` 构筑的函数栈帧（Stack Frame）全生命周期。
+
+---
+
+## 1. 硬件视角：CPU 眼中只有控制流与状态机
+
+在冯·诺依曼架构中，程序与数据共同平铺在统一的线性虚拟地址空间中。CPU 的核心执行流水线可以形式化表述为一个三元离散状态机：
+
+$$
+S_{t+1} = \delta(S_t, \text{MEM}[\text{RIP}_t])
+$$
+
+其中，当前状态 $S_t$ 由<strong>通用寄存器组（General-Purpose Registers）</strong>、<strong>栈顶指针（RSP）</strong>以及<strong>条件标志位寄存器（RFLAGS）</strong>构成；$\text{RIP}$（Instruction Pointer，指令指针）则始终固执地咬住当前正在或即将执行的下一条机器指令。
+
+所谓“函数”，在机器码层面仅仅是一串连续存放的指令流起始内存地址（即代码段 `.text` 中的一个标号 Label）。高级语言中的函数调用与返回，在物理底层不过是两条极其精简的原子跳转指令：
+
+1. <strong>`CALL <目标地址>`</strong>：将下一行指令的返回地址压入栈顶（$\text{RSP} \leftarrow \text{RSP} - 8$，并将返回地址存入 $[\text{RSP}]$），随后将 $\text{RIP}$ 强行修改为目标函数的入口地址。
+2. <strong>`RET`</strong>：从当前栈顶弹出当初保存的返回地址（$\text{RIP} \leftarrow [\text{RSP}]$，$\text{RSP} \leftarrow \text{RSP} + 8$），控制流自动跳回调用方继续向下推进。
+
+硬件层面完全不在乎函数接收了几个参数，也不在乎是否有返回值。为了让不同的编译器生成能够互相调用的安全二进制代码，软件工程界必须制定一套严格的契约——<strong>应用二进制接口（Application Binary Interface，ABI）</strong>。
+
+---
+
+## 2. x86-64 寄存器体系与 System V ABI 规范
+
+x86-64 架构将原先 32 位 x86 的 8 个通用寄存器扩展至 <strong>16 个 64 位通用寄存器</strong>，并支持向下兼容分片寻址。
+
+### 2.1 寄存器分片与 32 位写入清零铁律
+
+以最常用的累加寄存器 `RAX` 为例，其物理切片结构如下：
+
+* <strong>`RAX`（64 位，位 0 ~ 63）</strong>：全量 8 字节；
+* <strong>`EAX`（32 位，位 0 ~ 31）</strong>：低 4 字节；
+* <strong>`AX`（16 位，位 0 ~ 15）</strong>：低 2 字节；
+* <strong>`AH`（8 位，位 8 ~ 15）</strong>与 <strong>`AL`（8 位，位 0 ~ 7）</strong>：低字节拆分。
+
+<X86RegisterBitSliceDiagram client:visible />
+
+> <strong>硬件关键特性：32 位写入强制清零高位</strong><br />
+> 当执行 `mov eax, 42` 时，CPU 硬件在写入低 32 位的同时，<strong>会自动将 RAX 的高 32 位（位 32 ~ 63）全部置为 0</strong>。这一设计旨在避免 64 位微架构中不同部分数据合并产生的指令流水线气泡（False Dependency），因此现代编译器极度青睐 32 位指令。
+
+### 2.2 Linux System V ABI 寄存器职责分工
+
+在 Linux 平台下，16 个通用寄存器具备法定的职务与保护契约：
+
+| 寄存器 (64位) | 32位名称 | 角色与用途（System V ABI 规范） | 保存职责归属 |
+| :--- | :--- | :--- | :--- |
+| <strong>`RDI`</strong> | `edi` | <strong>第 1 个整型/指针参数</strong> | 调用方保存（Caller-saved） |
+| <strong>`RSI`</strong> | `esi` | <strong>第 2 个整型/指针参数</strong> | 调用方保存（Caller-saved） |
+| <strong>`RDX`</strong> | `edx` | <strong>第 3 个整型/指针参数</strong> / I/O 数据 | 调用方保存（Caller-saved） |
+| <strong>`RCX`</strong> | `ecx` | <strong>第 4 个整型/指针参数</strong> / 循环计数器 | 调用方保存（Caller-saved） |
+| <strong>`R8`</strong> | `r8d` | <strong>第 5 个整型/指针参数</strong> | 调用方保存（Caller-saved） |
+| <strong>`R9`</strong> | `r9d` | <strong>第 6 个整型/指针参数</strong> | 调用方保存（Caller-saved） |
+| <strong>`RAX`</strong> | `eax` | <strong>函数返回值</strong> / 临时累加器 | 调用方保存（Caller-saved） |
+| <strong>`RSP`</strong> | `esp` | <strong>当前栈顶指针</strong>（严格跟踪物理栈边界） | <strong>被调用方维护（Callee-saved）</strong> |
+| <strong>`RBP`</strong> | `ebp` | <strong>栈帧基准指针</strong>（固定当前函数栈底锚点） | <strong>被调用方维护（Callee-saved）</strong> |
+| <strong>`RBX, R12~R15`</strong> | `ebx...` | 长期持久局部变量 | <strong>被调用方维护（Callee-saved）</strong> |
+| <strong>`R10, R11`</strong> | `r10d...` | 临时刮擦寄存器（Scratchpad） | 调用方保存（Caller-saved） |
+
+根据此规范，函数传参口诀为：<strong>“Di, Si, Dx, Cx, 8, 9”</strong>。若函数参数超过 6 个，第 7 个及之后的参数则必须由调用方按从右往左的顺序 `push` 压入栈内存中传递。
+
+---
+
+## 3. 栈的物理事实：高地址在上、向下生长
+
+理解函数调用的最大障碍，通常来自于对<strong>栈空间物理增长方向</strong>的直觉偏差。
+
+### 3.1 虚拟内存排布与倒挂的栈
+
+在 Linux 64 位进程的虚拟地址空间中，栈被分配在用户空间的顶端。<strong>栈底定格在最高有效地址处，而栈顶向着低地址递减生长</strong>：
+
+<X86MemoryLayoutDiagram client:visible />
+
+### 3.2 PUSH 与 POP 的本质
+
+* <strong>`PUSH src`</strong>：包含两步微操作。首先将栈顶指针下移（`RSP = RSP - 8`），随后将数据写入当前栈顶槽位（`[RSP] = src`）。
+* <strong>`POP dst`</strong>：先从当前栈顶读取数据（`dst = [RSP]`），随后将栈顶指针上抬（`RSP = RSP + 8`），物理内存并未被立即擦除，但已被逻辑归还。
+
+---
+
+## 4. 栈帧（Stack Frame）全生命周期：序言与结语
+
+为了保证每个函数拥有独立的局部变量空间，并且在嵌套调用时互不干扰，CPU 借助 `RBP` 与 `RSP` 划定了一个动态矩形空间——<strong>栈帧（Stack Frame）</strong>。
+
+### 4.1 高级语言 C 源码与汇编映射
+
+为直观理解栈帧的来龙去脉，我们以一段最经典的 C 语言函数调用为例。该代码片段也是后文交互沙盒中核心演示程序的源码原型：
+
+```c
+// 源码原型：带有局部变量与简单计算的函数嵌套调用
+int foo(int a) {
+    int x = a;       // 局部变量（存储于 foo 独立栈帧内部）
+    return x * x;    // 返回值按 ABI 约定存入 EAX
+}
+
+int main(void) {
+    int result = foo(7) + 1; // 调用方传递实参 7
+    return result;
+}
+```
+
+#### 4.1.1 核心运行机理：RBP 与 RSP 的生命周期契约
+
+在理解栈帧时，很多系统程序员容易混淆 `RSP` 与 `RBP` 的职责。实际上，两者的本质分工可以高度概括为<strong>“静态锚点（Anchor） vs 动态游标（Cursor）”</strong>：
+
+1. <strong>立锚（Prologue）</strong>：刚进入函数时，硬件通过 `push rbp` 将调用方的旧 RBP 压栈备份（物理上先执行 $\text{RSP} \leftarrow \text{RSP} - 8$，并将旧 RBP 写入内存 $[\text{RSP}]$）；随后执行 `mov rbp, rsp`。此时寄存器 `RBP` 保存的数值恰好就是<strong>进入函数时的 $\text{RSP} - 8$</strong>，正式成为当前函数不可撼动的专属基准锚点。
+2. <strong>稳固寻址（Body）</strong>：在函数体内，编译器<strong>全程不再调整 RBP</strong>。所有局部变量通过负偏移访问（如 `[rbp - 8]` 存放局部变量 $x$），外部入栈参数与返回地址通过正偏移访问（`[rbp + 8]` 恒为 `CALL` 压入的返回地址，`[rbp + 16]` 为第 7 个实参）。与此同时，栈顶 `RSP` 无论因为局部变量预留（`sub rsp, 16`）、传递子调用参数（`push`）还是动态扩栈（`alloca`）而剧烈上下浮动，<strong>绝不会影响任何局部变量相对于 RBP 的恒定物理偏移量</strong>。
+3. <strong>归元与撤销（Epilogue）</strong>：退出函数时，先将 RBP 固定的基底地址重新赋回给 RSP（`mov rsp, rbp`），<strong>瞬间抹平并安全丢弃</strong>函数体内产生的一切局部栈分配；接着从此时指向的槽位将旧 RBP 弹回（`pop rbp`，同时 $\text{RSP} \leftarrow \text{RSP} + 8$）；此时 RSP 精准咬住最初进入函数时压入的返回地址，最后由 `ret` 弹出返回调用现场。
+
+#### 4.1.2 汇编反编译：显式复位版与 LEAVE 复合指令版
+
+在底层机器码生成中，函数结语存在两种等价的编码实现：
+
+<strong>版本 A：显式复位版（不使用 `leave`，完全展开物理动作）</strong>
+
+显式写出 `mov rsp, rbp` 与 `pop rbp`，可最清晰地观察到栈顶归元与寄存器恢复的双重物理步骤：
+
+```nasm
+foo:
+    ; === 1. 序言（Prologue）：确立 RBP 栈底锚点 ===
+    push    rbp                     ; RSP -= 8，并在 [RSP] 写入 main 的旧 RBP
+    mov     rbp, rsp                ; RBP = RSP（此时 RBP 固定在 entry_RSP - 8 处）
+    sub     rsp, 16                 ; RSP 下移 16 字节（预留局部变量与 16B 对齐空间）
+
+    ; === 2. 主体计算：基于 [RBP] 稳固负偏移寻址 ===
+    mov     DWORD PTR [rbp-8], edi  ; 将实参 a（来自 RDI）存入局部变量槽位 [rbp - 8]
+    mov     eax, DWORD PTR [rbp-8]  ; 取出局部变量 x 入 EAX
+    imul    eax, eax                ; 计算 x * x（结果存入 EAX，即 7 * 7 = 49）
+
+    ; === 3. 显式结语（Epilogue，不使用 LEAVE）：分步复原现场 ===
+    mov     rsp, rbp                ; 第一步：瞬间让 RSP 归位到 RBP（丢弃所有局部变量栈开辟）
+    pop     rbp                     ; 第二步：恢复 main 的旧 RBP，同时 RSP += 8 指向返回地址
+    ret                             ; 第三步：弹出 [RSP] 处的返回地址到 RIP，跳回 main
+
+main:
+    ...
+    mov     edi, 7                  ; 【参数传递】根据 ABI 规范，第 1 个整型参数装入 EDI
+    call    foo                     ; 【发起调用】原子压入下一行返回地址，跳转至 foo
+    add     eax, 1                  ; 【恢复现场】此时 EAX 携带返回值 49，执行加 1 得 50
+    ...
+```
+
+<strong>版本 B：复合硬件指令版（使用 `leave` 紧凑语法）</strong>
+
+由于 `mov rsp, rbp; pop rbp` 这个两步动作在几乎所有函数退出时都要执行一次，x86-64 硬件原生提供了一条复合单指令 `leave`：
+
+$$\text{leave} \iff \begin{cases} \text{mov} & \text{rsp}, \text{rbp} \\ \text{pop} & \text{rbp} \end{cases}$$
+
+编译器在生成紧凑代码时，更倾向于直接发射一条单字节的 `leave` 指令替代上述两条指令：
+
+```nasm
+foo:
+    push    rbp                     ; 【序言】备份旧 RBP
+    mov     rbp, rsp                ; 【序言】设立新 RBP 锚点
+    sub     rsp, 16                 ; 【序言】开辟栈空间
+    mov     DWORD PTR [rbp-8], edi  ; 局部变量 x = a
+    mov     eax, DWORD PTR [rbp-8]
+    imul    eax, eax                ; EAX = x * x
+    leave                           ; 【结语】复合硬件指令：等价于 mov rsp, rbp 紧跟 pop rbp
+    ret                             ; 【结语】弹出返回地址并跳转
+```
+
+---
+
+## 5. 指令指针（RIP）与跳转本质：原子展开 CALL/RET 与 .text 寻址
+
+在高级语言中，“调用函数”常被包装成一个神秘黑盒。然而在机器指令层面，`CALL` 与 `RET` 绝非某种拥有特权的魔法，它们只是编译器和硬件为了提升代码密度，对一系列<strong>极其质朴的基础控制流操作（`PUSH`、`POP`、`JMP`、`LEA`）</strong>所做的复合封装。
+
+### 5.1 .text 代码段与 RIP 的物理递进规律
+
+程序中的机器指令被统一存放在虚拟内存的 `.text` 段中，被内核严格标记为 `r-x`（只读且可执行）。CPU 的指令指针寄存器 `RIP` 则始终指向当前或即将执行的下一条指令地址。
+
+在经典的冯·诺依曼取指微架构中，CPU 遵循一条核心铁律：
+
+$$\text{取指阶段：} \quad \text{IR} \leftarrow \text{MEM}[\text{RIP}], \quad \text{RIP} \leftarrow \text{RIP} + \text{len}(\text{IR})$$
+
+<strong>CPU 并不是在整条指令“执行完成”后才后知后觉地更新 RIP，而是在“取指与译码”阶段，硬件就已经自动将 RIP 推进至紧邻的下一条指令起始字节！</strong>
+
+与此同时，`RIP` 是<strong>受硬件保护的专用程序计数器</strong>：体系结构严格禁止程序员直接编写类似 `mov rip, 0x401000` 的赋值语句（该指令在 x86 机器码中不存在对应编码）。修改 `RIP` 的唯一合法途径，正是<strong>跳转指令族（`JMP`、`Jcc`、`CALL`、`RET`）</strong>。
+
+### 5.2 硬件微架构视角：CALL 与 RET 的物理微操作
+
+穿透到 CPU 内部执行单元（Microcode）的电路微操作层面，`CALL` 与 `RET` 在物理上其实只干了两件事：<strong>栈指针算术</strong>与<strong>无条件跳转</strong>。
+
+#### 5.2.1 CALL 的物理微操作拆解
+
+当 CPU 译码并执行一条 `CALL <target>` 指令时，芯片内部依次完成以下 3 个微操作：
+
+1. <strong>锁定返回地址</strong>：由于取指阶段已经结束，此时 `RIP` 硬件自动指向了当前 `CALL` 指令的下一行起始地址。这个数值就是后续函数执行完必须跳回的<strong>“返回地址（回程票）”</strong>；
+2. <strong>压栈保存（完全等价于一次 64 位 PUSH）</strong>：
+   $$\text{RSP} \leftarrow \text{RSP} - 8, \quad [\text{RSP}] \leftarrow \text{返回地址}$$
+   物理上将栈顶指针下移 8 字节，并将刚刚锁定的返回地址写入新栈顶内存槽位中；
+3. <strong>控制流跳转（完全等价于 JMP）</strong>：
+   $$\text{RIP} \leftarrow \text{目标函数入口地址}$$
+   强制将目标函数的物理地址载入 `RIP`，控制流瞬间切入子函数。
+
+> <strong>物理本质</strong>：`CALL` 在硬件电路中纯粹就是 <strong>`PUSH 返回地址` + `JMP 目标地址`</strong> 的原子打包。
+
+#### 5.2.2 RET 的物理微操作拆解
+
+当被调用函数准备归还控制权时，`RET` 指令在物理上同样只执行两个微操作：
+
+1. <strong>弹栈取回（完全等价于一次 64 位 POP）</strong>：
+   $$\text{临时寄存器} \leftarrow [\text{RSP}], \quad \text{RSP} \leftarrow \text{RSP} + 8$$
+   从当前栈顶物理内存槽位 `[RSP]` 中读取出 8 字节数据暂存，同时栈顶指针上抬 8 字节逻辑归还栈空间；
+2. <strong>控制流跳回（完全等价于 JMP）</strong>：
+   $$\text{RIP} \leftarrow \text{临时寄存器}$$
+   将弹出的数值直接载入 `RIP`，控制流跳回原调用现场。
+
+> <strong>物理本质</strong>：`RET` 在硬件电路中纯粹就是 <strong>`POP 临时寄存器` + `JMP 临时寄存器`</strong>。
+
+<strong>关键洞察：硬件对栈数据的“绝对盲信”</strong><br />
+CPU 硬件在执行 `RET` 时，根本不知道也不在乎当前 `[RSP]` 中的 64 位数据究竟是不是当初由 `CALL` 指令压进去的。只要 `[RSP]` 存在一个数值，`RET` 就会毫不犹豫地将其塞入 `RIP` 并实施跳转。这正是为什么<strong>栈平衡原则</strong>如此神圣不可侵犯，也是黑客通过缓冲区溢出篡改返回地址实施任意代码执行的物理根源。
+
+### 5.3 软件汇编还原：为什么需要 LEA 拆解与 R11 过渡
+
+既然在物理上 `CALL = PUSH + JMP` 且 `RET = POP + JMP`，那么我们能否直接在汇编代码中手写这个过程呢？
+
+#### 5.3.1 为什么必须用 LEA 捕获返回地址（RIP 相对寻址）
+
+当我们尝试用纯汇编手工还原 `CALL` 时，会遭遇一个直接的硬件障碍：<strong>普通程序员无法直接读取 RIP 寄存器</strong>。在 x86-64 指令集中，像 `push rip` 或 `mov rax, rip` 这样的指令全部是非法且无法通过编译的！
+
+那么在不借助 `CALL` 指令的前提下，软件该如何获取“下一行返回地址”的准确数值呢？<strong>答案正是 RIP 相对寻址与 `LEA`！</strong>
+
+$$\text{有效物理地址} = \text{下一条指令处的 RIP} + \text{编译期计算的相对偏差量（Displacement）}$$
+
+这项机制是现代操作系统实现<strong>位置无关代码（Position-Independent Code，PIC / PIE）</strong>与<strong>地址空间布局随机化（ASLR）</strong>的绝对基石：
+* 当操作系统将代码加载进内存时，虽然基地址因 ASLR 随机漂移，但代码段内部<strong>“当前指令”与“目标返回标号”之间的相对字节差值（Offset）是绝对恒定的</strong>；
+* 编译器只要发射 `lea r11, [rel return_address]`，CPU 的地址生成单元（AGU）就会自动将当前时刻的 `RIP` 加上固定偏移，在没有任何内存访问开销的前提下，精准捕获返回点的物理绝对内存地址！
+
+因此，手写还原 `CALL` 的完整流水线为：
+```nasm
+; --- 手写展开 CALL foo ---
+lea  r11, [rel return_address]  ; 1. 借助 LEA 与 RIP 相对寻址，计算返回点绝对地址放入 R11
+push r11                        ; 2. 模拟 PUSH：将回程票压栈（RSP -= 8, [RSP] = r11）
+jmp  foo                        ; 3. 模拟 JMP：强制修改 RIP 跳往目标入口
+return_address:                 ; 后续返回落脚点
+```
+
+而手写还原 `RET` 则极其对称干脆：
+```nasm
+; --- 手写展开 RET ---
+pop r11                         ; 1. 模拟 POP：弹出栈顶回程票到临时寄存器 R11（RSP += 8）
+jmp r11                         ; 2. 模拟 JMP：强行篡改 RIP 实施回跳
+```
+
+#### 5.3.2 为什么选用 R11 作为过渡中转
+
+1. <strong>ABI 职责契约</strong>：根据 Linux System V AMD64 ABI 规范，`R11` 与 `R10` 是法定的<strong>临时刮擦寄存器（Scratchpad Register / Caller-saved）</strong>。调用方本身就不得假设跨越函数调用后 `R11` 的数据依然有效。因此借用 `R11` 作为临时跳转跳板，绝对不会污染任何重要的业务寄存器。
+2. <strong>硬件微架构惯例</strong>：在 x86-64 硬件层面，快速系统调用指令 `syscall` 也原生钦定使用 `RCX` 保存被中断的 `RIP`、使用 `R11` 保存 `RFLAGS`。因此 `R11` 在体系结构设计中天然扮演着控制流交接的临时过渡角色。
+
+### 5.4 为什么硬件依然要将它们封装为单条 CALL 与 RET
+
+既然可以用 `LEA`、`PUSH`、`POP`、`JMP` 纯手工搭建函数调用与返回，为什么 x86-64 依然保留并极力推崇使用单条 `CALL` 和 `RET` 指令呢？
+
+1. <strong>指令编码密度（Code Density）</strong>：一条原生的 `call` 或 `ret` 仅占 1 到 5 个字节；若完全展开为 `lea + push + jmp`，则需要十几个字节，严重挤占极其珍贵的 L1 指令缓存（I-Cache）带宽。
+2. <strong>返回栈缓冲区（Return Stack Buffer，RSB）硬件预测加速</strong>：现代高性能 CPU 内置了专用硬件单元 RSB。当硬件译码器识别到原生 `call` 指令时，除了向物理内存栈压入数据，还会同步将返回地址塞入芯片内部超高速的硬件循环栈中；当遇到原生 `ret` 指令时，分支预测器<strong>无需等待内存加载完成，直接从 RSB 栈顶以 0 时钟周期延迟预取返回点指令</strong>。如果程序员手写 `jmp r11`，CPU 只能将其当作普通的间接跳转（Indirect Jump），失去硬件堆栈加速，诱发严重的指令流水线停顿。
+
+### 5.5 端到端汇编对照：全裸控制流实战
+
+结合上述原理，我们将一段完整的函数调用过程进行“全裸展开”，揭示 CPU 在 `.text` 段中真正的推进轨迹：
+
+```nasm
+; =========================================================================
+; 剥除 CALL 与 RET 语法糖后的全裸控制流映射
+; =========================================================================
+
+caller:
+    mov  rdi, 10                    ; 【传参】遵循 System V ABI：第 1 个整型参数传入 RDI
+
+    ; --- 展开 CALL foo ---
+    lea  r11, [rel return_address]  ; 步骤 1：利用 RIP 相对寻址算出回程地址放入 R11
+    push r11                        ; 步骤 2：将回程票压栈（RSP -= 8, [RSP] = r11）
+    jmp  foo                        ; 步骤 3：强行改写 RIP 跳往 foo
+
+return_address:
+    mov  rbx, rax                   ; 【恢复执行】此时 RAX 已携带 foo 的返回值 30
+    ...
+
+foo:
+    ; --- 序言：建立 foo 自己的栈帧基底 ---
+    push rbp                        ; 保存 caller 的旧 RBP（RSP -= 8, [RSP] = rbp）
+    mov  rbp, rsp                   ; 确立当前栈底锚点（RBP = RSP）
+    sub  rsp, 32                    ; 栈顶下沉开辟局部变量空间
+
+    ; --- 主体业务计算 ---
+    mov  rax, rdi                   ; 取出入参 10
+    add  rax, 20                    ; rax = 10 + 20 = 30（结果留存在返回值寄存器 RAX）
+
+    ; --- 结语：释放局部栈帧 ---
+    leave                           ; 复合指令：等价于 mov rsp, rbp 紧跟 pop rbp
+
+    ; --- 展开 RET ---
+    pop  r11                        ; 步骤 1：弹出栈顶回程票到 R11（R11 = return_address, RSP += 8）
+    jmp  r11                        ; 步骤 2：强行改写 RIP 跳回 return_address
+```
+
+---
+
+## 6. 核心指令执行机理小结
+
+结合前文的状态机理论、寄存器契约与控制流展开，可归纳出底层系统开发中必须牢记的四组核心机理：
+
+1. <strong>`mov` 与 `lea` 的根本差异</strong>：
+   * `mov rax, [rbp - 8]` 是真正的内存访问，CPU 必须启动总线事务从 L1 缓存或 DRAM 提取数据；
+   * `lea rax, [rdi + rdi*4]` 仅仅借用 CPU 的地址生成单元（AGU）进行纯算术求值（$\text{RAX} = \text{RDI} \times 5$），绝不触发任何内存访问，是编译器进行快速缩放求值的高级优化手段。
+2. <strong>`cmp` 与 `test` 的标志位驱动</strong>：
+   * `cmp a, b` 模拟减法 $a - b$，仅改写条件码（如 $a \le b$ 置位 SF 或 ZF）；
+   * 条件跳转指令（`je`、`jne`、`jle`、`jg`）本质上只是分支预测器与指令解码器对这些标志位真值表的逻辑与或判定。
+3. <strong>CALL 与 RET 的本质是堆栈辅助的 JMP</strong>：
+   * 函数调用没有特权，本质是借由栈内存保留返回地址后执行无条件跳转（`jmp`）；
+   * 现代硬件之所以设计 `CALL` / `RET`，不仅在于精简指令体积，更在于激活芯片内置的<strong>返回栈缓冲区（RSB）</strong>实现 0 周期返回分支预测。
+4. <strong>栈平衡原则</strong>：
+   * 只要进入函数时执行了 `push`，在退出前必须存在对偶的 `pop`，保证在触发 `ret`（或 `pop r11; jmp r11`）执行时，`[RSP]` 所指的位置<strong>必须且只能是当初发起调用时压入的返回地址</strong>。任何破坏此平衡的操作都将导致非法指令指针跳跃与内存段错误（Segmentation Fault）。
