@@ -13,7 +13,10 @@ import CanvasResizer from "../framework/CanvasResizer";
 import CanvasToolbar from "../framework/CanvasToolbar";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import KdeButton from "../framework/KdeButton";
+import KdeCard from "../framework/KdeCard";
+import KdeReadout from "../framework/KdeReadout";
 import KdeTabs, { type KdeTabOption } from "../framework/KdeTabs";
+import KdeWindowShell from "../framework/KdeWindowShell";
 import PresetSelector, { type PresetOption } from "../framework/PresetSelector";
 import { useCanvas2D } from "../framework/useCanvas2D";
 import {
@@ -810,53 +813,14 @@ export default function ConcurrencyExecutionModelDemo() {
         id="concurrency-execution-model-demo"
         label="展开执行模型实验"
       >
-        <div
-          className="flex flex-col gap-4"
-          data-component="concurrency-execution-model-demo"
-        >
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
-            <KdeTabs<DemoView>
-              options={VIEW_OPTIONS}
-              value={view}
-              onChange={setView}
-              size="sm"
-              variant="default"
-              label="视图："
-              testId="execution-model-tabs"
-            />
-            <span className="text-xs text-muted">
-              {view === "timeline"
-                ? "编辑任务、等待方式和执行资源，观察并发与并行"
-                : "单线程事件循环，逐步观察协程挂起与恢复"}
-            </span>
-          </div>
-
-          {view === "timeline" ? (
-            <>
-              <PresetSelector
-                options={PRESET_OPTIONS}
-                value={timelinePreset}
-                onChange={applyTimelinePreset}
-                label="时间线预设："
-                size="xs"
-                layout="grid"
-                columns={2}
-                testId="timeline-presets"
-              />
-              <label className="flex items-center gap-2 text-xs text-muted">
-                <span>执行线程：{timelineThreads}</span>
-                <input
-                  type="range"
-                  min={1}
-                  max={4}
-                  value={timelineThreads}
-                  aria-label="执行线程数量"
-                  onChange={(event) =>
-                    setTimelineThreads(Number(event.target.value))
-                  }
-                  className="w-40 accent-accent"
-                />
-              </label>
+        <KdeWindowShell
+          title="并发、并行与事件循环"
+          eyebrow="Concurrency & Parallelism"
+          mark="ASYNC"
+          modeTag={view === "timeline" ? "时间线调度" : "事件循环"}
+          testId="concurrency-execution-model-demo"
+          display={
+            view === "timeline" ? (
               <TimelineCanvas
                 threads={timelineThreads}
                 setBounds={timelineCanvas.setBounds}
@@ -864,46 +828,7 @@ export default function ConcurrencyExecutionModelDemo() {
                 containerRef={timelineCanvas.containerRef}
                 canvasRef={timelineCanvas.canvasRef}
               />
-              <div
-                className="grid gap-2 sm:grid-cols-4"
-                data-testid="timeline-facts"
-              >
-                <Metric
-                  label="任务并发"
-                  value={timelineFacts.concurrent ? "存在" : "没有"}
-                />
-                <Metric
-                  label="任务并行"
-                  value={timelineFacts.parallel ? "存在" : "没有"}
-                />
-                <Metric
-                  label="阻塞等待"
-                  value={String(timelineFacts.blockedTicks) + " tick"}
-                />
-                <Metric
-                  label="活跃时间"
-                  value={String(timelineFacts.activeTicks) + " tick"}
-                />
-              </div>
-              <TaskEditor
-                tasks={timelineTasks}
-                onChange={updateTimelineTask}
-                onAdd={() => addTask(setTimelineTasks)}
-                onRemove={(id) => removeTask(setTimelineTasks, id)}
-              />
-            </>
-          ) : (
-            <>
-              <PresetSelector
-                options={PRESET_OPTIONS}
-                value={loopPreset}
-                onChange={applyLoopPreset}
-                label="事件循环预设："
-                size="xs"
-                layout="grid"
-                columns={2}
-                testId="event-loop-presets"
-              />
+            ) : (
               <EventLoopCanvas
                 tasks={loopTasks}
                 setBounds={loopCanvas.setBounds}
@@ -911,70 +836,183 @@ export default function ConcurrencyExecutionModelDemo() {
                 containerRef={loopCanvas.containerRef}
                 canvasRef={loopCanvas.canvasRef}
               />
-              <div className="flex flex-wrap items-center gap-2">
-                <KdeButton
-                  size="xs"
-                  variant="primary"
-                  onClick={() => setLoopPlaying((playing) => !playing)}
-                >
-                  {loopPlaying ? "暂停" : "自动播放"}
-                </KdeButton>
-                <KdeButton
-                  size="xs"
-                  onClick={() =>
-                    setLoopTick((tick) => Math.min(MAX_TICK, tick + 1))
-                  }
-                >
-                  单步 +1
-                </KdeButton>
-                <KdeButton
-                  size="xs"
-                  onClick={() => {
-                    setLoopTick(0);
-                    setLoopPlaying(false);
-                  }}
-                >
-                  重置
-                </KdeButton>
-                <span className="text-xs text-muted">
-                  当前事件循环 tick：{loopTick}
-                </span>
-              </div>
-              <div
-                className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"
-                data-testid="event-loop-status"
-              >
-                {currentLoopStatuses.map(({ task, status }) => (
-                  <div
-                    key={task.id}
-                    className="rounded-lg border border-border/70 bg-surface/70 px-3 py-2"
-                  >
-                    <div className="text-xs font-medium text-ink">
-                      {task.label}
+            )
+          }
+          controls={
+            <div className="space-y-3">
+              <KdeCard title="执行视图" variant="dense">
+                <KdeTabs<DemoView>
+                  options={VIEW_OPTIONS}
+                  value={view}
+                  onChange={setView}
+                  size="sm"
+                  variant="default"
+                  label="视图："
+                  testId="execution-model-tabs"
+                />
+                <div className="mt-2 text-xs text-muted">
+                  {view === "timeline"
+                    ? "编辑任务、等待方式和执行资源，观察并发与并行"
+                    : "单线程事件循环，逐步观察协程挂起与恢复"}
+                </div>
+              </KdeCard>
+
+              {view === "timeline" ? (
+                <>
+                  <KdeCard title="调度与线程" variant="dense">
+                    <PresetSelector
+                      options={PRESET_OPTIONS}
+                      value={timelinePreset}
+                      onChange={applyTimelinePreset}
+                      label="时间线预设："
+                      size="xs"
+                      layout="grid"
+                      columns={2}
+                      testId="timeline-presets"
+                    />
+                    <label className="mt-2.5 flex items-center gap-2 text-xs text-muted">
+                      <span>执行线程：{timelineThreads}</span>
+                      <input
+                        type="range"
+                        min={1}
+                        max={4}
+                        value={timelineThreads}
+                        aria-label="执行线程数量"
+                        onChange={(event) =>
+                          setTimelineThreads(Number(event.target.value))
+                        }
+                        className="w-40 accent-accent"
+                      />
+                    </label>
+                  </KdeCard>
+
+                  <KdeCard title="并发与并行诊断" variant="dense">
+                    <div
+                      className="grid grid-cols-2 gap-2"
+                      data-testid="timeline-facts"
+                    >
+                      <KdeReadout
+                        label="任务并发"
+                        value={timelineFacts.concurrent ? "存在" : "没有"}
+                        variant={
+                          timelineFacts.concurrent ? "accent" : "default"
+                        }
+                        dense
+                      />
+                      <KdeReadout
+                        label="任务并行"
+                        value={timelineFacts.parallel ? "存在" : "没有"}
+                        variant={timelineFacts.parallel ? "success" : "default"}
+                        dense
+                      />
+                      <KdeReadout
+                        label="阻塞等待"
+                        value={String(timelineFacts.blockedTicks) + " tick"}
+                        variant={
+                          timelineFacts.blockedTicks > 0 ? "warning" : "default"
+                        }
+                        dense
+                      />
+                      <KdeReadout
+                        label="活跃时间"
+                        value={String(timelineFacts.activeTicks) + " tick"}
+                        dense
+                      />
                     </div>
-                    <div className="mt-1 text-xs text-muted">{status}</div>
-                  </div>
-                ))}
-              </div>
-              <TaskEditor
-                tasks={loopTasks}
-                onChange={updateLoopTask}
-                onAdd={() => addTask(setLoopTasks)}
-                onRemove={(id) => removeTask(setLoopTasks, id)}
-              />
-            </>
-          )}
-        </div>
+                  </KdeCard>
+
+                  <KdeCard title="任务编排" variant="dense">
+                    <TaskEditor
+                      tasks={timelineTasks}
+                      onChange={updateTimelineTask}
+                      onAdd={() => addTask(setTimelineTasks)}
+                      onRemove={(id) => removeTask(setTimelineTasks, id)}
+                    />
+                  </KdeCard>
+                </>
+              ) : (
+                <>
+                  <KdeCard title="事件循环控制" variant="dense">
+                    <PresetSelector
+                      options={PRESET_OPTIONS}
+                      value={loopPreset}
+                      onChange={applyLoopPreset}
+                      label="事件循环预设："
+                      size="xs"
+                      layout="grid"
+                      columns={2}
+                      testId="event-loop-presets"
+                    />
+                    <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                      <KdeButton
+                        size="xs"
+                        variant="primary"
+                        onClick={() => setLoopPlaying((playing) => !playing)}
+                      >
+                        {loopPlaying ? "暂停" : "自动播放"}
+                      </KdeButton>
+                      <KdeButton
+                        size="xs"
+                        onClick={() =>
+                          setLoopTick((tick) => Math.min(MAX_TICK, tick + 1))
+                        }
+                      >
+                        单步 +1
+                      </KdeButton>
+                      <KdeButton
+                        size="xs"
+                        onClick={() => {
+                          setLoopTick(0);
+                          setLoopPlaying(false);
+                        }}
+                      >
+                        重置
+                      </KdeButton>
+                      <span className="text-xs text-muted">
+                        当前 tick：{loopTick}
+                      </span>
+                    </div>
+                  </KdeCard>
+
+                  <KdeCard title="协程状态监视" variant="dense">
+                    <div
+                      className="grid grid-cols-2 gap-2"
+                      data-testid="event-loop-status"
+                    >
+                      {currentLoopStatuses.map(({ task, status }) => (
+                        <KdeReadout
+                          key={task.id}
+                          label={task.label}
+                          value={status}
+                          variant={
+                            status === "running"
+                              ? "accent"
+                              : status === "resumed"
+                                ? "success"
+                                : status === "blocked"
+                                  ? "warning"
+                                  : "default"
+                          }
+                          dense
+                        />
+                      ))}
+                    </div>
+                  </KdeCard>
+
+                  <KdeCard title="任务编排" variant="dense">
+                    <TaskEditor
+                      tasks={loopTasks}
+                      onChange={updateLoopTask}
+                      onAdd={() => addTask(setLoopTasks)}
+                      onRemove={(id) => removeTask(setLoopTasks, id)}
+                    />
+                  </KdeCard>
+                </>
+              )}
+            </div>
+          }
+        />
       </ExpandableDemo>
     </AutoMath>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-border/70 bg-surface/70 px-3 py-2">
-      <div className="text-[11px] text-muted">{label}</div>
-      <div className="mt-1 text-sm font-semibold text-ink">{value}</div>
-    </div>
   );
 }

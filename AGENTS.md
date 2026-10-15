@@ -5,8 +5,10 @@ GFXVis:本地托管的图形学/可视化技术博客(Astro Node standalone 服�
 ## 项目规则
 
 - **可视化约定**:实现或修改可视化前先读 `docs/conventions.md`(坐标系与 `mathToWorld` 映射、方向与符号、记号与命名、渲染与交互约定)。
-  - **CanvasToolbar 放置与视口规范**: `<CanvasToolbar>` **必须且只能**放置在 Canvas 画布容器（必须含 `relative overflow-hidden`）内部作为直接子元素，统一承载「↺ 复位」视野功能；画布容器高度必须使用 `h-[var(--demo-height,20rem)]`（3D/机箱为 `28rem`）；画布底部横条（`CanvasResizer`）提供双击自适应与拖拽手动高度控制；全屏展开按钮统一置于外部卡片/机箱标题栏。
-  - **多选一选项卡与预设规范**: 严禁手写裸 `<button>` 配合自定义背景自制 Tab / 预设选择器；模式/算法/视图切换必须统一使用 `<CapsuleTabs>`（一级模式用默认 `size="sm"`，参数/细项用 `size="xs"`）；数据场景预设必须统一使用 `<PresetSelector>`。技术细节以 `docs/conventions.md` 为唯一权威来源。
+  - **KDE Breeze 统一机箱体系与交互 Island 规范**:
+    - **机箱视窗外壳**: 交互 Island 统一遵循 KDE Plasma Breeze 机箱体系，顶层采用 `<AutoMath> > <ExpandableDemo id="..."> > <KdeWindowShell title="..." eyebrow="..." mark="..." modeTag="...">`；
+    - **视口与控制插槽**: `display` 插槽承载主画布/视口（内部必须含 `relative overflow-hidden`、`<CanvasToolbar onReset={...} />` 及 `<CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />`，高度统一为 `h-[var(--demo-height,20rem)]` 或 3D `28rem`）；`controls` 插槽承载参数控制区（统一放入 `<div className="space-y-3">`，子面板使用 `<KdeCard title="..." variant="dense">` 分组，读数与状态监视统一使用 `<KdeReadout label=... value=... dense />`）；
+    - **选项卡与复选框规范**: 严禁手写裸 `<button>` 配合自定义背景自制 Tab；**已彻底废除并严禁重新引入旧 `CapsuleTabs` 与旧 `Checkbox`**；模式/算法/视图切换**必须且只能使用 `<KdeTabs>`**（一级模式用默认 `size="sm"`，参数/细项用 `size="xs"`，options 为 `{ label, value }` 格式）；复选框**必须使用 `<KdeCheckbox>`**；数据场景预设统一使用 `<PresetSelector>`。技术细节以 `docs/conventions.md` 为唯一权威来源。
 - **KaTeX 数学渲染**:正文公式由自写插件 `src/plugins/remark-katex.ts` 渲染(直接调用 katex 0.18.2),与 `BaseLayout.astro` 导入的 `katex/dist/katex.min.css` 同版本。**不要重新引入 `rehype-katex`**——它已停更且锁定 `katex ^0.16.0`,曾因类名与 0.18 CSS 不匹配导致 `≠` 显示成 `/=`。详见 `docs/katex-version-mismatch.md`。
   - **AutoMath 自动公式渲染**: 交互 Island 顶层统一使用 `<AutoMath>` 包裹一次，组件内部所有 JSX 节点、自定义属性（如 `ParamSlider label="$x$"`）及字符串均可直接写 `$ ... $` / `$$ ... $$`，自动完成 KaTeX 解析并自带全局渲染缓存。严禁在 Island 内部碎片化嵌套多个 `<AutoMath>`。
     - **JS 表达式/字符串转义**: 在 JS 字符串（如 `{"$\\mathbf{v}$"}` 或 `` `$\\lambda = ${val}$` ``）中，反斜杠需转义为 `\\`；包含 `{...}` 或 `< 0` 的 TeX 公式在 JSX 文本中建议用字符串 `{"$...$"}` 包裹，避免 TSX 语法冲突。
