@@ -32,7 +32,11 @@ const BASIS_COLORS = [
 ];
 
 type PresetKey =
-  "standard" | "arc90" | "arc120" | "gravity-high" | "gravity-zero";
+  | "standard"
+  | "arc90"
+  | "arc120"
+  | "gravity-high"
+  | "gravity-zero";
 
 interface PresetConfig {
   label: string;

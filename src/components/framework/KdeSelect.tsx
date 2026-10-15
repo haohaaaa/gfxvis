@@ -8,12 +8,11 @@ export interface KdeSelectOption<T extends string | number = string> {
   disabled?: boolean;
 }
 
-export interface KdeSelectProps<
-  T extends string | number = string,
-> extends Omit<
-  SelectHTMLAttributes<HTMLSelectElement>,
-  "size" | "value" | "onChange"
-> {
+export interface KdeSelectProps<T extends string | number = string>
+  extends Omit<
+    SelectHTMLAttributes<HTMLSelectElement>,
+    "size" | "value" | "onChange"
+  > {
   options: readonly KdeSelectOption<T>[];
   value: T;
   onChange: (value: T) => void;

@@ -57,7 +57,9 @@ const toc = enrichedHeadings.filter((h) => h.depth === 2 || h.depth === 3);
       role="status"
       aria-live="polite"
     >
-      <span class="flex h-5 w-5 items-center justify-center rounded-full bg-accent/15 text-accent text-xs font-bold">
+      <span
+        class="flex h-5 w-5 items-center justify-center rounded-full bg-accent/15 text-accent text-xs font-bold"
+      >
         ✓
       </span>
       <span id="heading-copy-toast-text">已复制小节链接到剪贴板</span>
@@ -74,6 +76,7 @@ const toc = enrichedHeadings.filter((h) => h.depth === 2 || h.depth === 3);
           title="文章目录"
         >
           <svg
+            aria-hidden="true"
             xmlns="http://www.w3.org/2000/svg"
             width="16"
             height="16"
@@ -98,6 +101,7 @@ const toc = enrichedHeadings.filter((h) => h.depth === 2 || h.depth === 3);
           <div class="flex items-center justify-between border-b border-border/80 px-5 py-4">
             <div class="flex items-center gap-2 text-sm font-semibold text-ink">
               <svg
+                aria-hidden="true"
                 xmlns="http://www.w3.org/2000/svg"
                 width="16"
                 height="16"
@@ -122,6 +126,7 @@ const toc = enrichedHeadings.filter((h) => h.depth === 2 || h.depth === 3);
               aria-label="关闭目录"
             >
               <svg
+                aria-hidden="true"
                 xmlns="http://www.w3.org/2000/svg"
                 width="16"
                 height="16"
@@ -143,6 +148,7 @@ const toc = enrichedHeadings.filter((h) => h.depth === 2 || h.depth === 3);
                 <li>
                   <a
                     href={`#${heading.slug}`}
+                    aria-label={heading.text}
                     class:list={[
                       "toc-link block rounded-lg py-1.5 pr-3 text-muted transition-all duration-150 hover:bg-accent/5 hover:text-accent border-l-2 border-transparent",
                       heading.depth === 2 ? "pl-3 font-medium" : "pl-6 text-xs",

@@ -140,11 +140,11 @@ function safeHead<N extends number, T>(
   return vec[0];
 }
 
-// 3. 编译期安全的 append (长度求和 N + M)
-function append<N extends number, M extends number, T>(
-  a: Vect<N, T>,
-  b: Vect<M, T>
-): TupleOf<T, any> {
+// 3. 编译期安全的 append (返回两个元组的拼接类型)
+function append<A extends unknown[], B extends unknown[]>(
+  a: A,
+  b: B
+): [...A, ...B] {
   return [...a, ...b];
 }
 

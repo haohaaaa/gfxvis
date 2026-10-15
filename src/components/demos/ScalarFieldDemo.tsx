@@ -21,11 +21,15 @@ import {
   createScalarFieldSurfaceScene,
   type GradientArrowMode,
 } from "../../visualizations/scenes/calculus/scalar-field-surface";
-import CapsuleTabs from "../framework/CapsuleTabs";
 import CanvasToolbar from "../framework/CanvasToolbar";
-import Checkbox from "../framework/Checkbox";
+import CanvasResizer from "../framework/CanvasResizer";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import { AutoMath } from "../framework/AutoMath";
+import KdeWindowShell from "../framework/KdeWindowShell";
+import KdeCard from "../framework/KdeCard";
+import KdeTabs from "../framework/KdeTabs";
+import KdeCheckbox from "../framework/KdeCheckbox";
+import KdeReadout from "../framework/KdeReadout";
 import ParamSlider from "../framework/ParamSlider";
 import { useCanvas2D } from "../framework/useCanvas2D";
 import { useViewer3D } from "../framework/useViewer3D";
@@ -330,80 +334,140 @@ export default function ScalarFieldDemo({ height }: { height?: string }) {
   return (
     <AutoMath>
       <ExpandableDemo id="scalar-field-2d" height={height}>
-        <div className="space-y-3">
-          <div className="grid gap-3 sm:h-[var(--demo-height,24rem)] sm:grid-cols-2">
-            <div
-              ref={container2dRef}
-              className="relative h-64 overflow-hidden rounded-xl border border-border sm:h-full"
-            >
-              <CanvasToolbar onReset={resetBounds2d} />
-              <canvas
-                ref={canvasRef}
-                className="absolute inset-0 h-full w-full cursor-crosshair"
-              />
-            </div>
-            <div
-              ref={container3dRef}
-              className="h-64 overflow-hidden rounded-xl border border-border sm:h-full"
+        <KdeWindowShell
+          title="二维标量场、等高线与梯度曲面"
+          eyebrow="微积分 · 多元标量场"
+          mark="∇φ"
+          modeTag="双视口联动分析"
+          tabs={
+            <KdeTabs
+              options={FIELD_OPTIONS}
+              value={fieldId}
+              onChange={(id) => setFieldId(id as Field2DId)}
             />
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-4 text-sm">
-              <CapsuleTabs
-                options={FIELD_OPTIONS}
-                value={fieldId}
-                onChange={(id: Field2DId) => setFieldId(id)}
-                size="xs"
-              />
-              {field.hasC && (
-                <ParamSlider
-                  label="$c$"
-                  min={field.cMin}
-                  max={field.cMax}
-                  step={0.05}
-                  value={c}
-                  onChange={setC}
-                  widthClass="w-36"
+          }
+          display={
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* 2D Contour Heatmap */}
+              <div
+                ref={container2dRef}
+                className="relative h-[var(--demo-height,22rem)] w-full overflow-hidden rounded border border-border/70 bg-surface"
+              >
+                <div className="absolute top-2 left-2 z-20 flex items-center gap-1.5 rounded bg-surface/90 px-2 py-1 text-[11px] font-semibold text-foreground border border-border/60 shadow-xs backdrop-blur-xs">
+                  <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
+                  2D 等高线与热力图 (Marching Squares)
+                </div>
+                <CanvasToolbar onReset={resetBounds2d} />
+                <canvas
+                  ref={canvasRef}
+                  className="absolute inset-0 h-full w-full cursor-crosshair"
                 />
-              )}
+                <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
+              </div>
+
+              {/* 3D Surface Viewport */}
+              <div
+                ref={container3dRef}
+                className="relative h-[var(--demo-height,22rem)] w-full overflow-hidden rounded border border-border/70 bg-surface"
+              >
+                <div className="absolute top-2 left-2 z-20 flex items-center gap-1.5 rounded bg-surface/90 px-2 py-1 text-[11px] font-semibold text-foreground border border-border/60 shadow-xs backdrop-blur-xs">
+                  <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+                  3D 高程曲面与空间梯度流
+                </div>
+                <CanvasToolbar
+                  onReset={() => viewerRef.current?.controls.reset()}
+                />
+                <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <CapsuleTabs
-                options={GRADIENT_MODES}
-                value={gradientMode}
-                onChange={(id: GradientArrowMode) => setGradientMode(id)}
-                size="xs"
-                label="箭头:"
-              />
-              <Checkbox
-                label="曲面透明"
-                checked={surfaceTransparent}
-                onChange={setSurfaceTransparent}
-              />
+          }
+          controls={
+            <div className="space-y-3">
+              <KdeCard title="梯度箭头与显示设置" variant="dense">
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-foreground">
+                      3D 箭头模式:
+                    </span>
+                    <KdeTabs
+                      options={GRADIENT_MODES}
+                      value={gradientMode}
+                      onChange={(id) =>
+                        setGradientMode(id as GradientArrowMode)
+                      }
+                      size="xs"
+                      variant="pill"
+                    />
+                  </div>
+
+                  <div className="pt-2 border-t border-border/50">
+                    <KdeCheckbox
+                      label="3D 曲面半透明渲染"
+                      checked={surfaceTransparent}
+                      onChange={setSurfaceTransparent}
+                      size="xs"
+                    />
+                  </div>
+
+                  {field.hasC && (
+                    <div className="pt-2 border-t border-border/50">
+                      <ParamSlider
+                        label="等值面参数 $c$"
+                        min={field.cMin}
+                        max={field.cMax}
+                        step={0.05}
+                        value={c}
+                        onChange={setC}
+                        widthClass="w-full"
+                        labelMode="adaptive"
+                      />
+                    </div>
+                  )}
+                </div>
+                <p className="mt-2 text-[11px] text-muted">
+                  双视口联动：在任一视口移动鼠标或拖拽红点，两边同步定位探针；2D
+                  滚轮缩放/中键平移；3D 左键旋转/滚轮缩放/右键平移。
+                </p>
+              </KdeCard>
+
+              <KdeCard title="标量场与梯度读数" variant="dense">
+                <div className="space-y-2">
+                  <KdeReadout
+                    label="标量场解析式 φ(x, y)"
+                    value={`$\\varphi(x,y) = ${field.texAt(c)}$`}
+                    dense
+                  />
+                  <KdeReadout
+                    label={`探针位置 (${probe.x.toFixed(2)}, ${probe.y.toFixed(2)}) 标量值`}
+                    value={value.toFixed(3)}
+                    variant="accent"
+                    dense
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <KdeReadout
+                      label="梯度向量 ∇φ"
+                      value={`(${gx.toFixed(3)}, ${gy.toFixed(3)})`}
+                      dense
+                    />
+                    <KdeReadout
+                      label="最陡坡度 ‖∇φ‖"
+                      value={Math.hypot(gx, gy).toFixed(3)}
+                      variant="success"
+                      dense
+                    />
+                  </div>
+                  {field.hasC && (
+                    <KdeReadout
+                      label="当前等值线方程 F(x,y) = c"
+                      value={`$${field.levelTex(c)}$`}
+                      dense
+                    />
+                  )}
+                </div>
+              </KdeCard>
             </div>
-          </div>
-          <div className="grid gap-2 text-sm text-muted sm:grid-cols-2">
-            <p>{`$\\varphi(x,y) = ${field.texAt(c)}$`}</p>
-            <p>
-              {`$\\varphi(${probe.x.toFixed(2)}, ${probe.y.toFixed(2)}) = ${value.toFixed(3)}$`}
-            </p>
-            <p>{`$\\nabla\\varphi = (${gx.toFixed(3)}, ${gy.toFixed(3)})$`}</p>
-            <p>
-              {`$\\lVert\\nabla\\varphi\\rVert = ${Math.hypot(gx, gy).toFixed(3)}$`}
-            </p>
-            {field.hasC && (
-              <p>
-                {`$F(x,y) = ${c.toFixed(2)} \\Rightarrow ${field.levelTex(c)}$`}
-              </p>
-            )}
-          </div>
-          <p className="text-xs text-muted">
-            切换字段,圆族/抛物线族可调 c(accent 实线为零等值线
-            F=c);任一视图移动鼠标或拖动摆放探针,另一视图同步;3D
-            箭头可切换水平梯度/最陡上升;2D:滚轮缩放 · 中键平移;3D:左键/中键旋转
-            · 滚轮缩放 · 右键平移。
-          </p>
-        </div>
+          }
+        />
       </ExpandableDemo>
     </AutoMath>
   );

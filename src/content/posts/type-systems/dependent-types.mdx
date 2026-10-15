@@ -1,6 +1,6 @@
 ---
 title: "依值类型论：从编译期消灭越界到 Rust 与 C++ 常量泛型"
-description: "系统剖析现代类型系统的终极理论高峰 —— 依值类型论（Dependent Type Theory）。从普通类型系统的盲区（数组越界与动态断言）切入，严密拆解依赖函数类型（Π 类型）与依赖积类型（Σ 类型）的数学内核；通过 Barendregt 的 Lambda 立方体（Lambda Cube）全景厘清项依值于项、项依值于类型、类型依值于类型与类型依值于项的四维疆界；深入揭示柯里-霍华德同构在谓词逻辑层面的终极投射（命题即类型，定理证明即程序）；直击主流工业语言的“伪依值类型”突围 —— C++20 非类型模板参数（NTTP）与 compile-time std::format 类型安全推导、Rust 常量泛型（Const Generics）工程实践与为什么 Rust 不做全功能依值类型（停机问题与类型检查确定性）、TypeScript 模板字面量类型与元组长度黑魔法；并全景对比工业语言与正统依值语言（Idris / Lean 4）的权衡哲学。"
+description: "系统剖析现代类型系统的终极理论高峰 —— 依值类型论（Dependent Type Theory）。从普通类型系统的盲区（数组越界与动态断言）切入，严密拆解依赖函数类型（Π 类型）与依赖积类型（Σ 类型）的数学内核；通过 Barendregt 的 Lambda 立方体（Lambda Cube）全景厘清项依值于项、项依值于类型、类型依值于类型与类型依值于项的四维疆界；深入揭示柯里-霍华德同构在谓词逻辑层面的终极投射（命题即类型，定理证明即程序）；直击主流工业语言的“伪依值类型”突围 —— C++20 非类型模板参数（NTTP）与 compile-time std::format 类型安全推导、Rust 常量泛型（Const Generics）工程实践与为什么 Rust 不做全功能依值类型（停机问题与类型检查确定性）、TypeScript 模板字面量类型与元组长度黑魔法；并全景对比工业语言与 Lean 4 等正统依值语言的权衡哲学。"
 date: 2026-09-27
 tags:
   - "type-systems"
@@ -99,7 +99,7 @@ console.log("路由 2 生成:", route2);
 
 1970 年代，瑞典逻辑学家佩尔·马丁-洛夫（Per Martin-Löf）打破了这道思想铁幕，创立了<strong>直觉主义类型论（Martin-Löf Type Theory, MLTT）</strong>，正式奠定了<strong>依值类型论（Dependent Type Theory，亦称依赖类型论）</strong>的数学根基。在依赖类型论中，<strong>类型可以显式依赖于具体的值</strong>！
 
-依赖类型不仅催生了新一代全功能定理证明助手与编程语言（如 Coq/Rocq、Agda、Idris、Lean 4），它的思想微光也深刻辐射到了工业界：
+依赖类型不仅催生了新一代全功能定理证明助手与编程语言（如 Coq/Rocq、Agda 与 Lean 4），它的思想微光也深刻辐射到了工业界：
 - <strong>C++20</strong>：非类型模板参数（NTTP）允许将结构体字面量与浮点数带入类型系统，`std::format` 在编译期根据字符串字面量的“值”推导并校验参数类型；
 - <strong>Rust</strong>：常量泛型（Const Generics `[T; N]`）让定长数组跻身一等泛型公民，而官方语言团队在探讨高阶算术约束时直面图灵停机问题；
 - <strong>TypeScript</strong>：模板字面量类型（Template Literal Types）与带长度元组（Tuples）让前端开发者在类型体操中玩出了伪依赖类型的精妙魔法。
@@ -235,7 +235,7 @@ $$
 | $\lambda^{\to}$ | 简单类型 $\lambda$ 演算 (STLC) | 仅支持值到值的普通函数 | C 语言基础函数、Pascal |
 | $\lambda 2$ | 二阶 $\lambda$ 演算 (System F) | 参数多态（项依赖于类型） | C++ 模板函数、Rust 泛型、Java 泛型 |
 | $\lambda \underline{\omega}$ | 高阶类型构造器 (System $F_\omega$) | 类型操作符（类型依赖于类型） | Haskell、Scala 高阶类型 (HKT) |
-| <strong>$\lambda P$</strong> | <strong>一阶依值类型论 (LF / Dependent Types)</strong> | <strong>类型依赖于值（项）</strong> | <strong>Idris、Agda、Lean 4</strong> |
+| <strong>$\lambda P$</strong> | <strong>一阶依值类型论 (LF / Dependent Types)</strong> | <strong>类型依赖于值（项）</strong> | <strong>Agda、Lean 4</strong> |
 | $\lambda C$ | 构造演算 (Calculus of Constructions, CoC) | 立方体的终极顶点：四维能力全部融合 | 现代 Coq / Rocq 形式化证明器内核 |
 
 ### 2.4 命题即类型（Propositions as Types）：一阶谓词逻辑的终极投射
@@ -467,38 +467,46 @@ type Result = Add<2, 3>; // 静态推导为数字字面量 5！
 
 ---
 
-## 七、理论标杆（Idris / Lean 4）与四大语言横向全景对照
+## 七、理论标杆（Lean 4）与四大工业语言对照
 
-### 7.1 正统依值语言（Idris 2 / Lean 4）的实战风采
+### 7.1 Lean 4 中的依值类型实践
 
-要想领略依赖类型的全貌，必须看看专为该理论打造的正统语言（如 <strong>Idris 2</strong> 与 <strong>Lean 4</strong>）。
+要想领略依赖类型的全貌，可以看 Lean 4 如何把值纳入类型签名：下面定义一个长度索引向量，安全头部函数只接受非空向量，拼接函数的返回长度由两个输入长度相加得到。
 
-在 Idris 中，类型和值完全没有地位上的差异。类型是<strong>第一类公民（First-Class Citizens）</strong>，就像普通变量一样可以被作为参数传递、返回和计算：
+Lean 4 中，类型和值可以通过依值函数类型建立约束，让一些错误在编译期就无法表达：
 
-```idris
--- Idris 2 原生代码示例
-import Data.Vect
+```lean4
+universe u
 
--- 1. 编译期绝对安全的 head 函数：空向量从类型定义上就不可能传入！
-safeHead : Vect (S n) a -> a
-safeHead (x :: xs) = x
+inductive Vect (α : Type u) : Nat → Type u where
+  | nil : Vect α 0
+  | cons : {n : Nat} → α → Vect α n → Vect α (n + 1)
 
--- 2. 矩阵乘法：精确要求内层维度一致
-matrixMultiply : Matrix n k a -> Matrix k m a -> Matrix n m a
+def Vect.head {α : Type u} {n : Nat} : Vect α (n + 1) → α
+  | .cons x _ => x
 
--- 3. 谓词证明项：证明对任意自然数 n，n + 0 = n
-plusZeroId : (n : Nat) -> n + 0 = n
-plusZeroId Z     = Refl
-plusZeroId (S k) = cong S (plusZeroId k)
+def Vect.append {α : Type u} {m n : Nat} :
+    Vect α m → Vect α n → Vect α (n + m)
+  | .nil, ys => ys
+  | .cons x xs, ys => .cons x (Vect.append xs ys)
+
+def three : Vect Nat 3 :=
+  .cons 10 (.cons 20 (.cons 30 .nil))
+
+def two : Vect Nat 2 :=
+  .cons 40 (.cons 50 .nil)
+
+#eval Vect.head three
+#check Vect.append three two
 ```
 
-在 Lean 4 中，这套体系被进一步推向极致：它既是一门拥有 LLVM 高性能后端的现代系统编程语言，又是当今全球数学界最推崇的形式化定理证明平台（陶哲轩等顶尖数学家正在使用 Lean 4 形式化验证高等现代数学猜想）。
+Lean 4 将依值类型用于可执行程序与形式化证明：同一套类型系统既约束程序的数据关系，也表达需要由内核检查的证明项。
 
-### 7.2 全景对比表：C++ vs Rust vs TypeScript vs C# vs Idris/Lean 4
+### 7.2 全景对比表：四大工业语言与 Lean 4
 
 | 维度 / 语言 | 依赖类型支持程度 | 值进入类型的方式 | 数组越界防御机制 | 证明与计算统一性 | 编译期开销与可判定性 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| <strong>Idris 2 / Lean 4</strong> | <strong>原生全功能依赖类型</strong>（$\lambda P$ / CoC） | 一等公民：值、类型与函数完全平权，任意纯项可作为类型参数 | <strong>数学级绝对消灭</strong>：长度编码在类型中，空列表非法传入无法通过编译 | <strong>完全统一</strong>：命题即类型，写程序即证明定理（支持交互式证明） | 强制执行严格停机检查器（Termination Checker），类型检查即定理求解 |
+| <strong>Lean 4</strong> | <strong>原生全功能依赖类型</strong>（$\lambda P$ / CoC） | 一等公民：值、类型与函数完全平权，任意纯项可作为类型参数 | <strong>数学级绝对消灭</strong>：长度编码在类型中，空向量非法传入无法通过编译 | <strong>完全统一</strong>：命题即类型，写程序即证明定理（支持交互式证明） | 强制执行严格停机检查器（Termination Checker），类型检查即定理求解 |
 | <strong>C++20</strong> | <strong>伪依赖类型</strong>（模板特化与常数求值） | 非类型模板参数（NTTP）、`constexpr` / `consteval` 字面量类 | 静态有限防御（`std::array<T, N>` 无法越界跨类型赋值，但内部访问仍需边界检查） | <strong>分离</strong>：模板元编程是一套独立的图灵完备二等语言 | 编译器深层展开单态化，易引发代码膨胀与编译变慢 |
 | <strong>Rust</strong> | <strong>受限常量泛型</strong>（Const Generics） | 原生 `const N: usize`，正统语言级泛型参数 | 长度作为类型签名一部分（`[T; N]` 与 `[T; M]` 类型隔离），普通索引依靠借用与 Panic | <strong>分离</strong>：不提供谓词逻辑证明项，拒绝复杂非常量表达式进类型 | <strong>高度可判定</strong>：拒绝停机风险，坚持快速可控的增量类型检查 |
 | <strong>TypeScript</strong> | <strong>字面量模拟</strong>（类型体操与元组） | 模板字面量类型（`` `on${T}` ``）、`as const` 字面量推导 | 仅在固定长度元组（Tuples）上精确追踪长度，动态 Array 无法防御越界 | <strong>无</strong>：类型系统为开发者便利妥协，数学上非健全（Unsound） | 递归类型展开受深度限制（默认 1000 层尾递归保护），编译期擦除 |
@@ -510,7 +518,7 @@ plusZeroId (S k) = cong S (plusZeroId k)
 1. <strong>标签时代（STLC / 早期语言）</strong>：类型只是内存布局的说明书，防止浮点与指针混淆；
 2. <strong>抽象时代（System F / 泛型）</strong>：类型引入多态，代码实现按骨架复用；
 3. <strong>契约时代（类型类 / 现代工业语言）</strong>：类型与特质结合，通过特设约束定义系统行为；
-4. <strong>证明时代（依值类型论 / Lean & Idris）</strong>：<strong>类型不再是孤立的标签，而是对程序逻辑完整、严谨的数学规格说明（Specification）。</strong>
+4. <strong>证明时代（依值类型论 / Lean 4）</strong>：<strong>类型不再是孤立的标签，而是对程序逻辑完整、严谨的数学规格说明（Specification）。</strong>
 
 尽管全功能的依值类型论因为图灵停机与编译开销的顾虑，尚未全面取代主流工业语言的日常编码，但它指明的方向已不可逆转：
 无论是 C++ 的 `std::format`，Rust 的常量泛型，还是 TypeScript 的模板字面量，都在以各自务实的方式向这座巍峨的理论高峰靠近。

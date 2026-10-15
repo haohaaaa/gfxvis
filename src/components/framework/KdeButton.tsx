@@ -1,11 +1,17 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 
 export type KdeButtonVariant =
-  "default" | "primary" | "success" | "warning" | "danger" | "flat";
+  | "default"
+  | "primary"
+  | "success"
+  | "warning"
+  | "danger"
+  | "flat";
 
 export type KdeButtonSize = "xs" | "sm" | "md";
 
-export interface KdeButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+export interface KdeButtonProps
+  extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: KdeButtonVariant;
   size?: KdeButtonSize;
   icon?: ReactNode;

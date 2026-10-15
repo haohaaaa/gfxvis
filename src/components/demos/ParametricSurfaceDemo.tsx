@@ -4,11 +4,15 @@ import {
   createParametricSurfaceScene,
   type SurfaceId,
 } from "../../visualizations/scenes/calculus/parametric-surface3d";
-import CapsuleTabs from "../framework/CapsuleTabs";
 import CanvasToolbar from "../framework/CanvasToolbar";
-import Checkbox from "../framework/Checkbox";
+import CanvasResizer from "../framework/CanvasResizer";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import { AutoMath } from "../framework/AutoMath";
+import KdeWindowShell from "../framework/KdeWindowShell";
+import KdeCard from "../framework/KdeCard";
+import KdeTabs from "../framework/KdeTabs";
+import KdeCheckbox from "../framework/KdeCheckbox";
+import KdeReadout from "../framework/KdeReadout";
 import ParamSlider from "../framework/ParamSlider";
 import { useViewer3D } from "../framework/useViewer3D";
 
@@ -30,7 +34,7 @@ export default function ParametricSurfaceDemo({ height }: { height?: string }) {
   const [dux, duy, duz] = surface.du(u, v);
   const [dvx, dvy, dvz] = surface.dv(u, v);
 
-  const { containerRef } = useViewer3D(
+  const { containerRef, viewerRef } = useViewer3D(
     () => createParametricSurfaceScene(),
     ({ api }) => {
       api.setSurface(surfaceId);
@@ -51,73 +55,103 @@ export default function ParametricSurfaceDemo({ height }: { height?: string }) {
   return (
     <AutoMath>
       <ExpandableDemo id="parametric-surface-3d" height={height}>
-        <div className="space-y-3">
-          <div
-            ref={containerRef}
-            className="relative h-[var(--demo-height,28rem)] w-full overflow-hidden rounded-xl border border-border"
-          >
-            <CanvasToolbar />
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-4 text-sm">
-              <CapsuleTabs
-                options={SURFACE_OPTIONS}
-                value={surfaceId}
-                onChange={handleSurfaceChange}
+        <KdeWindowShell
+          title="三维参数曲面、网格曲线与切平面"
+          eyebrow="微积分 · 多元函数曲面"
+          mark="r(u,v)"
+          modeTag="参数曲面与微切空间"
+          tabs={
+            <KdeTabs
+              options={SURFACE_OPTIONS}
+              value={surfaceId}
+              onChange={handleSurfaceChange}
+            />
+          }
+          display={
+            <div
+              ref={containerRef}
+              className="relative h-[var(--demo-height,28rem)] w-full overflow-hidden rounded border border-border/70 bg-surface"
+            >
+              <CanvasToolbar
+                onReset={() => viewerRef.current?.controls.reset()}
               />
-              <ParamSlider
-                label="$u$"
-                min={surface.uMin}
-                max={surface.uMax}
-                step={0.02}
-                value={u}
-                onChange={setU}
-                widthClass="w-36"
-              />
-              <ParamSlider
-                label="$v$"
-                min={surface.vMin}
-                max={surface.vMax}
-                step={0.02}
-                value={v}
-                onChange={setV}
-                widthClass="w-36"
-              />
+              <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <Checkbox
-                label="切线"
-                checked={tangentsVisible}
-                onChange={setTangentsVisible}
-              />
+          }
+          controls={
+            <div className="space-y-3">
+              <KdeCard title="曲面参数与可视性" variant="dense">
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <ParamSlider
+                      label="$u$"
+                      min={surface.uMin}
+                      max={surface.uMax}
+                      step={0.02}
+                      value={u}
+                      onChange={setU}
+                      widthClass="w-full"
+                      labelMode="adaptive"
+                    />
+                    <ParamSlider
+                      label="$v$"
+                      min={surface.vMin}
+                      max={surface.vMax}
+                      step={0.02}
+                      value={v}
+                      onChange={setV}
+                      widthClass="w-full"
+                      labelMode="adaptive"
+                    />
+                  </div>
+                  <div className="pt-2 border-t border-border/50">
+                    <KdeCheckbox
+                      label="显示切向量与切平面"
+                      checked={tangentsVisible}
+                      onChange={setTangentsVisible}
+                      size="xs"
+                    />
+                  </div>
+                </div>
+                <p className="mt-2 text-[11px] text-muted">
+                  左键旋转 · 滚轮缩放 · 右键平移；黄色为固定 $v$ 的 $u$
+                  参数线，青色为固定 $u$ 的 $v$ 参数线，红点为{" "}
+                  {"$\\mathbf{r}(u,v)$"}；浅蓝面为切平面。
+                </p>
+              </KdeCard>
+
+              <KdeCard title="曲面方程与切向量读数" variant="dense">
+                <div className="space-y-2">
+                  <KdeReadout
+                    label="参数曲面方程 r(u, v)"
+                    value={`$\\mathbf{r}(u,v) = ${surface.tex}$`}
+                    dense
+                  />
+                  <KdeReadout
+                    label={`曲面点 r(${u.toFixed(2)}, ${v.toFixed(2)})`}
+                    value={`(${x.toFixed(3)},\\, ${y.toFixed(3)},\\, ${z.toFixed(3)})`}
+                    variant="accent"
+                    dense
+                  />
+                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border/50">
+                    <KdeReadout
+                      label="∂r/∂u 切向量"
+                      value={`(${dux.toFixed(2)}, ${duy.toFixed(2)}, ${duz.toFixed(2)})`}
+                      variant="warning"
+                      dense
+                    />
+                    <KdeReadout
+                      label="∂r/∂v 切向量"
+                      value={`(${dvx.toFixed(2)}, ${dvy.toFixed(2)}, ${dvz.toFixed(2)})`}
+                      variant="success"
+                      dense
+                    />
+                  </div>
+                </div>
+              </KdeCard>
             </div>
-          </div>
-          <div className="grid gap-2 text-sm text-muted sm:grid-cols-2">
-            <p>{`$\\mathbf r(u,v) = ${surface.tex}$`}</p>
-            <p>
-              {`$\\mathbf r(${u.toFixed(2)}, ${v.toFixed(2)}) = (${x.toFixed(3)}, ${y.toFixed(3)}, ${z.toFixed(3)})$`}
-            </p>
-          </div>
-          <div className="grid gap-2 text-sm text-muted sm:grid-cols-2">
-            <p>
-              {`$\\frac{\\partial \\mathbf r}{\\partial u} = ${surface.duTex}$`}
-            </p>
-            <p>
-              {`$\\frac{\\partial \\mathbf r}{\\partial u}(${u.toFixed(2)}, ${v.toFixed(2)}) = (${dux.toFixed(3)}, ${duy.toFixed(3)}, ${duz.toFixed(3)})$`}
-            </p>
-            <p>
-              {`$\\frac{\\partial \\mathbf r}{\\partial v} = ${surface.dvTex}$`}
-            </p>
-            <p>
-              {`$\\frac{\\partial \\mathbf r}{\\partial v}(${u.toFixed(2)}, ${v.toFixed(2)}) = (${dvx.toFixed(3)}, ${dvy.toFixed(3)}, ${dvz.toFixed(3)})$`}
-            </p>
-          </div>
-          <p className="text-xs text-muted">
-            左键/中键旋转 · 滚轮缩放 · 右键平移;黄色为固定 v 的 u
-            参数曲线,青色为固定 u 的 v 参数曲线,红点是 r(u,v);黄/青箭头为
-            ∂r/∂u、∂r/∂v,浅蓝面为切平面。
-          </p>
-        </div>
+          }
+        />
       </ExpandableDemo>
     </AutoMath>
   );

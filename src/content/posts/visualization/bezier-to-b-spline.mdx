@@ -199,7 +199,7 @@ $$
 <strong>5. 结论</strong>：
 由于基变换矩阵 $\mathbf M_{B \leftarrow P}$ 严格非奇异（满秩可逆），且标准幂基 $\{1, t, t^2, \ldots, t^n\}$ 本身线性无关，根据线性代数基底变换定理：
 $$
-\boxed{\{B_0^n(t), B_1^n(t), \ldots, B_n^n(t)\} \text{ 严格线性无关，且构成 } \mathcal P_n \text{ 的一组标准基}}
+\boxed{\{B_0^n(t), B_1^n(t), \ldots, B_n^n(t)\} \text{ 严格线性无关, 且构成 } \mathcal P_n \text{ 的一组标准基}}
 $$
 证明完毕。$\blacksquare$
 
@@ -1070,7 +1070,7 @@ $$
 
 > <strong>一句话看透 Clamping 本质</strong>：
 > $$
-> \boxed{\text{两端各额外重复 } p \text{ 次（重数达到 } p+1 \text{），本质上是将有限 B-Spline 两侧各 } p \text{ 个基函数残缺 Span 压缩为零长度。}}
+> \boxed{\text{两端各额外重复 } p \text{ 次（重数达到 } p+1 \text{）, 本质上是将有限 B-Spline 两侧各 } p \text{ 个基函数残缺 Span 压缩为零长度。}}
 > $$
 
 #### (4) 伴随性质：曲线严格精确插值首尾控制点
@@ -1651,13 +1651,13 @@ $$
 > 1. <strong>两端控制点</strong>：取圆弧端点
 >
 >    $$
->    \mathbf P_0 = \left(\cos\frac{\theta}{2}, -\sin\frac{\theta}{2}\right),\qquad \mathbf P_2 = \left(\cos\frac{\theta}{2}, \sin\frac{\theta}{2}\right)；
+>    \mathbf P_0 = \left(\cos\frac{\theta}{2}, -\sin\frac{\theta}{2}\right),\qquad \mathbf P_2 = \left(\cos\frac{\theta}{2}, \sin\frac{\theta}{2}\right);
 >    $$
 >
 > 2. <strong>中间控制点</strong>：取两端点处圆切线的几何交点（切线外推）
 >
 >    $$
->    \mathbf P_1 = \left(\frac{1}{\cos(\theta/2)}, 0\right)；
+>    \mathbf P_1 = \left(\frac{1}{\cos(\theta/2)}, 0\right);
 >    $$
 >
 > 3. <strong>权重配置</strong>：端点权重设为 $1$，中间权重设为半角的余弦值

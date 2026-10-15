@@ -344,20 +344,30 @@ type Effect =
   | { type: "LOG"; message: string };
 
 // 2. 纯业务代码 (通过 yield 触发 perform)
-function* businessLogic() {
-  const initial: number = yield { type: "GET_STATE" };
+function* businessLogic(): Generator<Effect, number, number | undefined> {
+  const initialValue = yield { type: "GET_STATE" };
+  if (typeof initialValue !== "number") {
+    throw new Error("GET_STATE 必须恢复为数值状态");
+  }
+  const initial = initialValue;
   yield { type: "LOG", message: "读取当前状态: " + initial };
   
   yield { type: "SET_STATE", value: initial + 10 };
-  const updated: number = yield { type: "GET_STATE" };
+  const updatedValue = yield { type: "GET_STATE" };
+  if (typeof updatedValue !== "number") {
+    throw new Error("GET_STATE 必须恢复为数值状态");
+  }
   
-  return updated * 2;
+  return updatedValue * 2;
 }
 
 // 3. 效应处理器 Handler (管理定界延续与状态存储)
-function runWithHandler<T>(gen: Generator<Effect, T, any>, initialStore = 0): T {
+function runWithHandler<T>(
+  gen: Generator<Effect, T, number | undefined>,
+  initialStore = 0
+): T {
   let store = initialStore;
-  let nextVal: any = undefined;
+  let nextVal: number | undefined = undefined;
   
   while (true) {
     const result = gen.next(nextVal);

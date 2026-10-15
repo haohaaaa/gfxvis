@@ -1,7 +1,12 @@
 import type { ReactNode } from "react";
 
 export type KdeReadoutVariant =
-  "default" | "accent" | "success" | "warning" | "danger" | "formula";
+  | "default"
+  | "accent"
+  | "success"
+  | "warning"
+  | "danger"
+  | "formula";
 
 export interface KdeReadoutProps {
   label: ReactNode;

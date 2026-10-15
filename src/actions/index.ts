@@ -7,6 +7,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { delimiter, join, resolve as pathResolve } from "node:path";
 import { performance } from "node:perf_hooks";
+import { runRust } from "../lib/server/rust-runner";
 
 const require = createRequire(import.meta.url);
 
@@ -41,18 +42,13 @@ function getExecutionEnvironment(): NodeJS.ProcessEnv {
   return env;
 }
 
-function getMissingCompilerMessage(lang: "rust" | "cpp"): string {
+function getMissingCppCompilerMessage(): string {
   const platform =
     process.platform === "win32"
       ? "Windows"
       : process.platform === "darwin"
         ? "macOS"
         : "Linux";
-
-  if (lang === "rust") {
-    const compiler = process.platform === "win32" ? "rustc.exe" : "rustc";
-    return `[环境缺失]: ${platform} 宿主机的 PATH 中未检测到 ${compiler}。\n安装 Rust 工具链（rustup），并确认编译器已加入 PATH 后重启服务。`;
-  }
 
   const compiler =
     process.platform === "win32" ? "clang++.exe 或 g++.exe" : "clang++ 或 g++";
@@ -118,9 +114,20 @@ export const server = {
     input: z.object({
       lang: z.enum(["js", "ts", "node", "rust", "cpp"]),
       code: z.string(),
+      cargoToml: z.string().optional(),
     }),
-    handler: async ({ lang, code }): Promise<RunResult> => {
+    handler: async ({ lang, code, cargoToml }): Promise<RunResult> => {
       const startTime = performance.now();
+      if (lang === "rust") {
+        const { stdout, stderr, exitCode } = await runRust({ code, cargoToml });
+        return {
+          stdout,
+          stderr,
+          exitCode,
+          durationMs: Math.round(performance.now() - startTime),
+          language: lang,
+        };
+      }
       const runId = randomUUID();
       const workDir = join(tmpdir(), "gfxvis-runners", runId);
 
@@ -162,46 +169,6 @@ export const server = {
             break;
           }
 
-          case "rust": {
-            const hasRustc = await checkCommandAvailable("rustc");
-            if (!hasRustc) {
-              return {
-                stdout: "",
-                stderr: getMissingCompilerMessage("rust"),
-                exitCode: 127,
-                durationMs: Math.round(performance.now() - startTime),
-                language: "rust",
-              };
-            }
-
-            const srcFile = join(workDir, "main.rs");
-            const binFile = join(
-              workDir,
-              process.platform === "win32" ? "main_bin.exe" : "main_bin",
-            );
-            await writeFile(srcFile, code, "utf-8");
-
-            // 1. Compile with rustc
-            const compileRes = await executeProcess(
-              "rustc",
-              ["--edition=2024", "-O", srcFile, "-o", binFile],
-              workDir,
-            );
-
-            if (compileRes.exitCode !== 0) {
-              stdout = compileRes.stdout;
-              stderr = compileRes.stderr;
-              exitCode = compileRes.exitCode;
-            } else {
-              // 2. Execute compiled binary
-              const runRes = await executeProcess(binFile, [], workDir);
-              stdout = runRes.stdout;
-              stderr = runRes.stderr;
-              exitCode = runRes.exitCode;
-            }
-            break;
-          }
-
           case "cpp": {
             const hasClang = await checkCommandAvailable("clang++");
             const hasGpp = hasClang ? true : await checkCommandAvailable("g++");
@@ -209,7 +176,7 @@ export const server = {
             if (!hasClang && !hasGpp) {
               return {
                 stdout: "",
-                stderr: getMissingCompilerMessage("cpp"),
+                stderr: getMissingCppCompilerMessage(),
                 exitCode: 127,
                 durationMs: Math.round(performance.now() - startTime),
                 language: "cpp",

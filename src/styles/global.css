@@ -32,6 +32,303 @@
   --color-accent: var(--gfx-accent);
 }
 
+/* Shared KDE Breeze palette. Scope it to components that opt into the KDE UI. */
+.kde-breeze-ui {
+  --kde-panel: #eff0f1;
+  --kde-raised: #fcfcfd;
+  --kde-canvas: #ffffff;
+  --kde-border: #bec5cc;
+  --kde-ink: #232629;
+  --kde-muted: #626b73;
+  --kde-accent: #3daee9;
+  --kde-accent-ink: #102630;
+  --kde-accent-contrast: #102630;
+  --kde-base: #e3e5e7;
+  --kde-success: #27ae60;
+  --kde-warning: #f67400;
+  --kde-danger: #da4453;
+  --kde-control-radius: 0.35rem;
+  --kde-card-radius: 0.45rem;
+  --kde-window-radius: 0.75rem;
+}
+
+html.dark .kde-breeze-ui {
+  --kde-panel: #282d33;
+  --kde-raised: #31363b;
+  --kde-canvas: #1e2226;
+  --kde-border: #4d555d;
+  --kde-ink: #eff0f1;
+  --kde-muted: #bdc3c7;
+  --kde-accent: #3daee9;
+  --kde-accent-ink: #101b20;
+  --kde-accent-contrast: #101b20;
+  --kde-base: #202429;
+  --kde-success: #2ecc71;
+  --kde-warning: #f39c12;
+  --kde-danger: #e74c3c;
+}
+
+.kde-site-window {
+  overflow: hidden;
+  border: 1px solid var(--kde-border);
+  border-radius: var(--kde-window-radius);
+  background: var(--kde-panel);
+  color: var(--kde-ink);
+  box-shadow: 0 12px 32px rgb(15 23 42 / 0.1);
+  font-family:
+    "Noto Sans",
+    "Oxygen",
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+.kde-site-window__titlebar {
+  display: flex;
+  min-height: 2.8rem;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.55rem 0.85rem;
+  border-bottom: 1px solid var(--kde-border);
+  background: var(--kde-raised);
+  color: var(--kde-ink);
+}
+
+.kde-site-window__mark {
+  display: inline-grid;
+  min-width: 1.65rem;
+  height: 1.65rem;
+  place-items: center;
+  padding: 0 0.2rem;
+  border-radius: 0.28rem;
+  background: var(--kde-accent);
+  color: var(--kde-accent-ink);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.kde-site-window__heading {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.kde-site-window__title {
+  margin: 0;
+  color: var(--kde-ink);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.kde-site-window__eyebrow {
+  color: var(--kde-muted);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+}
+
+.kde-site-window__mode {
+  margin-left: auto;
+  padding: 0.2rem 0.45rem;
+  border: 1px solid var(--kde-border);
+  border-radius: var(--kde-control-radius);
+  color: var(--kde-muted);
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.kde-site-window__body {
+  padding: 0.9rem;
+}
+
+.kde-site-header__frame {
+  border: 1px solid var(--kde-border);
+  border-radius: var(--kde-window-radius);
+  background: color-mix(in srgb, var(--kde-raised) 94%, transparent);
+  color: var(--kde-ink);
+  box-shadow: 0 8px 24px rgb(15 23 42 / 0.1);
+  backdrop-filter: blur(16px) saturate(140%);
+}
+
+.kde-site-header__brand {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--kde-ink);
+  font-size: 1.05rem;
+  font-weight: 750;
+  letter-spacing: -0.035em;
+  text-decoration: none;
+}
+
+.kde-site-header__brand-mark {
+  display: inline-grid;
+  width: 1.7rem;
+  height: 1.7rem;
+  place-items: center;
+  border-radius: 0.3rem;
+  background: var(--kde-accent);
+  color: var(--kde-accent-ink);
+  font-size: 0.7rem;
+  font-weight: 850;
+}
+
+.kde-site-header__brand-accent {
+  color: var(--kde-accent);
+}
+
+.kde-site-header__actions,
+.kde-site-header__nav {
+  display: flex;
+  align-items: center;
+}
+
+.kde-site-header__actions {
+  gap: 0.45rem;
+}
+
+.kde-site-header__nav {
+  gap: 0.2rem;
+}
+
+.kde-site-header__nav-link {
+  border-radius: var(--kde-control-radius);
+  padding: 0.45rem 0.55rem;
+  color: var(--kde-muted);
+  font-size: 0.78rem;
+  font-weight: 550;
+  text-decoration: none;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease;
+}
+
+.kde-site-header__nav-link:hover,
+.kde-site-header__nav-link:focus-visible {
+  background: var(--kde-panel);
+  color: var(--kde-accent);
+}
+
+.kde-site-header__action {
+  display: inline-flex;
+  min-width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: 1px solid var(--kde-border);
+  border-radius: var(--kde-control-radius);
+  background: var(--kde-raised);
+  padding: 0 0.5rem;
+  color: var(--kde-muted);
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    color 150ms ease,
+    background-color 150ms ease;
+}
+
+.kde-site-header__action:hover,
+.kde-site-header__action:focus-visible {
+  border-color: var(--kde-accent);
+  background: var(--kde-panel);
+  color: var(--kde-accent);
+}
+
+.kde-site-header__action:focus-visible,
+.kde-site-header__nav-link:focus-visible,
+.kde-site-header__brand:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--kde-accent) 65%, transparent);
+  outline-offset: 2px;
+}
+
+.kde-site-header__search kbd {
+  border: 1px solid var(--kde-border);
+  border-radius: 0.2rem;
+  padding: 0.05rem 0.25rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.62rem;
+}
+
+.kde-site-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid var(--kde-border);
+  padding: 0.9rem 0.15rem 1.25rem;
+  color: var(--kde-muted);
+  font-family:
+    "Noto Sans",
+    "Oxygen",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-size: 0.7rem;
+}
+
+.kde-site-footer__brand {
+  margin: 0;
+}
+
+@media (max-width: 639px) {
+  .kde-site-header__frame {
+    gap: 0.2rem;
+    padding-inline: 0.5rem;
+  }
+
+  .kde-site-header__brand {
+    gap: 0.35rem;
+    font-size: 0.95rem;
+  }
+
+  .kde-site-header__brand-mark {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .kde-site-header__nav {
+    gap: 0;
+  }
+
+  .kde-site-header__nav-link {
+    padding: 0.4rem 0.3rem;
+    font-size: 0.68rem;
+  }
+
+  .kde-site-header__actions {
+    gap: 0.2rem;
+  }
+
+  .kde-site-header__action {
+    min-width: 1.85rem;
+    height: 1.85rem;
+    padding-inline: 0.35rem;
+  }
+}
+
+@media (max-width: 390px) {
+  .kde-site-header__nav-link {
+    padding-inline: 0.22rem;
+    font-size: 0.64rem;
+  }
+
+  .kde-site-header__actions {
+    gap: 0.12rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .kde-site-footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+}
+
 body {
   @apply bg-background text-ink antialiased;
 }

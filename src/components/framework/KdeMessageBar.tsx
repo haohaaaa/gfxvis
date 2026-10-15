@@ -1,7 +1,11 @@
 import type { ReactNode } from "react";
 
 export type KdeMessageBarVariant =
-  "info" | "success" | "warning" | "danger" | "neutral";
+  | "info"
+  | "success"
+  | "warning"
+  | "danger"
+  | "neutral";
 
 export type KdeMessageBarMode = "card" | "banner" | "inline";
 

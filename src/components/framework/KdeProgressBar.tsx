@@ -1,7 +1,11 @@
 import type { ReactNode } from "react";
 
 export type KdeProgressBarVariant =
-  "accent" | "primary" | "success" | "warning" | "danger";
+  | "accent"
+  | "primary"
+  | "success"
+  | "warning"
+  | "danger";
 
 export interface KdeProgressBarProps {
   /** Current progress value (e.g. 3) */

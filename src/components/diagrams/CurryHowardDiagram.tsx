@@ -503,9 +503,7 @@ export default function CurryHowardDiagram() {
                   <KdeBadge
                     variant={preset.isConstructive ? "success" : "warning"}
                   >
-                    {preset.isConstructive
-                      ? "✅ 构造性定理"
-                      : "⚠️ 直觉主义边界"}
+                    {preset.isConstructive ? "✅ 构造性定理" : "⚠️ 直觉主义边界"}
                   </KdeBadge>
                 </div>
               </div>

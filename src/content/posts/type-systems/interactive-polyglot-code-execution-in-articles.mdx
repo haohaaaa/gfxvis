@@ -233,6 +233,10 @@ export const cppSnippet = [
   initialCode={rustSnippet}
 />
 
+需要第三方依赖时，文章作者可以为 `CodePlayground` 传入完整的 `cargoToml` 字符串。执行器会原样保存为 Cargo.toml，将读者编辑的源码保存为 `src/main.rs`，再通过 Cargo 编译并运行根包唯一的二进制目标；依赖版本、features、edition 和 release profile 均由清单决定。清单在代码块中可展开查看，读者仍只编辑 Rust 源码。不提供 `cargoToml` 时，已有示例继续使用 rustc。
+
+Cargo 的依赖下载、项目、Cargo.lock 和编译产物缓存保存在项目根目录的 `temp/rust/` 下，服务重启后仍可复用。首次运行允许下载依赖，下载与编译最多等待 180 秒，程序运行最多 8 秒；网络、清单或编译错误会显示在输出区。该模式管理单个源码文件，不提供额外源码、build.rs 或多包工作区编辑功能。可以在[《执行模型全景》的协程章节](/posts/type-systems/execution-models-concurrency-and-parallelism#64-线程阻塞与协程挂起发生在不同层次)运行带 Tokio 的对照示例。
+
 ---
 
 ## 四、现代 C++：常量求值与高性能并行算法

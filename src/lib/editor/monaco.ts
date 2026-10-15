@@ -3,20 +3,21 @@
  * 参考 global_scripts 纯离线实践：绝不请求外网 CDN，绑定 Vite ?worker
  */
 
-import { loader } from "@monaco-editor/react";
-import type * as monaco from "monaco-editor";
+import { loader, type OnMount } from "@monaco-editor/react";
 import { registerAllThemes } from "./themes";
 
-let initialized = false;
-let initPromise: Promise<typeof monaco | null> | null = null;
+type MonacoApi = typeof import("monaco-editor");
+type MonacoEditorInstance = Parameters<OnMount>[0];
 
-export async function initMonaco(): Promise<typeof monaco | null> {
+let initialized = false;
+let initPromise: Promise<MonacoApi | null> | null = null;
+
+export async function initMonaco(): Promise<MonacoApi | null> {
   if (typeof window === "undefined") {
     return null;
   }
   if (initialized) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (window as any).monaco ?? null;
+    return window.monaco ?? null;
   }
   if (initPromise) {
     return initPromise;
@@ -42,11 +43,9 @@ export async function initMonaco(): Promise<typeof monaco | null> {
     loader.config({ monaco: monacoModule });
 
     // 2. 绑定 Vite 本地打包的 Web Worker (浏览器环境)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).monaco = monacoModule;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).MonacoEnvironment = {
-      getWorker(_: unknown, label: string) {
+    window.monaco = monacoModule;
+    globalThis.MonacoEnvironment = {
+      getWorker(_workerId: string, label: string) {
         if (label === "typescript" || label === "javascript") {
           return new tsWorker();
         }
@@ -130,13 +129,13 @@ export async function initMonaco(): Promise<typeof monaco | null> {
       };
 
       declare var console: {
-        log(...args: any[]): void;
-        info(...args: any[]): void;
-        warn(...args: any[]): void;
-        error(...args: any[]): void;
+        log(...args: unknown[]): void;
+        info(...args: unknown[]): void;
+        warn(...args: unknown[]): void;
+        error(...args: unknown[]): void;
         time(label?: string): void;
         timeEnd(label?: string): void;
-        table(...args: any[]): void;
+        table(...args: unknown[]): void;
         clear(): void;
       };
 
@@ -184,7 +183,8 @@ export async function initMonaco(): Promise<typeof monaco | null> {
 
       declare module "node:buffer" {
         export class Buffer extends Uint8Array {
-          static from(data: any, encoding?: string): Buffer;
+          static from(data: string | ArrayLike<number>, encoding?: string): Buffer;
+          static from(data: ArrayBuffer, byteOffset?: number, length?: number): Buffer;
           toString(encoding?: string): string;
         }
       }
@@ -235,27 +235,26 @@ export function mapLanguageToMonaco(
  * 杜绝大面积空白，并支持上限封顶滚动
  */
 export function computeEditorHeight(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  editorInstance: any,
+  editorInstance: MonacoEditorInstance | null | undefined,
   maxHeightPx = 480,
   minHeightPx = 64,
 ): number {
   if (!editorInstance) return minHeightPx;
 
-  const contentHeight =
-    typeof editorInstance.getContentHeight === "function"
-      ? editorInstance.getContentHeight()
-      : 0;
+  const contentHeight = editorInstance.getContentHeight();
 
   let targetHeight: number;
   if (contentHeight > 0) {
     targetHeight = contentHeight + 10;
   } else {
-    const lines = editorInstance.getModel()?.getLineCount() || 1;
-    const lineHeight =
-      typeof editorInstance.getOption === "function"
-        ? editorInstance.getOption(66) || 18
-        : 18;
+    const lines = editorInstance.getModel()?.getLineCount() ?? 1;
+    const lineHeightOption =
+      typeof window === "undefined"
+        ? undefined
+        : window.monaco?.editor.EditorOption.lineHeight;
+    const lineHeight = lineHeightOption
+      ? editorInstance.getOption(lineHeightOption)
+      : 18;
     targetHeight = lines * lineHeight + 10;
   }
 

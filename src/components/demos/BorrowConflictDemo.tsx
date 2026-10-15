@@ -6,17 +6,18 @@ import {
   useCallback,
   useRef,
 } from "react";
-import Editor from "@monaco-editor/react";
+import Editor, { type OnMount } from "@monaco-editor/react";
 import { actions } from "astro:actions";
 import { initMonaco, computeEditorHeight } from "../../lib/editor/monaco";
 import { resolveMonacoTheme } from "../../lib/editor/themes";
 import { useGfxSettings } from "../../lib/settings/settings-store";
-import CapsuleTabs from "../framework/CapsuleTabs";
+import KdeTabs from "../framework/KdeTabs";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import { AutoMath } from "../framework/AutoMath";
 import ParamSlider from "../framework/ParamSlider";
 
 type Permission = "R" | "W";
+type MonacoEditorInstance = Parameters<OnMount>[0];
 
 interface PlaceScenario {
   id: string;
@@ -311,8 +312,7 @@ export default function BorrowConflictDemo() {
 
   const [editorHeight, setEditorHeight] = useState(200);
   const [monacoLoaded, setMonacoLoaded] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const editorRef = useRef<any>(null);
+  const editorRef = useRef<MonacoEditorInstance | null>(null);
   const { settings } = useGfxSettings();
 
   useEffect(() => {
@@ -321,8 +321,7 @@ export default function BorrowConflictDemo() {
     });
   }, []);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleEditorMount = useCallback((editor: any) => {
+  const handleEditorMount = useCallback((editor: MonacoEditorInstance) => {
     editorRef.current = editor;
     const updateHeight = () => {
       const computed = computeEditorHeight(editor, 420, 100);
@@ -401,12 +400,11 @@ export default function BorrowConflictDemo() {
 
           {/* 场景选择 */}
           <div className="flex flex-wrap items-center gap-3">
-            <CapsuleTabs
+            <KdeTabs
               options={SCENARIOS}
               value={scenarioId}
               onChange={(id) => setScenarioId(id)}
               size="xs"
-              label="Place 场景："
             />
           </div>
           <p className="text-xs text-muted">
@@ -426,12 +424,11 @@ export default function BorrowConflictDemo() {
                   p₁ = {scenario.p1}
                 </span>
               </div>
-              <CapsuleTabs
+              <KdeTabs
                 options={PERMISSION_OPTIONS}
                 value={alpha1}
                 onChange={(val) => setAlpha1(val)}
                 size="xs"
-                label="权限 α₁："
               />
               <div className="space-y-1.5 pt-1">
                 <ParamSlider
@@ -468,12 +465,11 @@ export default function BorrowConflictDemo() {
                   p₂ = {scenario.p2}
                 </span>
               </div>
-              <CapsuleTabs
+              <KdeTabs
                 options={PERMISSION_OPTIONS}
                 value={alpha2}
                 onChange={(val) => setAlpha2(val)}
                 size="xs"
-                label="权限 α₂："
               />
               <div className="space-y-1.5 pt-1">
                 <ParamSlider

@@ -9,10 +9,14 @@ import {
   FIELD3D,
 } from "../../visualizations/scenes/calculus/scalar-field-3d";
 import { attachGizmo3D } from "../../visualizations/core/3d/gizmo3d";
-import Checkbox from "../framework/Checkbox";
 import CanvasToolbar from "../framework/CanvasToolbar";
+import CanvasResizer from "../framework/CanvasResizer";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import { AutoMath } from "../framework/AutoMath";
+import KdeWindowShell from "../framework/KdeWindowShell";
+import KdeCard from "../framework/KdeCard";
+import KdeCheckbox from "../framework/KdeCheckbox";
+import KdeReadout from "../framework/KdeReadout";
 import ParamSlider from "../framework/ParamSlider";
 import PresetSelector from "../framework/PresetSelector";
 import { useViewer3D } from "../framework/useViewer3D";
@@ -110,106 +114,103 @@ export default function ScalarField3DDemo({ height }: { height?: string }) {
   return (
     <AutoMath>
       <ExpandableDemo id="scalar-field-3d" height={height}>
-        <div className="space-y-3">
-          <div
-            ref={containerRef}
-            className="relative h-[var(--demo-height,28rem)] w-full overflow-hidden rounded-xl border border-border"
-          >
-            <CanvasToolbar />
-          </div>
-
-          {/* Preset Controls */}
-          <PresetSelector
-            label="空间探针预设:"
-            options={PROBE_PRESETS}
-            value={probePreset}
-            onChange={handlePreset}
-          />
-
-          {/* Live Mathematical Analysis Cards */}
-          <div className="grid gap-3 rounded-lg border border-border bg-surface-hover/50 p-3.5 text-sm sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <p className="font-semibold text-foreground">
-                3D 探针位置与标量场值
-              </p>
-              <div className="space-y-1 text-xs text-muted">
-                <p>
-                  坐标点 $P(x, y, z)$:{" "}
-                  <span className="font-mono font-semibold text-amber-600 dark:text-amber-400">
-                    ({probe.x.toFixed(2)}, {probe.y.toFixed(2)},{" "}
-                    {probe.z.toFixed(2)})
-                  </span>
-                </p>
-                <p>
-                  场值 {"$\\varphi = x^2 + y^2 - z^2$"}:{" "}
-                  <span className="font-mono font-semibold text-foreground">
-                    {val.toFixed(3)}
-                  </span>
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <p className="font-semibold text-foreground">
-                局部梯度向量与最大上升率
-              </p>
-              <div className="space-y-1 text-xs text-muted">
-                <p>
-                  梯度 {"$\\nabla \\varphi = (2x, 2y, -2z)$"}:{" "}
-                  <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
-                    ({gx.toFixed(2)}, {gy.toFixed(2)}, {gz.toFixed(2)})
-                  </span>
-                </p>
-                <p>
-                  梯度模长 {"$\\|\\nabla \\varphi\\|$"}:{" "}
-                  <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-                    {gradMag.toFixed(3)}
-                  </span>
-                  <span className="ml-1 text-[11px] text-muted">
-                    (空间最速上升方向)
-                  </span>
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Sliders & Toggles */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-4 text-sm">
-              <div className="flex items-center gap-2 text-xs text-muted">
-                <span>{stats.min.toFixed(1)}</span>
-                <div
-                  className="h-3 w-32 rounded-full border border-border"
-                  style={{ background: colormapGradient("coolwarm") }}
-                />
-                <span>{stats.max.toFixed(1)}</span>
-              </div>
-              <ParamSlider
-                label="密度"
-                min={GRID_MIN}
-                max={GRID_MAX}
-                step={2}
-                value={density}
-                onChange={setDensity}
-                widthClass="w-32"
-                display={`${density}³`}
+        <KdeWindowShell
+          title="三维标量场 · 空间点云与梯度向量场"
+          eyebrow="CALCULUS 3D LAB"
+          mark="3D"
+          modeTag="离散点云采样"
+          display={
+            <div
+              ref={containerRef}
+              className="relative h-[var(--demo-height,28rem)] w-full overflow-hidden"
+            >
+              <CanvasToolbar
+                onReset={() => viewerRef.current?.controls.reset()}
               />
+              <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <Checkbox
-                label="网格梯度场"
-                checked={arrowsVisible}
-                onChange={setArrowsVisible}
+          }
+          controls={
+            <div className="space-y-3">
+              <PresetSelector
+                label="空间探针预设:"
+                options={PROBE_PRESETS}
+                value={probePreset}
+                onChange={handlePreset}
               />
-            </div>
-          </div>
 
-          <p className="text-xs text-muted">
-            左键按住金黄色探针直接在 3D 空间拖动 · 左键/中键空白旋转 · 滚轮缩放
-            · 右键平移；金黄大箭头为探针处的梯度 {"$\\nabla \\varphi$"}{" "}
-            方向，橙色虚线为坐标投影辅助线。
-          </p>
-        </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <KdeCard title="探针坐标与场值" variant="dense">
+                  <div className="space-y-1">
+                    <KdeReadout
+                      label="位置 P(x, y, z)"
+                      value={`(${probe.x.toFixed(2)}, ${probe.y.toFixed(2)}, ${probe.z.toFixed(2)})`}
+                      dense
+                    />
+                    <KdeReadout
+                      label="场值 \varphi(P)"
+                      value={val.toFixed(3)}
+                      variant="accent"
+                      dense
+                    />
+                  </div>
+                </KdeCard>
+
+                <KdeCard title="局部梯度与上升率" variant="dense">
+                  <div className="space-y-1">
+                    <KdeReadout
+                      label="梯度 \nabla\varphi"
+                      value={`(${gx.toFixed(2)}, ${gy.toFixed(2)}, ${gz.toFixed(2)})`}
+                      variant="formula"
+                      dense
+                    />
+                    <KdeReadout
+                      label="梯度模长 \|\nabla\varphi\|"
+                      value={`${gradMag.toFixed(3)} (最速上升)`}
+                      variant="success"
+                      dense
+                    />
+                  </div>
+                </KdeCard>
+              </div>
+
+              <KdeCard title="显示与采样密度" variant="dense">
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-xs text-muted">
+                      <span>{stats.min.toFixed(1)}</span>
+                      <div
+                        className="h-3 w-28 rounded-full border border-border"
+                        style={{ background: colormapGradient("coolwarm") }}
+                      />
+                      <span>{stats.max.toFixed(1)}</span>
+                    </div>
+                    <KdeCheckbox
+                      label="网格梯度场"
+                      checked={arrowsVisible}
+                      onChange={setArrowsVisible}
+                    />
+                  </div>
+                  <ParamSlider
+                    label="采样密度"
+                    min={GRID_MIN}
+                    max={GRID_MAX}
+                    step={2}
+                    value={density}
+                    onChange={setDensity}
+                    display={`${density}³`}
+                  />
+                </div>
+              </KdeCard>
+
+              <p className="text-xs text-muted">
+                左键按住金黄色探针直接在 3D 空间拖动 · 左键/中键空白旋转 ·
+                滚轮缩放 · 右键平移；金黄大箭头为探针处的梯度{" "}
+                {"$\\nabla \\varphi$"} 方向。
+              </p>
+            </div>
+          }
+        />
       </ExpandableDemo>
     </AutoMath>
   );

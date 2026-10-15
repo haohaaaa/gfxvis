@@ -10,10 +10,14 @@ import {
   CURVES2D,
   type Curve2DId,
 } from "../../visualizations/scenes/calculus/parametric-curve2d";
-import CapsuleTabs from "../framework/CapsuleTabs";
 import CanvasToolbar from "../framework/CanvasToolbar";
+import CanvasResizer from "../framework/CanvasResizer";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import { AutoMath } from "../framework/AutoMath";
+import KdeWindowShell from "../framework/KdeWindowShell";
+import KdeCard from "../framework/KdeCard";
+import KdeTabs from "../framework/KdeTabs";
+import KdeReadout from "../framework/KdeReadout";
 import ParamSlider from "../framework/ParamSlider";
 import { useCanvas2D } from "../framework/useCanvas2D";
 
@@ -93,47 +97,78 @@ export default function ParametricCurveDemo({ height }: { height?: string }) {
   return (
     <AutoMath>
       <ExpandableDemo id="parametric-curve-2d" height={height}>
-        <div className="space-y-3">
-          <div
-            ref={containerRef}
-            className="relative h-[var(--demo-height,20rem)] w-full overflow-hidden rounded-xl border border-border"
-          >
-            <CanvasToolbar onReset={resetBounds} />
-            <canvas
-              ref={canvasRef}
-              className="absolute inset-0 h-full w-full cursor-crosshair"
-            />
-          </div>
-          <div className="flex flex-wrap items-center gap-4 text-sm">
-            <CapsuleTabs
+        <KdeWindowShell
+          title="二维参数曲线与动态切向量"
+          eyebrow="微积分 · 曲线几何"
+          mark="r(t)"
+          modeTag="切线与速度向量"
+          tabs={
+            <KdeTabs
               options={CURVE_OPTIONS}
               value={curveId}
               onChange={handleCurveChange}
             />
-            <ParamSlider
-              label="$t$"
-              min={curve.tMin}
-              max={curve.tMax}
-              step={0.01}
-              value={t}
-              onChange={setT}
-              widthClass="w-44"
-            />
-          </div>
-          <div className="grid gap-2 text-sm text-muted sm:grid-cols-2">
-            <p>{`$\\mathbf r(t) = ${curve.tex}$`}</p>
-            <p>
-              {`$\\mathbf r(${t.toFixed(2)}) = (${x.toFixed(3)}, ${y.toFixed(3)})$`}
-            </p>
-            <p>{`$\\mathbf r'(t) = ${curve.texTangent}$`}</p>
-            <p>
-              {`$\\mathbf r'(${t.toFixed(2)}) = (${tx.toFixed(3)}, ${ty.toFixed(3)})$`}
-            </p>
-          </div>
-          <p className="text-xs text-muted">
-            拖动滑块或直接拖动曲线上的点；坐标轴刻度随视野自适应；滚轮缩放，中键平移。
-          </p>
-        </div>
+          }
+          display={
+            <div
+              ref={containerRef}
+              className="relative h-[var(--demo-height,20rem)] w-full overflow-hidden rounded border border-border/70 bg-surface"
+            >
+              <CanvasToolbar onReset={resetBounds} />
+              <canvas
+                ref={canvasRef}
+                className="absolute inset-0 h-full w-full cursor-crosshair"
+              />
+              <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
+            </div>
+          }
+          controls={
+            <div className="space-y-3">
+              <KdeCard title="曲线参数控制" variant="dense">
+                <ParamSlider
+                  label="$t$"
+                  min={curve.tMin}
+                  max={curve.tMax}
+                  step={0.01}
+                  value={t}
+                  onChange={setT}
+                  widthClass="w-full"
+                  labelMode="adaptive"
+                />
+                <p className="mt-2 text-[11px] text-muted">
+                  拖动滑块或直接在画布上拖拽曲线点；滚轮缩放，中键平移。
+                </p>
+              </KdeCard>
+
+              <KdeCard title="曲线位置与速度切向量" variant="dense">
+                <div className="space-y-2">
+                  <KdeReadout
+                    label="参数方程 r(t)"
+                    value={`$\\mathbf{r}(t) = ${curve.tex}$`}
+                    dense
+                  />
+                  <KdeReadout
+                    label={`当前位置 r(${t.toFixed(2)})`}
+                    value={`(${x.toFixed(3)},\\, ${y.toFixed(3)})`}
+                    variant="accent"
+                    dense
+                  />
+                  <KdeReadout
+                    label="导数切向 r'(t)"
+                    value={`$\\mathbf{r}'(t) = ${curve.texTangent}$`}
+                    dense
+                  />
+                  <KdeReadout
+                    label={`瞬时切向 r'(${t.toFixed(2)})`}
+                    value={`(${tx.toFixed(3)},\\, ${ty.toFixed(3)})`}
+                    variant="success"
+                    dense
+                  />
+                </div>
+              </KdeCard>
+            </div>
+          }
+        />
       </ExpandableDemo>
     </AutoMath>
   );

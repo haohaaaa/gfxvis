@@ -5,9 +5,13 @@ import {
   drawSegment,
   type Bounds2,
 } from "../../visualizations/core/2d/plot2d";
+import CanvasResizer from "../framework/CanvasResizer";
 import CanvasToolbar from "../framework/CanvasToolbar";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import { AutoMath } from "../framework/AutoMath";
+import KdeCard from "../framework/KdeCard";
+import KdeReadout from "../framework/KdeReadout";
+import KdeWindowShell from "../framework/KdeWindowShell";
 import PresetSelector from "../framework/PresetSelector";
 import { useCanvas2D } from "../framework/useCanvas2D";
 import { useVectorDrag } from "../framework/useVectorDrag";
@@ -148,79 +152,75 @@ export default function GramMatrixDemo({ height }: { height?: string }) {
   return (
     <AutoMath>
       <ExpandableDemo id="gram-matrix" height={height}>
-        <div className="space-y-4">
-          <div
-            ref={containerRef}
-            className="relative h-[var(--demo-height,20rem)] w-full overflow-hidden rounded-xl border border-border"
-          >
-            <CanvasToolbar onReset={resetBounds} />
-            <canvas
-              ref={canvasRef}
-              className="absolute inset-0 h-full w-full"
-            />
-          </div>
-
-          {/* Preset Controls */}
-          <PresetSelector
-            options={PRESETS}
-            value={presetKey}
-            onChange={handlePreset}
-          />
-
-          {/* Gram Matrix & Determinant Panel */}
-          <div className="grid gap-3 rounded-lg border border-border bg-surface-hover/50 p-3.5 text-sm sm:grid-cols-2">
-            <div>
-              <p className="mb-1 font-semibold text-foreground">
-                Gram 矩阵 $G = A^T A$
-              </p>
-              <div className="font-mono text-xs text-muted leading-relaxed">
-                <p>
-                  g₁₁ = ⟨u, u⟩ ={" "}
-                  <span className="text-blue-600 dark:text-blue-400">
-                    {g11.toFixed(3)}
-                  </span>
-                </p>
-                <p>
-                  g₁₂ = g₂₁ = ⟨u, v⟩ ={" "}
-                  <span className="text-purple-600 dark:text-purple-400">
-                    {g12.toFixed(3)}
-                  </span>
-                </p>
-                <p>
-                  g₂₂ = ⟨v, v⟩ ={" "}
-                  <span className="text-emerald-600 dark:text-emerald-400">
-                    {g22.toFixed(3)}
-                  </span>
-                </p>
-              </div>
+        <KdeWindowShell
+          title="Gram 矩阵与几何测度工作台"
+          eyebrow="BREEZE WORKSPACE · GRAM MATRIX"
+          mark="G"
+          modeTag="GRAM"
+          testId="gram-matrix-demo"
+          display={
+            <div
+              ref={containerRef}
+              className="relative h-[var(--demo-height,20rem)] w-full overflow-hidden"
+            >
+              <CanvasToolbar onReset={resetBounds} />
+              <canvas
+                ref={canvasRef}
+                className="absolute inset-0 h-full w-full"
+              />
+              <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
             </div>
+          }
+          controls={
+            <div className="space-y-3">
+              <KdeCard title="场景预设" variant="dense">
+                <PresetSelector
+                  options={PRESETS}
+                  value={presetKey}
+                  onChange={handlePreset}
+                  size="xs"
+                />
+              </KdeCard>
 
-            <div>
-              <p className="mb-1 font-semibold text-foreground">
-                Gram 行列式与面积
-              </p>
-              <p className="text-xs text-muted">
-                {`$\\det(G) = ${detG.toFixed(3)}$`}
-              </p>
-              <p className="mt-1 text-xs font-medium text-accent">
-                {`$\\text{Area} = \\sqrt{\\det(G)} = ${area.toFixed(3)}$`}
-              </p>
+              <KdeCard title="Gram 矩阵与几何测度" variant="dense">
+                <div className="space-y-2">
+                  <KdeReadout
+                    label="Gram 矩阵 G = AᵀA"
+                    value={`g₁₁ = ${g11.toFixed(3)}, g₂₂ = ${g22.toFixed(3)}`}
+                    subValue={`g₁₂ = g₂₁ = ⟨u, v⟩ = ${g12.toFixed(3)}`}
+                    variant="accent"
+                    dense
+                  />
+                  <KdeReadout
+                    label="Gram 行列式 det(G)"
+                    value={detG.toFixed(3)}
+                    variant={isDegenerate ? "danger" : "default"}
+                    dense
+                  />
+                  <KdeReadout
+                    label="平行四边形面积 S = √det(G)"
+                    value={area.toFixed(3)}
+                    variant="success"
+                    dense
+                  />
+                  {isDegenerate && (
+                    <p className="text-xs text-[var(--kde-error,#da4453)] font-medium leading-relaxed">
+                      ⚠️ 向量线性相关：平行四边形退化为线段，det(G) = 0，Gram
+                      矩阵不可逆。
+                    </p>
+                  )}
+                </div>
+              </KdeCard>
 
-              {isDegenerate && (
-                <p className="mt-1.5 text-xs text-red-500 font-semibold">
-                  ⚠️ 向量线性相关：平行四边形退化为线段，det(G) = 0，Gram
-                  矩阵不可逆。
-                </p>
-              )}
+              <p className="text-xs text-muted leading-relaxed">
+                提示：在画布中拖拽{" "}
+                <span className="text-[#2563eb] font-semibold">u</span> 或{" "}
+                <span className="text-[#10b981] font-semibold">v</span>{" "}
+                向量端点；支持滚轮缩放视野。
+              </p>
             </div>
-          </div>
-
-          <p className="text-xs text-muted">
-            提示：拖动 <span className="text-blue-600 font-medium">u</span> 或{" "}
-            <span className="text-emerald-600 font-medium">v</span>{" "}
-            向量端点更改向量位置；滚轮缩放，中键平移。
-          </p>
-        </div>
+          }
+        />
       </ExpandableDemo>
     </AutoMath>
   );

@@ -2,10 +2,8 @@ import { forwardRef, type InputHTMLAttributes, type ReactNode } from "react";
 
 export type KdeInputSize = "xs" | "sm" | "md";
 
-export interface KdeInputProps extends Omit<
-  InputHTMLAttributes<HTMLInputElement>,
-  "size"
-> {
+export interface KdeInputProps
+  extends Omit<InputHTMLAttributes<HTMLInputElement>, "size"> {
   label?: ReactNode;
   error?: ReactNode;
   helperText?: ReactNode;

@@ -7,24 +7,86 @@ const tags = [...new Set(posts.flatMap((post) => post.data.tags))].sort(
 );
 ---
 
-<aside class="hidden w-56 shrink-0 md:block">
-  <h2 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">
-    标签
-  </h2>
-  {tags.length > 0 ? (
-    <ul class="flex flex-wrap gap-2">
-      {tags.map((tag) => (
-        <li>
-          <a
-            href={`/tags/${tag}`}
-            class="rounded-full border border-border px-3 py-1 text-xs text-muted transition-colors hover:border-accent hover:text-accent"
-          >
-            {tag}
-          </a>
-        </li>
-      ))}
-    </ul>
-  ) : (
-    <p class="text-xs text-muted">暂无标签</p>
-  )}
+<aside
+  class="kde-breeze-ui kde-site-window kde-home__tag-window w-full shrink-0 md:w-56"
+  aria-labelledby="home-tag-title"
+>
+  <header class="kde-site-window__titlebar">
+    <span class="kde-site-window__mark" aria-hidden="true"> # </span>
+    <div class="kde-site-window__heading">
+      <span class="kde-site-window__eyebrow">TOPIC INDEX</span>
+      <h2 id="home-tag-title" class="kde-site-window__title">标签</h2>
+    </div>
+    <span class="kde-site-window__mode">{tags.length} TAGS</span>
+  </header>
+  <div class="kde-site-window__body kde-home__tag-body">
+    {tags.length > 0 ? (
+      <ul class="kde-home__tag-list">
+        {tags.map((tag) => (
+          <li>
+            <a href={`/tags/${tag}`} class="kde-home__tag-link">
+              {tag}
+            </a>
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <p class="kde-home__empty-tags">暂无标签</p>
+    )}
+  </div>
 </aside>
+
+<style>
+.kde-home__tag-window {
+  align-self: flex-start;
+}
+
+.kde-home__tag-body {
+  min-height: 5rem;
+}
+
+.kde-home__tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kde-home__tag-link {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  border: 1px solid var(--kde-border);
+  border-radius: var(--kde-control-radius);
+  background: var(--kde-raised);
+  padding: 0.32rem 0.55rem;
+  color: var(--kde-muted);
+  font-size: 0.7rem;
+  line-height: 1.35;
+  text-decoration: none;
+  transition:
+    border-color 150ms ease,
+    color 150ms ease,
+    background-color 150ms ease;
+}
+
+.kde-home__tag-link:hover,
+.kde-home__tag-link:focus-visible {
+  border-color: var(--kde-accent);
+  background: var(--kde-panel);
+  color: var(--kde-accent);
+}
+
+.kde-home__tag-link:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--kde-accent) 65%, transparent);
+  outline-offset: 2px;
+}
+
+.kde-home__empty-tags {
+  margin: 0;
+  color: var(--kde-muted);
+  font-size: 0.75rem;
+}
+</style>

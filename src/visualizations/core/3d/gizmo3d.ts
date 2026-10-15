@@ -61,7 +61,8 @@ export interface CreateTransformGizmo3DOptions {
  */
 export function createTransformGizmo3D(
   optionsOrPos:
-    { x: number; y: number; z: number } | CreateTransformGizmo3DOptions = {
+    | { x: number; y: number; z: number }
+    | CreateTransformGizmo3DOptions = {
     x: 0,
     y: 0,
     z: 0,

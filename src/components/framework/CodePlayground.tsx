@@ -9,6 +9,8 @@ import {
 import { resolveMonacoTheme } from "../../lib/editor/themes";
 import { useGfxSettings } from "../../lib/settings/settings-store";
 
+type MonacoEditorInstance = Parameters<OnMount>[0];
+
 export interface CodePlaygroundProps {
   lang: "node" | "ts" | "js" | "rust" | "cpp";
   initialCode?: string;
@@ -18,6 +20,7 @@ export interface CodePlaygroundProps {
   editable?: boolean;
   maxHeight?: string;
   className?: string;
+  cargoToml?: string;
 }
 
 const LANG_CONFIG: Record<
@@ -109,6 +112,7 @@ export default function CodePlayground({
   editable = true,
   maxHeight = "30rem",
   className = "",
+  cargoToml,
 }: CodePlaygroundProps) {
   const defaultSnippet = (initialCode ?? code ?? "").trim();
   const [currentCode, setCurrentCode] = useState<string>(defaultSnippet);
@@ -124,8 +128,7 @@ export default function CodePlayground({
   const [editorHeight, setEditorHeight] = useState(120);
   const [monacoLoaded, setMonacoLoaded] = useState(false);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const editorRef = useRef<any>(null);
+  const editorRef = useRef<MonacoEditorInstance | null>(null);
   const isDark = useIsDarkMode();
   const { settings } = useGfxSettings();
 
@@ -159,6 +162,7 @@ export default function CodePlayground({
       const { data, error } = await actions.executeCode({
         lang,
         code: currentCode.trim(),
+        cargoToml: lang === "rust" ? cargoToml : undefined,
       });
 
       if (error) {
@@ -181,7 +185,7 @@ export default function CodePlayground({
     } finally {
       setLoading(false);
     }
-  }, [lang, currentCode]);
+  }, [lang, currentCode, cargoToml]);
 
   const handleCopy = useCallback(async () => {
     try {
@@ -328,6 +332,23 @@ export default function CodePlayground({
       {description && (
         <div className="border-b border-border/60 bg-surface/30 px-4 py-1.5 text-[11px] text-muted">
           {description}
+        </div>
+      )}
+
+      {lang === "rust" && cargoToml !== undefined && (
+        <div className="border-b border-border/60 bg-surface/30 px-4 py-2 text-xs text-muted">
+          <p>
+            使用 Cargo
+            编译；首次运行可能需要下载并编译依赖，后续运行会复用缓存。
+          </p>
+          <details className="mt-1">
+            <summary className="cursor-pointer font-mono text-ink">
+              Cargo.toml（作者配置，只读）
+            </summary>
+            <pre className="mt-2 max-h-64 overflow-auto rounded border border-border bg-surface p-3 text-ink">
+              <code>{cargoToml}</code>
+            </pre>
+          </details>
         </div>
       )}
 

@@ -4,3 +4,4 @@ node_modules/
 pnpm-lock.yaml
 .agents/
 src/content/posts/
+temp/rust/

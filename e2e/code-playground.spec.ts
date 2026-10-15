@@ -75,24 +75,15 @@ test.describe("CodePlayground (Monaco Editor) E2E 冒烟测试", () => {
 
     // 验证 Monaco 内部语言与模型状态
     const debugInfo = await page.evaluate(() => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const win = window as any;
-      const monaco = win.monaco;
+      const monaco = window.monaco;
       if (!monaco) return { hasCpp: false, hasRust: false, models: [] };
-      const models = monaco.editor
-        .getModels()
-        .map(
-          (m: {
-            uri: { toString: () => string };
-            getLanguageId: () => string;
-          }) => ({
-            uri: m.uri.toString(),
-            lang: m.getLanguageId(),
-          }),
-        );
+      const models = monaco.editor.getModels().map((model) => ({
+        uri: model.uri.toString(),
+        lang: model.getLanguageId(),
+      }));
       const languages = monaco.languages
         .getLanguages()
-        .map((l: { id: string }) => l.id);
+        .map((language) => language.id);
       return {
         models,
         hasCpp: languages.includes("cpp"),

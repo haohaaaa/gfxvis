@@ -1,0 +1,29 @@
+.execution-demo .kde-window-shell__workspace {
+  padding: 0.5rem;
+}
+
+.execution-demo .kde-window-shell__workspace > .interactive-layout {
+  --interactive-layout-gap: 0.45rem;
+}
+
+.execution-demo .kde-window-shell__display {
+  min-height: 0;
+}
+
+.execution-demo .kde-window-shell__display > .execution-demo__viewport {
+  flex: none;
+  height: var(--demo-height, 12rem);
+}
+
+.execution-demo .kde-window-shell__controls-rack {
+  padding: 0.4rem;
+}
+
+.execution-demo .kde-window-shell__readouts {
+  display: block;
+}
+
+.execution-demo__viewport canvas:focus-visible {
+  outline: 2px solid var(--kde-accent);
+  outline-offset: -3px;
+}
