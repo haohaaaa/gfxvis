@@ -1,0 +1,3349 @@
+---
+title: "齐次坐标与射影几何：从点线对偶到透视投影"
+description: "从齐次函数与齐次化出发，构造射影空间、仿射图与无穷远，系统推导点线对偶、射影子空间、单应性与交比，再连接针孔相机、消失点、平面映射和透视正确插值。"
+date: 2026-11-02
+tags:
+  [
+    "linear-algebra",
+    "projective-geometry",
+    "homogeneous-coordinates",
+    "duality",
+    "cross-ratio",
+    "perspective-projection",
+  ]
+draft: false
+---
+
+在仿射几何中，平行直线没有交点；在透视图像中，同一方向的平行线却常常指向同一个消失点。图形管线通过矩阵乘法统一处理平移与投影，最后又必须进行一次除法；纹理坐标在三维三角形上按仿射规律变化，到了屏幕上却不能直接线性插值。这些现象可以放进同一个框架：<strong>射影几何研究非零向量在忽略整体尺度之后形成的几何结构。</strong>
+
+要理解这个框架，需要先解释“齐次”，再区分向量、射影点、仿射坐标与对偶对象。本文以实数域上的有限维空间为背景，从定义和算例出发，逐步推导点线计算、射影对偶、射影变换、交比与相机投影，最后得到透视正确插值公式。
+
+前置知识包括向量空间、基、矩阵秩、核与行列式。点与向量的区分可参考[《仿射空间与仿射映射》](/posts/linear-algebra/affine-spaces-and-affine-maps)；线性泛函的背景可参考[《对偶空间、对偶基与线性泛函》](/posts/linear-algebra/dual-spaces-and-linear-functionals)。本文仍会给出理解射影几何所需的定义和证明。
+
+## 一、齐次的定义与齐次化
+
+### 1.1 整体缩放与齐次次数
+
+“齐次”（homogeneous）描述一种缩放规律：<strong>输入整体缩放后，输出按照固定次数缩放。</strong>
+
+先考虑本文最常用的情形。设 $d$ 是非负整数，若对任意定义域中的 $\mathbf x$ 和任意 $\lambda\in\mathbb R\setminus\{0\}$，都有
+
+$$
+F(\lambda\mathbf x)=\lambda^dF(\mathbf x),
+$$
+
+就称 $F$ 为 $d$ 次齐次函数。这里的 $d$ 是齐次次数。
+
+本文的射影方程主要使用整数次数的齐次多项式，允许任意非零实数缩放。
+
+### 1.2 一次、二次与三次齐次多项式
+
+考虑
+
+$$
+F(x,y)=2x+3y.
+$$
+
+将输入整体乘以 $\lambda$，得到
+
+$$
+F(\lambda x,\lambda y)
+=2\lambda x+3\lambda y
+=\lambda(2x+3y)
+=\lambda F(x,y).
+$$
+
+所以它是一次齐次的。
+
+再考虑纯代数例子
+
+$$
+G(x,y)=x^2+xy+y^2.
+$$
+
+逐项缩放：
+
+$$
+\begin{aligned}
+G(\lambda x,\lambda y)
+&=(\lambda x)^2+(\lambda x)(\lambda y)+(\lambda y)^2\\
+&=\lambda^2x^2+\lambda^2xy+\lambda^2y^2\\
+&=\lambda^2G(x,y).
+\end{aligned}
+$$
+
+因此它是二次齐次的。
+
+一个<strong>非零多项式</strong>是 $d$ 次齐次多项式，当且仅当每个非零单项式的总次数都等于 $d$。例如 $x^2$、$xy$ 和 $y^2$ 的总次数都是 $2$；而
+
+$$
+x^3+2x^2y-xy^2+5y^3
+$$
+
+的每个单项式总次数都是 $3$，因此它是三次齐次的。
+
+### 1.3 一个非齐次反例
+
+考虑
+
+$$
+f(x,y)=x+y+1.
+$$
+
+其中 $x,y$ 是一次项，常数 $1$ 是零次项。缩放输入后，
+
+$$
+f(\lambda x,\lambda y)=\lambda x+\lambda y+1,
+$$
+
+而
+
+$$
+\lambda f(x,y)=\lambda x+\lambda y+\lambda.
+$$
+
+两者通常不同。因此它不是齐次函数。
+
+### 1.4 齐次化如何补齐各项次数
+
+设 $f(X_1,\ldots,X_n)$ 是一个总次数为 $d$ 的非零多项式。引入额外变量 $w$，定义其齐次化为
+
+$$
+F(x_1,\ldots,x_n,w)
+=w^d f\left(\frac{x_1}{w},\ldots,\frac{x_n}{w}\right).
+$$
+
+这个表达式最初可在 $w\ne0$ 时按除法理解。将多项式展开并消去分母后，它成为所有变量上的多项式，因此也能在 $w=0$ 时求值。
+
+具体地，一个总次数为 $k$ 的单项式
+
+$$
+cX_1^{\alpha_1}\cdots X_n^{\alpha_n},
+\qquad \alpha_1+\cdots+\alpha_n=k,
+$$
+
+会变成
+
+$$
+cx_1^{\alpha_1}\cdots x_n^{\alpha_n}w^{d-k}.
+$$
+
+各项总次数现在都等于 $d$，并且
+
+$$
+F(X_1,\ldots,X_n,1)=f(X_1,\ldots,X_n).
+$$
+
+这就是<strong>齐次化（homogenization）</strong>：用新变量补齐各项的总次数，并将原方程保留在 $w=1$ 的切片上。
+
+例如仿射直线
+
+$$
+X+2Y-3=0
+$$
+
+在代入 $X=\frac{x}{w}$、$Y=\frac{y}{w}$ 后变成
+
+$$
+\frac{x}{w}+2\frac{y}{w}-3=0.
+$$
+
+乘以 $w$，得到
+
+$$
+x+2y-3w=0.
+$$
+
+原来的常数项变成了 $-3w$，三项都是一次项。这也解释了一般仿射直线的齐次化：
+
+$$
+aX+bY+c=0
+\quad\longrightarrow\quad
+ax+by+cw=0.
+$$
+
+这里还没有把“增加一个变量”等同于“定义射影空间”。两者的联系，需要通过下面的尺度等价关系建立。
+
+## 二、射影空间、等价类与齐次坐标
+
+### 2.1 从非零向量到一维线性子空间
+
+取实向量空间 $V=\mathbb R^{n+1}$。一个非零向量 $\mathbf v$ 张成一维线性子空间
+
+$$
+\operatorname{span}(\mathbf v)
+=\{\lambda\mathbf v:\lambda\in\mathbb R\}.
+$$
+
+例如在 $\mathbb R^2$ 中，$(2,1)^{\mathsf T}$ 与 $(4,2)^{\mathsf T}$ 是不同的向量，却张成同一条过原点直线。在 $\mathbb R^3$ 中，
+
+$$
+\operatorname{span}
+\begin{pmatrix}1\\2\\3\end{pmatrix}
+=
+\left\{
+\begin{pmatrix}\lambda\\2\lambda\\3\lambda\end{pmatrix}
+:\lambda\in\mathbb R
+\right\}.
+$$
+
+向量 $(1,2,3)^{\mathsf T}$、$(2,4,6)^{\mathsf T}$、$(-1,-2,-3)^{\mathsf T}$ 和 $(100,200,300)^{\mathsf T}$ 都在这条直线上。
+
+射影空间的构造，是把每个这样的一维线性子空间视为一个新空间中的点：
+
+$$
+\boxed{
+\mathbb P(V)
+=\{V\text{ 中的一维线性子空间}\}.
+}
+$$
+
+当 $V=\mathbb R^{n+1}$ 时，记为 $\mathbb P^n(\mathbb R)$，本文简写为 $\mathbb P^n$。特别地，
+
+$$
+\mathbb P^1\text{ 来自 }\mathbb R^2,\qquad
+\mathbb P^2\text{ 来自 }\mathbb R^3,\qquad
+\mathbb P^3\text{ 来自 }\mathbb R^4.
+$$
+
+这里的“点”是构造后空间中的对象。同一条过原点直线，在 $V$ 中是一个子空间，在 $\mathbb P(V)$ 中则对应一个射影点。
+
+### 2.2 等价关系、等价类与商集
+
+对两个非零向量，定义
+
+$$
+\mathbf x\sim\mathbf y
+\iff
+\text{存在 }\lambda\in\mathbb R\setminus\{0\},
+\ \mathbf y=\lambda\mathbf x.
+$$
+
+这是等价关系，因为它满足：
+
+1. 自反性：$\mathbf x=1\mathbf x$。
+2. 对称性：若 $\mathbf y=\lambda\mathbf x$，则 $\mathbf x=\lambda^{-1}\mathbf y$。
+3. 传递性：若 $\mathbf y=\lambda\mathbf x$、$\mathbf z=\mu\mathbf y$，则 $\mathbf z=(\mu\lambda)\mathbf x$。
+
+向量 $\mathbf x$ 的等价类为
+
+$$
+[\mathbf x]=\{\lambda\mathbf x:\lambda\ne0\}.
+$$
+
+例如
+
+$$
+\left[
+\begin{pmatrix}1\\2\end{pmatrix}
+\right]
+=
+\left\{
+\begin{pmatrix}\lambda\\2\lambda\end{pmatrix}
+:\lambda\ne0
+\right\}.
+$$
+
+$(1,2)^{\mathsf T}$、$(2,4)^{\mathsf T}$ 与 $(-3,-6)^{\mathsf T}$ 都是同一个等价类的代表；$(1,3)^{\mathsf T}$ 则不是，因为它与 $(1,2)^{\mathsf T}$ 不成比例。
+
+因此也可以定义
+
+$$
+\boxed{
+\mathbb P(V)=(V\setminus\{\mathbf0\})/\sim.
+}
+$$
+
+这里的商集记号表示“将等价元素归为同一个对象”。等价类不包含零向量，而相应的一维线性子空间包含零向量；两者通过
+
+$$
+[\mathbf x]
+\longleftrightarrow
+\operatorname{span}(\mathbf x)
+=[\mathbf x]\cup\{\mathbf0\}
+$$
+
+自然一一对应。
+
+必须排除零向量，因为它不能生成一维子空间，而且没有可用于区分方向的非零比例信息。<strong>全零齐次坐标不表示任何射影点。</strong>
+
+### 2.3 齐次坐标表示什么
+
+若
+
+$$
+\mathbf x=(x_0,x_1,\ldots,x_n)^{\mathsf T}\ne\mathbf0,
+$$
+
+则其射影点写作
+
+$$
+[\mathbf x]=[x_0:x_1:\cdots:x_n].
+$$
+
+冒号强调各分量只确定到共同的非零比例：
+
+$$
+[x_0:\cdots:x_n]
+=[\lambda x_0:\cdots:\lambda x_n],
+\qquad \lambda\ne0.
+$$
+
+例如
+
+$$
+[1:2]=[2:4]=[-1:-2],\qquad
+[2:4:6]=[1:2:3].
+$$
+
+因此，“齐次坐标”指的是<strong>尺度等价的坐标表示</strong>，不能简单理解成“在普通坐标后面补一个 $1$”。
+
+### 2.4 为什么齐次方程能定义射影对象
+
+假设希望用条件 $F(\mathbf x)=0$ 定义一组射影点。这个条件必须与代表选择无关：$\mathbf x$ 与 $\lambda\mathbf x$ 表示同一点，就应当同时满足或同时不满足该条件。
+
+对于 $d$ 次齐次多项式，
+
+$$
+F(\lambda\mathbf x)=\lambda^dF(\mathbf x).
+$$
+
+当 $\lambda\ne0$ 时，$\lambda^d\ne0$，所以
+
+$$
+F(\mathbf x)=0
+\iff
+F(\lambda\mathbf x)=0.
+$$
+
+因此可以良定义地写出射影点集
+
+$$
+\{[\mathbf x]\in\mathbb P(V):F(\mathbf x)=0\}.
+$$
+
+例如 $ax+by+cw=0$ 在整体缩放后只多出一个非零因子，所以适合作为射影直线方程。相反，一般的非齐次条件可能依赖代表：$(1,1)$ 满足 $x+y-2=0$，同一个 $\mathbb P^1$ 点的代表 $(2,2)$ 却不满足。
+
+需要区分两件事：齐次多项式的<strong>数值</strong>通常会随代表缩放；它的<strong>零点条件</strong>保持不变。齐次性是保证零点条件尺度不变的一种充分条件，并非所有具有尺度不变零点集的表达式都必须齐次。
+
+### 2.5 一条完整直线，而不是半条射线
+
+实射影等价允许负比例，因此
+
+$$
+[\mathbf x]=[-\mathbf x].
+$$
+
+例如 $[1:1]=[-1:-1]$。正反两个半方向共同构成一个射影点，准确的线性空间模型是一条<strong>无定向的过原点直线</strong>，而不是半条射线。
+
+后文相机的“观察射线”还会附加前方与正深度条件，它与射影点的定义不是同一个概念。
+
+## 三、仿射图与无穷远
+
+### 3.1 射影直线中的有限点
+
+在 $\mathbb P^1$ 中将坐标记为 $[x:w]$，其中 $(x,w)\ne(0,0)$。当 $w\ne0$ 时，选取比例 $\lambda=1/w$：
+
+$$
+[x:w]=\left[\frac{x}{w}:1\right].
+$$
+
+令 $X=x/w$，所有这些点都能唯一写成 $[X:1]$，与普通实数轴一一对应：
+
+$$
+0\longleftrightarrow[0:1],\quad
+1\longleftrightarrow[1:1],\quad
+2\longleftrightarrow[2:1],\quad
+-3\longleftrightarrow[-3:1].
+$$
+
+例如 $[6:2]=[3:1]$，对应 $X=3$。
+
+若 $w=0$，则 $x\ne0$，所有这样的点都等于 $[1:0]$。相对于刚才的有限部分，它称为无穷远点，记作 $\infty$。于是有集合的分解
+
+$$
+\mathbb P^1
+=\{[X:1]:X\in\mathbb R\}\sqcup\{[1:0]\}.
+$$
+
+这可以简记为 $\mathbb R\cup\{\infty\}$，但这里的 $\infty$ 是一个射影点，不能作为普通实数参与“除以零”的运算。
+
+### 3.2 射影平面的归一化与切片模型
+
+在 $\mathbb P^2$ 中取 $[x:y:w]$。当 $w\ne0$ 时，
+
+$$
+[x:y:w]
+=\left[\frac{x}{w}:\frac{y}{w}:1\right].
+$$
+
+定义仿射坐标
+
+$$
+X=\frac{x}{w},\qquad Y=\frac{y}{w}.
+$$
+
+例如
+
+$$
+[4:6:2]=[2:3:1],\qquad
+[6:9:3]=[2:3:1],
+$$
+
+都对应仿射点 $(2,3)$。
+
+从底层 $\mathbb R^3$ 看，射影点 $[6:9:3]$ 对应过原点直线
+
+$$
+\left\{
+\lambda(6,9,3)^{\mathsf T}:\lambda\in\mathbb R
+\right\}.
+$$
+
+它与仿射平面 $w=1$ 的交点满足 $3\lambda=1$，所以 $\lambda=1/3$，交点为 $(2,3,1)^{\mathsf T}$。<strong>齐次归一化就是在这条直线上选择最后一个分量为 $1$ 的唯一代表。</strong>
+
+因此应区分四个层次：
+
+| 对象 | 例子 | 所处位置 |
+| --- | --- | --- |
+| 代表向量 | $(2,4,2)^{\mathsf T}$ | $\mathbb R^3$ |
+| 一维线性子空间 | $\operatorname{span}((2,4,2)^{\mathsf T})$ | $\mathbb R^3$ 的子空间 |
+| 射影点 | $[2:4:2]=[1:2:1]$ | $\mathbb P^2$ |
+| 所选图中的仿射坐标 | $(1,2)$ | $\mathbb R^2$ |
+
+其中从 $[x:y:w]$ 到 $(x/w,y/w)$ 的操作也叫齐次除法；在透视投影语境中，称为透视除法。
+
+### 3.3 无穷远点为什么表示方向
+
+若 $w=0$，射影点形如 $[x:y:0]$，其中 $(x,y)\ne(0,0)$。任何缩放都不能使最后一个分量变成 $1$，对应的底层过原点直线完全落在 $w=0$ 中，不与 $w=1$ 平面相交。
+
+这些点表示仿射平面中的方向。例如
+
+$$
+[1:0:0]=[-1:0:0]
+$$
+
+对应水平方向；$[1:1:0]=[2:2:0]$ 对应斜率为 $1$ 的方向。这里不区分方向的正负，也不记录向量的长度。
+
+所有这些点组成
+
+$$
+H_\infty=\{[x:y:w]:w=0\},
+$$
+
+称为<strong>无穷远直线</strong>。忽略最后一个零分量后，它自身就是一个 $\mathbb P^1$，所以
+
+$$
+\mathbb P^2
+=\{[X:Y:1]:(X,Y)\in\mathbb R^2\}
+\sqcup H_\infty,
+\qquad H_\infty\cong\mathbb P^1.
+$$
+
+### 3.4 平行线如何在射影平面中相交
+
+先看仿射直线 $Y=0$ 与 $Y=1$。齐次化后分别为
+
+$$
+y=0,\qquad y-w=0.
+$$
+
+联立得到 $y=0$、$w=0$。为了排除全零坐标，必须 $x\ne0$，因此交点唯一：
+
+$$
+[x:0:0]=[1:0:0].
+$$
+
+这恰好是它们共同的水平方向点。
+
+更一般地，考虑两条不同的平行线
+
+$$
+Y=mX+b_1,\qquad Y=mX+b_2,\qquad b_1\ne b_2.
+$$
+
+齐次形式为
+
+$$
+mx-y+b_1w=0,\qquad mx-y+b_2w=0.
+$$
+
+相减得到 $(b_1-b_2)w=0$，从而 $w=0$；代回得到 $y=mx$。此时 $x\ne0$，所以交点为
+
+$$
+\boxed{[x:mx:0]=[1:m:0].}
+$$
+
+它依赖斜率而不依赖截距。竖直平行线同样处理：$X=c_1$ 与 $X=c_2$ 齐次化为 $x-c_1w=0$、$x-c_2w=0$，交点是 $[0:1:0]$。
+
+这说明的是：<strong>不同仿射平行直线的射影延拓共享一个无穷远点。</strong>原来的仿射图里仍然没有这个交点，增加的交点位于图的补集中。
+
+### 3.5 一般射影空间与多张仿射图
+
+在 $\mathbb P^n$ 中采用坐标 $[x_1:\cdots:x_n:w]$，定义
+
+$$
+U_w=\{[x_1:\cdots:x_n:w]:w\ne0\}.
+$$
+
+映射
+
+$$
+\chi_w:U_w\longrightarrow\mathbb R^n,\qquad
+[x_1:\cdots:x_n:w]\longmapsto
+\left(\frac{x_1}{w},\ldots,\frac{x_n}{w}\right)
+$$
+
+是一一对应，其逆映射为
+
+$$
+(X_1,\ldots,X_n)\longmapsto[X_1:\cdots:X_n:1].
+$$
+
+这称为一张<strong>仿射图（affine chart）</strong>。其补集 $H_\infty=\{w=0\}$ 是无穷远超平面。当 $n\ge1$ 时，
+
+$$
+H_\infty\cong\mathbb P^{n-1},\qquad
+\mathbb P^n=U_w\sqcup H_\infty.
+$$
+
+$w$ 并不天生特殊。在 $\mathbb P^2$ 中，还可以选
+
+$$
+U_x=\{x\ne0\},\qquad U_y=\{y\ne0\}.
+$$
+
+例如在 $U_x$ 中，
+
+$$
+[x:y:w]=[1:y/x:w/x],
+$$
+
+用 $(y/x,w/x)$ 作为仿射坐标。三张图 $U_x,U_y,U_w$ 覆盖整个射影平面，因为合法齐次坐标至少有一个非零分量。
+
+点 $[1:0:0]$ 在 $U_w$ 中是无穷远点，在 $U_x$ 中却有普通有限坐标 $(0,0)$。因此，<strong>“有限”与“无穷远”取决于所选仿射图；射影空间本身没有预先指定的无穷远超平面。</strong>
+
+## 四、点线关联与射影对偶
+
+### 4.1 射影直线与关联方程
+
+在 $\mathbb P^2$ 中，取非零系数组 $(a,b,c)$。方程
+
+$$
+ax+by+cw=0
+$$
+
+定义一条射影直线 $\ell$。将代表和系数分别写为列向量
+
+$$
+\mathbf p=\begin{pmatrix}x\\y\\w\end{pmatrix},
+\qquad
+\mathbf l=\begin{pmatrix}a\\b\\c\end{pmatrix},
+$$
+
+则
+
+$$
+\boxed{[\mathbf p]\in\ell\iff\mathbf l^{\mathsf T}\mathbf p=0.}
+$$
+
+这称为点与直线的<strong>关联关系（incidence）</strong>。
+
+若 $(a,b)\ne(0,0)$，在 $w=1$ 的图中得到普通仿射直线 $aX+bY+c=0$。若 $a=b=0$，则必有 $c\ne0$，方程就是 $w=0$，表示无穷远直线。后者同样是合法的射影直线，只是没有这一仿射图中的点。
+
+点的代表和直线系数都允许独立的非零缩放，因为
+
+$$
+(\mu\mathbf l)^{\mathsf T}(\lambda\mathbf p)
+=\mu\lambda\,\mathbf l^{\mathsf T}\mathbf p.
+$$
+
+乘积是否为零保持不变。例如直线 $x+2y-3w=0$ 的系数为 $(1,2,-3)^{\mathsf T}$；点 $[1:1:1]$ 满足 $1+2-3=0$。改用代表 $(2,2,2)^{\mathsf T}$，得到 $2+4-6=0$；将系数改成 $(2,4,-6)^{\mathsf T}$，仍然是同一条直线。
+
+所以直线系数自身也组成齐次等价类。但它与点坐标的对象类型不同，4.7 节会给出严格解释。
+
+### 4.2 底层二维平面与两点连线
+
+在底层向量空间 $\mathbb R^3$ 中，同一个方程
+
+$$
+ax+by+cw=0
+$$
+
+定义的是一个<strong>过原点的二维线性子空间</strong>。其中每条过原点直线代表一个射影点，这些点共同组成射影直线。
+
+给定两个不同的射影点 $P_1=[\mathbf p_1]$、$P_2=[\mathbf p_2]$，它们的代表线性无关，张成二维空间。要找经过它们的直线，需要解
+
+$$
+\begin{pmatrix}
+\mathbf p_1^{\mathsf T}\\
+\mathbf p_2^{\mathsf T}
+\end{pmatrix}\mathbf l=\mathbf0.
+$$
+
+该矩阵秩为 $2$，其零空间维数为 $3-2=1$。因此非零解只差一个比例，恰好表示唯一的射影直线。
+
+在所选三维标准坐标中，可以用叉积给出显式解：
+
+$$
+\boxed{\mathbf l=\mathbf p_1\times\mathbf p_2.}
+$$
+
+若 $\mathbf p_i=(x_i,y_i,w_i)^{\mathsf T}$，则
+
+$$
+\mathbf l=
+\begin{pmatrix}
+y_1w_2-w_1y_2\\
+w_1x_2-x_1w_2\\
+x_1y_2-y_1x_2
+\end{pmatrix}.
+$$
+
+它确实满足第一个关联条件，因为
+
+$$
+\begin{aligned}
+\mathbf l^{\mathsf T}\mathbf p_1
+&=x_1y_1w_2-x_1w_1y_2
++y_1w_1x_2-y_1x_1w_2\\
+&\quad+w_1x_1y_2-w_1y_1x_2\\
+&=0.
+\end{aligned}
+$$
+
+六项两两抵消，对 $\mathbf p_2$ 的验证相同。
+
+改用代表 $\lambda_1\mathbf p_1$、$\lambda_2\mathbf p_2$，叉积只乘以 $\lambda_1\lambda_2$，因此直线不变。若两个输入点实际相同，叉积为零，不能据此得到唯一的直线，这正反映了“一点不足以确定直线”。
+
+### 4.3 两点连线与两线求交的数值例子
+
+取仿射点 $(1,1)$、$(3,2)$，代表为
+
+$$
+\mathbf p_1=\begin{pmatrix}1\\1\\1\end{pmatrix},
+\qquad
+\mathbf p_2=\begin{pmatrix}3\\2\\1\end{pmatrix}.
+$$
+
+逐项求叉积：
+
+$$
+\mathbf l=
+\begin{pmatrix}
+1\cdot1-1\cdot2\\
+1\cdot3-1\cdot1\\
+1\cdot2-1\cdot3
+\end{pmatrix}
+=\begin{pmatrix}-1\\2\\-1\end{pmatrix}.
+$$
+
+得到射影直线 $-x+2y-w=0$，在有限图中为
+
+$$
+Y=\frac12X+\frac12.
+$$
+
+代入 $X=1,3$，分别得到 $Y=1,2$。
+
+反过来，给定两条不同直线，系数为 $\mathbf l_1,\mathbf l_2$，交点应满足
+
+$$
+\begin{pmatrix}
+\mathbf l_1^{\mathsf T}\\
+\mathbf l_2^{\mathsf T}
+\end{pmatrix}\mathbf p=\mathbf0.
+$$
+
+这又是一个秩为 $2$、零空间维数为 $1$ 的系统，因此
+
+$$
+\boxed{\mathbf p=\mathbf l_1\times\mathbf l_2.}
+$$
+
+例如 $Y=X$ 与 $Y=-X+2$ 的系数分别为
+
+$$
+\mathbf l_1=(-1,1,0)^{\mathsf T},
+\qquad
+\mathbf l_2=(1,1,-2)^{\mathsf T}.
+$$
+
+于是
+
+$$
+\mathbf p=(-2,-2,-2)^{\mathsf T},
+\qquad [\mathbf p]=[1:1:1],
+$$
+
+仿射交点为 $(1,1)$。
+
+第三章的平行线也可以完全相同地计算：
+
+$$
+\begin{pmatrix}0\\1\\0\end{pmatrix}
+\times
+\begin{pmatrix}0\\1\\-1\end{pmatrix}
+=
+\begin{pmatrix}-1\\0\\0\end{pmatrix}.
+$$
+
+所得点为 $[1:0:0]$，没有必要为平行情况另造求交公式。但若两条输入线相同，叉积同样为零，它们的交集是整条线，而非唯一点。
+
+### 4.4 用无穷远直线提取方向
+
+无穷远直线 $w=0$ 的系数可以取
+
+$$
+\mathbf l_\infty=(0,0,1)^{\mathsf T}.
+$$
+
+一条普通直线 $Y=mX+b$ 的射影系数为 $\mathbf l=(m,-1,b)^{\mathsf T}$，因此
+
+$$
+\mathbf l\times\mathbf l_\infty
+=(-1,-m,0)^{\mathsf T}
+\sim(1,m,0)^{\mathsf T}.
+$$
+
+这重新得到方向点 $[1:m:0]$。所以<strong>仿射直线的方向，可以用它与无穷远直线的交点表示。</strong>截距不同、斜率相同的直线拥有同一个这样的交点。
+
+### 4.5 共线、共点与行列式
+
+<strong>共线可以从代表向量的线性相关性理解。</strong>设三个射影点为 $P_i=[\mathbf p_i]$，它们分别对应三个一维线性子空间 $U_i=\operatorname{span}(\mathbf p_i)$。一条射影直线对应 $\mathbb R^3$ 中的一个二维线性子空间 $W$，因此三点共线就意味着
+
+$$
+U_1,U_2,U_3\subseteq W.
+$$
+
+于是三个一维子空间的张成空间满足
+
+$$
+U_1+U_2+U_3
+=\operatorname{span}(\mathbf p_1,\mathbf p_2,\mathbf p_3)
+\subseteq W,
+$$
+
+维数至多为 $2$。三个代表向量因此线性相关，等价地，以它们为列的 $3\times3$ 矩阵的行列式为零：
+
+$$
+\boxed{\det[\mathbf p_1\ \mathbf p_2\ \mathbf p_3]=0.}
+$$
+
+反向也成立：行列式为零意味着三个代表向量线性相关，其张成空间维数至多为 $2$，因而可以包含在某个二维子空间中，找到经过三点的射影直线。若至少两点不同，张成空间恰好为二维，该直线唯一；若三点相同，张成空间只有一维，经过该点的射影直线有无穷多条。
+
+例如仿射点 $(0,1)$、$(1,3)$、$(2,5)$ 都满足 $Y=2X+1$，其代表构成矩阵
+
+$$
+M=
+\begin{pmatrix}
+0&1&2\\
+1&3&5\\
+1&1&1
+\end{pmatrix}.
+$$
+
+按第一行展开，
+
+$$
+\det M
+=-\begin{vmatrix}1&5\\1&1\end{vmatrix}
++2\begin{vmatrix}1&3\\1&1\end{vmatrix}
+=-(-4)+2(-2)=0.
+$$
+
+<strong>共点可以从齐次线性方程组的零空间理解。</strong>设三条射影直线的系数代表为 $\mathbf l_1,\mathbf l_2,\mathbf l_3$。公共点 $P=[\mathbf p]$ 的代表必须满足
+
+$$
+\mathbf l_1^{\mathsf T}\mathbf p=0,
+\qquad
+\mathbf l_2^{\mathsf T}\mathbf p=0,
+\qquad
+\mathbf l_3^{\mathsf T}\mathbf p=0.
+$$
+
+将三个方程写成矩阵形式：
+
+$$
+A\mathbf p=\mathbf0,
+\qquad
+A=
+\begin{pmatrix}
+\mathbf l_1^{\mathsf T}\\
+\mathbf l_2^{\mathsf T}\\
+\mathbf l_3^{\mathsf T}
+\end{pmatrix}
+=[\mathbf l_1\ \mathbf l_2\ \mathbf l_3]^{\mathsf T}.
+$$
+
+射影点要求 $\mathbf p\ne\mathbf0$，因此三线共点，当且仅当这个方程组有非零解，也就是 $\ker A\ne\{\mathbf0\}$。由秩与零空间维数的关系，
+
+$$
+\dim\ker A=3-\operatorname{rank}A,
+$$
+
+这又等价于 $\operatorname{rank}A<3$，即 $A$ 不可逆、$\det A=0$。利用行列式的转置不变性，便得到
+
+$$
+\boxed{\det[\mathbf l_1\ \mathbf l_2\ \mathbf l_3]=0.}
+$$
+
+因此，三个直线系数代表 $\mathbf l_1,\mathbf l_2,\mathbf l_3$ 也线性相关。若其中至少两线不同且上述条件成立，则 $\operatorname{rank}A=2$，零空间为一维，只对应一个射影点；若三线相同，则 $\operatorname{rank}A=1$，零空间为二维，其射影化就是这条公共直线，公共点有无穷多个。
+
+点线计算之所以频繁出现叉积、秩和行列式，是因为这些几何问题已经转换为线性约束、线性相关性与零空间问题。
+
+### 4.6 线性泛函与对偶基
+
+设 $V$ 是有限维实向量空间。线性泛函是满足
+
+$$
+\varphi(\alpha\mathbf u+\beta\mathbf v)
+=\alpha\varphi(\mathbf u)+\beta\varphi(\mathbf v)
+$$
+
+的映射 $\varphi:V\to\mathbb R$。它也是线性映射，只是值域是一维实向量空间。
+
+例如
+
+$$
+\varphi(x,y,z)=2x+3y-z,
+\qquad
+\varphi(1,2,3)=2+6-3=5.
+$$
+
+所有线性泛函构成对偶空间
+
+$$
+V^*=\operatorname{Hom}_{\mathbb R}(V,\mathbb R).
+$$
+
+加法与数乘按函数求值定义：
+
+$$
+(\varphi+\psi)(\mathbf v)=\varphi(\mathbf v)+\psi(\mathbf v),
+\qquad
+(\lambda\varphi)(\mathbf v)=\lambda\varphi(\mathbf v).
+$$
+
+这些运算保持线性性，因此 $V^*$ 本身是向量空间。
+
+设 $\mathbf e_0,\ldots,\mathbf e_n$ 是 $V$ 的一组基。定义对偶基 $\varepsilon^0,\ldots,\varepsilon^n$，使
+
+$$
+\varepsilon^i(\mathbf e_j)=\delta^i_j,
+\qquad
+\delta^i_j=
+\begin{cases}
+1,&i=j,\\
+0,&i\ne j.
+\end{cases}
+$$
+
+若 $\mathbf v=\sum_{i=0}^n x_i\mathbf e_i$，则 $\varepsilon^i(\mathbf v)=x_i$。任意泛函都能唯一写为
+
+$$
+\varphi=\sum_{i=0}^n a_i\varepsilon^i,
+\qquad
+a_i=\varphi(\mathbf e_i),
+$$
+
+因为
+
+$$
+\varphi(\mathbf v)
+=\sum_{i=0}^n x_i\varphi(\mathbf e_i)
+=\sum_{i=0}^n a_ix_i.
+$$
+
+下面验证这些泛函线性无关。按照定义，一组向量线性无关，当且仅当它们的线性组合等于零向量时，所有系数都只能为零。在 $V^*$ 中，向量是线性泛函，零向量则是对每个输入都取值为 $0$ 的零泛函。
+
+假设 $\sum_{i=0}^n a_i\varepsilon^i=0$。等式两边分别对每个基向量 $\mathbf e_j$ 求值，利用 $\varepsilon^i(\mathbf e_j)=\delta^i_j$，得到
+
+$$
+0
+=\left(\sum_{i=0}^n a_i\varepsilon^i\right)(\mathbf e_j)
+=\sum_{i=0}^n a_i\varepsilon^i(\mathbf e_j)
+=\sum_{i=0}^n a_i\delta^i_j
+=a_j.
+$$
+
+由于这对每个 $j=0,\ldots,n$ 都成立，所有系数 $a_j$ 都为零；反过来，所有系数为零时，线性组合当然是零泛函。因此，$\sum_{i=0}^n a_i\varepsilon^i=0$ 当且仅当所有 $a_i=0$，这就证明了这些泛函线性无关。它们既张成 $V^*$ 又线性无关，因此确实构成 $V^*$ 的一组基，称为<strong>对偶基</strong>，并且
+
+$$
+\dim V^*=\dim V=n+1.
+$$
+
+在标准三维坐标中，三个对偶基就是提取 $x,y,z$ 分量的函数；前面的泛函为 $2\varepsilon^0+3\varepsilon^1-\varepsilon^2$。
+
+### 4.7 射影直线是对偶空间中的点
+
+回到 $V=\mathbb R^3$，用
+
+$$
+\varphi(x,y,w)=ax+by+cw
+$$
+
+表示一个非零泛函。它的核为
+
+$$
+\ker\varphi=\{\mathbf v\in V:\varphi(\mathbf v)=0\}.
+$$
+
+由于非零泛函的秩为 $1$，秩—零化度定理给出
+
+$$
+\dim\ker\varphi=3-1=2.
+$$
+
+所以对应的射影直线是
+
+$$
+\ell=\mathbb P(\ker\varphi).
+$$
+
+泛函 $\varphi$ 与 $\lambda\varphi$（$\lambda\ne0$）有相同的核，因此定义同一直线。反过来，<strong>两个非零线性泛函如果核相同，也必成比例。</strong>设 $\ker\varphi=\ker\psi$，下面证明存在固定的非零实数 $\lambda$，使得对所有 $\mathbf v\in V$ 都有 $\psi(\mathbf v)=\lambda\varphi(\mathbf v)$。
+
+1. <strong>选取一个满足 $\varphi(\mathbf u)=1$ 的向量。</strong>因为 $\varphi$ 不是零泛函，所以存在 $\mathbf a\in V$，使得 $\varphi(\mathbf a)\ne0$。此时 $\varphi(\mathbf a)$ 是一个确定的非零实数，可以用它的倒数缩放 $\mathbf a$，令
+
+   $$
+   \mathbf u=\frac{1}{\varphi(\mathbf a)}\mathbf a.
+   $$
+
+   线性泛函满足 $\varphi(c\mathbf a)=c\varphi(\mathbf a)$，因此这里可以把实数系数 $1/\varphi(\mathbf a)$ 提到泛函外面：
+
+   $$
+   \varphi(\mathbf u)
+   =\varphi\left(\frac{1}{\varphi(\mathbf a)}\mathbf a\right)
+   =\frac{1}{\varphi(\mathbf a)}\varphi(\mathbf a)
+   =1.
+   $$
+
+2. <strong>将任意向量拆成核内部分与固定方向上的部分。</strong>对任意 $\mathbf v\in V$，令
+
+   $$
+   \mathbf w=\mathbf v-\varphi(\mathbf v)\mathbf u.
+   $$
+
+   利用线性性和 $\varphi(\mathbf u)=1$，得到
+
+   $$
+   \begin{aligned}
+   \varphi(\mathbf w)
+   &=\varphi\bigl(\mathbf v-\varphi(\mathbf v)\mathbf u\bigr)\\
+   &=\varphi(\mathbf v)-\varphi(\mathbf v)\varphi(\mathbf u)\\
+   &=\varphi(\mathbf v)-\varphi(\mathbf v)\cdot1\\
+   &=0.
+   \end{aligned}
+   $$
+
+   因此 $\mathbf w\in\ker\varphi$，并且
+
+   $$
+   \mathbf v
+   =\underbrace{\bigl(\mathbf v-\varphi(\mathbf v)\mathbf u\bigr)}_{\mathbf w\in\ker\varphi}
+   +\varphi(\mathbf v)\mathbf u.
+   $$
+
+3. <strong>对这个分解应用 $\psi$。</strong>由于 $\ker\varphi=\ker\psi$，上面的 $\mathbf w$ 也属于 $\ker\psi$，所以 $\psi(\mathbf w)=0$。于是
+
+   $$
+   \begin{aligned}
+   \psi(\mathbf v)
+   &=\psi\bigl(\mathbf w+\varphi(\mathbf v)\mathbf u\bigr)\\
+   &=\psi(\mathbf w)+\varphi(\mathbf v)\psi(\mathbf u)\\
+   &=\psi(\mathbf u)\varphi(\mathbf v).
+   \end{aligned}
+   $$
+
+   这里 $\psi(\mathbf u)$ 是固定实数，与任意选取的 $\mathbf v$ 无关。因此令 $\lambda=\psi(\mathbf u)$，就得到 $\psi=\lambda\varphi$。
+
+4. <strong>验证比例 $\lambda$ 非零。</strong>若 $\psi(\mathbf u)=0$，则 $\mathbf u\in\ker\psi=\ker\varphi$，从而 $\varphi(\mathbf u)=0$，与选取时的 $\varphi(\mathbf u)=1$ 矛盾。因此 $\lambda\ne0$，证明完成。
+
+因此有严格的一一对应：
+
+$$
+\boxed{
+\mathbb P(V)\text{ 中的射影直线}
+\longleftrightarrow
+\mathbb P(V^*)\text{ 中的点}.
+}
+$$
+
+我们将右侧称为<strong>对偶射影平面</strong>。直线 $\ell$ 对应的对偶点记为 $\ell^*=[\varphi]$，其坐标为 $[a:b:c]$。
+
+虽然 $\mathbf p$ 与 $\mathbf l$ 都可以存成三元列向量，$\mathbf p$ 是原空间中向量的坐标，$\mathbf l$ 是对偶空间中泛函的系数。等维不代表两者自然就是同一种对象。
+
+### 4.8 自然配对与欧氏内积的区别
+
+式子 $\mathbf l^{\mathsf T}\mathbf p$ 更本质的含义是自然配对
+
+$$
+\langle\varphi,\mathbf p\rangle=\varphi(\mathbf p),
+\qquad
+V^*\times V\longrightarrow\mathbb R.
+$$
+
+它接收一个泛函和一个向量，不要求先定义长度、角度或正交性。选择基和对偶基后，才表现为系数行乘坐标列。
+
+欧氏内积则接收两个原空间向量。若额外选择标准内积，确实能用向量 $\mathbf l$ 作为 $\ker\varphi$ 的法向量，把关联解释为“正交”；但这使用了额外的度量结构。
+
+有限维空间 $V$ 与 $V^*$ 可以通过选基或选非退化配对建立同构，却没有仅由向量空间结构指定的自然同一关系。射影对偶依靠自然配对即可建立，不需要欧氏度量。三维叉积也是所选坐标中的便利计算工具，不能代替抽象对偶性的定义。
+
+### 4.9 原空间的点如何成为对偶直线
+
+给定原射影点 $P=[\mathbf p]$，考虑所有在 $\mathbf p$ 上取零的泛函：
+
+$$
+P^*=
+\{[\varphi]\in\mathbb P(V^*):\varphi(\mathbf p)=0\}.
+$$
+
+这在对偶射影平面中是一条射影直线。例如 $P=[1:2:1]$，对偶坐标为 $[a:b:c]$，则
+
+$$
+P^*:a+2b+c=0.
+$$
+
+方程的变量变成了 $a,b,c$。这条对偶直线上的每一个点 $[a:b:c]$，都有 $\varphi(\mathbf p)=0$，故每一个点都表示原平面中一条经过 $P$ 的直线。所以<strong>原空间中经过一点的直线束，在对偶空间中组成一条直线。</strong>
+
+再看关联的具体例子：
+
+$$
+\ell:x+2y-3w=0,\qquad Q=[1:1:1].
+$$
+
+因为 $1+2-3=0$，所以 $Q\in\ell$。在对偶空间中，
+
+$$
+\ell^*=[1:2:-3],\qquad Q^*:a+b+c=0,
+$$
+
+同样有 $\ell^*\in Q^*$。一般地，
+
+$$
+\boxed{P\in\ell\iff\ell^*\in P^*.}
+$$
+
+两边是同一个自然配对为零的条件，只是几何角色发生了交换。
+
+### 4.10 对偶命题与一个完整计算
+
+原平面中两个不同点 $P_1,P_2$ 确定唯一的直线 $\ell$。在对偶平面中，$P_1^*,P_2^*$ 是两条不同直线，而关联反转意味着
+
+$$
+\ell^*\in P_1^*,\qquad \ell^*\in P_2^*.
+$$
+
+于是得到对偶命题：两条不同射影直线交于唯一一点。三点共线与三线共点也如此对应，4.5 节的两个行列式判据正是这一结构的坐标形式。
+
+例如取
+
+$$
+P_1=[0:0:1],\qquad P_2=[1:1:1].
+$$
+
+两点连线的系数为
+
+$$
+\mathbf p_1\times\mathbf p_2=(-1,1,0)^{\mathsf T},
+$$
+
+所以 $\ell:y=x$。另一方面，
+
+$$
+P_1^*:c=0,\qquad P_2^*:a+b+c=0.
+$$
+
+两条对偶直线的交点满足 $c=0$、$a+b=0$，因此
+
+$$
+P_1^*\cap P_2^*
+=[1:-1:0]
+=[-1:1:0]
+=\ell^*.
+$$
+
+同一组线性约束，一次解释成“两点连线”，一次解释成“两线求交”。这正是点线对偶。它发生在原平面与对偶平面之间，并不自动给出原平面内部某个点到某条直线的指定对应。
+
+## 五、射影子空间、超平面与高维对偶
+
+### 5.1 射影化与维数减少一
+
+设 $V$ 为 $n+1$ 维实向量空间，$W\subseteq V$ 为非零线性子空间。定义
+
+$$
+\mathbb P(W)
+=\{[\mathbf w]:\mathbf w\in W\setminus\{\mathbf0\}\}.
+$$
+
+它是 $\mathbb P(V)$ 中的一个射影子空间。若 $\dim W=k+1$，则
+
+$$
+\boxed{\dim\mathbb P(W)=k=\dim W-1.}
+$$
+
+可以用局部坐标理解这个减少的自由度：取 $W$ 的一组基 $\mathbf u_0,\ldots,\mathbf u_k$，非零向量有 $k+1$ 个基坐标；在某个坐标不为零的区域，将它归一化为 $1$，其余 $k$ 个比值就描述了该区域的所有射影点。整体尺度不再是独立自由度。
+
+特别地，一维线性空间的射影化只有一个点，维数为 $0$；二维线性空间的射影化是一条射影直线；三维线性空间的射影化是射影平面。
+
+| 底层线性子空间的维数 | 射影维数 | $\mathbb P^2$ 中 | $\mathbb P^3$ 中 |
+| --- | --- | --- | --- |
+| $1$ | $0$ | 点 | 点 |
+| $2$ | $1$ | 直线 | 直线 |
+| $3$ | $2$ | 整个射影平面 | 射影平面 |
+| $4$ | $3$ | 不适用 | 整个射影空间 |
+
+所以 $\mathbb P^3$ 中的直线依然来自二维线性子空间，变化的是环境空间已经从 $\mathbb R^3$ 换成 $\mathbb R^4$。
+
+### 5.2 射影直线的参数与仿射部分
+
+给定两个不同点 $[\mathbf p_1]$、$[\mathbf p_2]$，连接它们的射影直线为
+
+$$
+L=\mathbb P(\operatorname{span}(\mathbf p_1,\mathbf p_2)).
+$$
+
+线上所有点都能表示为
+
+$$
+[\alpha\mathbf p_1+\beta\mathbf p_2],
+\qquad(\alpha,\beta)\ne(0,0).
+$$
+
+由于 $\mathbf p_1,\mathbf p_2$ 线性无关，上式代表不会为零；参数 $[\alpha:\beta]$ 本身是一组 $\mathbb P^1$ 坐标。
+
+例如取
+
+$$
+\mathbf p_1=(1,0,1)^{\mathsf T},\qquad
+\mathbf p_2=(0,1,1)^{\mathsf T}.
+$$
+
+线性组合为 $(\alpha,\beta,\alpha+\beta)^{\mathsf T}$，射影点为
+
+$$
+[\alpha:\beta:\alpha+\beta].
+$$
+
+若 $\alpha+\beta\ne0$，归一化得到
+
+$$
+X=\frac{\alpha}{\alpha+\beta},\qquad
+Y=\frac{\beta}{\alpha+\beta},\qquad X+Y=1.
+$$
+
+若 $\alpha+\beta=0$，则 $\beta=-\alpha$ 且 $\alpha\ne0$，得到唯一的无穷远点
+
+$$
+[1:-1:0].
+$$
+
+因此这条射影直线的有限部分是 $X+Y=1$，增加的方向点与其方向向量 $(1,-1)$ 相符。
+
+一般地，若将 $\mathbb P(W)$ 与仿射图 $U_w$ 相交，再通过 $\chi_w$ 转为仿射坐标，得到的集合是一个仿射子空间或空集。在底层向量空间中，这等价于考察超平面 $w=1$ 与子空间 $W$ 相交所得的切片集合（即满足非齐次线性约束的解集）：
+
+$$
+S=\{\mathbf v\in W:w(\mathbf v)=1\}.
+$$
+
+这是关于向量 $\mathbf v\in W$ 的非齐次线性约束条件，分为两种情况：
+
+1. 如果 $w$ 在 $W$ 上恒为零，则方程无解，$S=\emptyset$，整个射影子空间 $\mathbb P(W)$ 完全落在无穷远超平面 $H_\infty$ 中；
+2. 否则方程必有解。类比非齐次线性方程组“通解 = 特解 + 齐次解空间”的结构，可在 $W$ 中任取一个满足 $w(\mathbf v_0)=1$ 的特解 $\mathbf v_0$。此时对应的齐次方程为 $w(\mathbf u)=0$（即 $\mathbf u\in\ker w$），其在 $W$ 中的解空间为 $W\cap\ker w$。因此该切片解集 $S$ 可显式展开为：
+
+$$
+S=\mathbf v_0+(W\cap\ker w).
+$$
+
+这种“基准点 $+$ 方向线性子空间”的形式，正是<strong>仿射子空间（affine subspace）</strong>的标准定义。由秩-零度定理，方向子空间 $W\cap\ker w$ 的维数恰为 $\dim W-1$。这准确刻画了高维线性子空间、其射影化对象与截面仿射切片之间的对应关系。
+
+### 5.3 超平面、核与余维数
+
+子空间的余维数定义为
+
+$$
+\operatorname{codim}_V W=\dim V-\dim W.
+$$
+
+余维数为 $1$ 的线性子空间称为线性超平面。在 $\mathbb R^m$ 中，它可写成
+
+$$
+a_1x_1+\cdots+a_mx_m=0,\qquad(a_1,\ldots,a_m)\ne\mathbf0.
+$$
+
+它是非零线性泛函的核，维数为 $m-1$。所以在 $\mathbb R^2$ 中超平面是过原点直线，在 $\mathbb R^3$ 中是过原点二维平面，在 $\mathbb R^4$ 中则是三维线性子空间。“超平面”描述余维数，不固定指二维对象。
+
+相应地，$\mathbb P^n$ 中的射影超平面由
+
+$$
+a_0x_0+\cdots+a_nx_n=0
+$$
+
+定义，其中系数不全为零。其底层核有 $n$ 维，射影化后为 $n-1$ 维，因此：
+
+$$
+\boxed{\mathbb P(V^*)\text{ 中的点}
+\longleftrightarrow
+\mathbb P(V)\text{ 中的超平面}.}
+$$
+
+在 $\mathbb P^2$ 中超平面是直线，在 $\mathbb P^3$ 中是平面。例如
+
+$$
+x+2y-z+3w=0
+$$
+
+在 $\mathbb P^3$ 中定义一个射影平面，在 $w=1$ 图中变成仿射平面 $X+2Y-Z+3=0$。
+
+三种“平面”应分别理解：$\mathbb R^3$ 中 $ax+by+cz=0$ 是线性平面；三维仿射空间中 $aX+bY+cZ+d=0$ 是仿射平面；$\mathbb P^3$ 中 $ax+by+cz+dw=0$ 是射影平面。最后一个方程的底层解空间在 $\mathbb R^4$ 中有三维。
+
+### 5.4 独立约束与交集维数
+
+设 $A$ 是一个有 $n+1$ 列、秩为 $r$ 的矩阵。齐次系统 $A\mathbf x=\mathbf0$ 的解空间维数为
+
+$$
+\dim\ker A=n+1-r.
+$$
+
+若 $r\le n$，其射影化维数为
+
+$$
+\dim\mathbb P(\ker A)=n-r.
+$$
+
+若 $r=n+1$，则只有零解，射影解集为空。降低维数的数量由<strong>独立约束的个数，即矩阵秩</strong>决定，不能直接用所写方程的总数代替。
+
+例如在 $\mathbb P^3$ 中：
+
+- 一个非零线性方程定义射影平面。
+- 两个独立方程留下二维线性核，定义一条射影直线。因此两个不同射影平面必交于一条直线。
+- 三个独立方程留下一个一维线性核，定义唯一的射影点。
+- 四个独立方程只有零解，没有公共射影点。
+
+若方程之间相关，交集维数会更高。这些结论都是秩—零化度定理的直接结果。
+
+### 5.5 两条射影直线何时一定相交
+
+对线性子空间 $A,B\subseteq V$，有
+
+$$
+\dim(A+B)=\dim A+\dim B-\dim(A\cap B).
+$$
+
+可以选 $A\cap B$ 的基，分别扩充成 $A,B$ 的基：合并后的基只应将公共部分计数一次，便得到该公式。又因为 $\dim(A+B)\le\dim V$，
+
+$$
+\dim(A\cap B)\ge\dim A+\dim B-\dim V.
+$$
+
+在 $\mathbb P^2$ 中，两条射影直线来自 $\mathbb R^3$ 中的两个二维子空间，因此
+
+$$
+\dim(A\cap B)\ge2+2-3=1.
+$$
+
+若两条直线不同，则 $A\ne B$，交集不能为二维，于是交集恰好为一维，射影化后就是唯一的点。这严格解释了“射影平面中两条不同直线必相交”。
+
+在 $\mathbb P^3$ 中，底层空间为 $\mathbb R^4$，下界变成
+
+$$
+\dim(A\cap B)\ge2+2-4=0.
+$$
+
+允许 $A\cap B=\{\mathbf0\}$，此时没有公共射影点。比如
+
+$$
+A=\operatorname{span}(\mathbf e_0,\mathbf e_1),\qquad
+B=\operatorname{span}(\mathbf e_2,\mathbf e_3)
+$$
+
+只交于零向量，其射影直线互不相交。
+
+这就是异面直线可以在射影空间中继续存在的原因。仿射平行直线共享方向，射影延拓后交于无穷远点；异面直线既不共享有限点也不共享方向点，射影延拓后仍不相交。<strong>任意两条不同射影直线必相交的结论属于射影平面，不能直接推广到所有维度。</strong>
+
+### 5.6 线性、射影与仿射描述的统一例子
+
+取仿射直线 $Y=2X+3$，齐次化为
+
+$$
+2x-y+3w=0.
+$$
+
+在底层 $\mathbb R^3$ 中，其解集
+
+$$
+W=\{(x,y,w)^{\mathsf T}:2x-y+3w=0\}
+$$
+
+是二维线性子空间，包含原点；$\mathbb P(W)$ 是一维射影直线；取 $w=1$ 的代表并读取前两个坐标，则恢复仿射直线 $Y=2X+3$。取 $w=0$ 得到方向点 $[1:2:0]$。
+
+一般射影子空间也可以用张成描述或线性方程描述：前者指定生成向量，后者指定其应满足的泛函约束。下面的零化子正好连接这两种描述。
+
+### 5.7 零化子及其维数
+
+对 $W\subseteq V$，定义其零化子
+
+$$
+W^0=
+\{\varphi\in V^*:\varphi(\mathbf w)=0
+\text{ 对所有 }\mathbf w\in W\}.
+$$
+
+它是 $V^*$ 的线性子空间，包含所有在整个 $W$ 上消失的线性泛函。
+
+例如在 $V=\mathbb R^3$ 中，取 $W=\{(x,y,z)^{\mathsf T}:z=0\}$。要求 $\varphi(x,y,z)=ax+by+cz$ 在 $W$ 上恒为零，就要求
+
+$$
+ax+by=0\qquad\text{对任意 }x,y\in\mathbb R.
+$$
+
+分别取 $(x,y)=(1,0)$、$(0,1)$，得到 $a=b=0$；$c$ 任意。因此
+
+$$
+W^0=\{c\varepsilon^2:c\in\mathbb R\},
+\qquad \dim W^0=1.
+$$
+
+一般地，设 $\dim V=N$、$\dim W=k$，先取 $W$ 的基 $\mathbf e_1,\ldots,\mathbf e_k$，再扩充成 $V$ 的基 $\mathbf e_1,\ldots,\mathbf e_N$。相应泛函写为
+
+$$
+\varphi=\sum_{i=1}^N a_i\varepsilon^i.
+$$
+
+它属于 $W^0$，当且仅当 $a_1=\cdots=a_k=0$；其余 $N-k$ 个系数自由。因此
+
+$$
+\boxed{\dim W^0=\dim V-\dim W.}
+$$
+
+### 5.8 包含关系反转与高维射影对偶
+
+若 $W_1\subseteq W_2$，一个在 $W_2$ 上恒为零的泛函必然也在 $W_1$ 上恒为零，所以
+
+$$
+\boxed{W_1\subseteq W_2\Longrightarrow W_2^0\subseteq W_1^0.}
+$$
+
+约束范围越大，允许的泛函越少。这个包含反转，是射影对偶中关联反转的代数来源。
+
+设 $\dim V=n+1$，射影子空间 $L=\mathbb P(W)$ 的维数为 $k$，且 $0\le k\le n-1$。定义其对偶子空间
+
+$$
+L^*=\mathbb P(W^0)\subseteq\mathbb P(V^*).
+$$
+
+因为 $\dim W=k+1$，有
+
+$$
+\dim W^0=(n+1)-(k+1)=n-k,
+$$
+
+所以
+
+$$
+\boxed{\dim L^*=n-k-1.}
+$$
+
+将 $k$ 限制在 $n-1$ 以内，是为了保证 $W^0$ 非零；整个空间的零化子只有零向量，其射影化为空。
+
+| 环境 | 原空间对象与对偶空间对象 |
+| --- | --- |
+| $\mathbb P^1$ | 点对应点 |
+| $\mathbb P^2$ | 点对应直线，直线对应点 |
+| $\mathbb P^3$ | 点对应平面，直线对应直线，平面对应点 |
+| $\mathbb P^4$ | 点对应三维超平面，直线对应平面，平面对应直线 |
+
+因此一般规律是<strong>点与超平面对偶</strong>，而不是在所有维度都将点与直线互换。
+
+例如在 $V=\mathbb R^4$ 中，取
+
+$$
+W=\operatorname{span}
+\left(
+\begin{pmatrix}1\\0\\0\\0\end{pmatrix},
+\begin{pmatrix}0\\1\\0\\0\end{pmatrix}
+\right).
+$$
+
+原射影直线为
+
+$$
+L=\{[s:t:0:0]:(s,t)\ne(0,0)\}.
+$$
+
+泛函的对偶坐标若为 $(a_0,a_1,a_2,a_3)$，在 $W$ 上消失要求 $a_0s+a_1t=0$ 对所有 $s,t$ 成立，因此 $a_0=a_1=0$，其余自由。得到
+
+$$
+L^*=\{[0:0:a_2:a_3]:(a_2,a_3)\ne(0,0)\}.
+$$
+
+它确实也是一条直线，但位于对偶射影空间中，并不是自动等于原直线。
+
+### 5.9 双对偶为何恢复原子空间
+
+第二次取零化子会得到 $(W^0)^0\subseteq V^{**}$。要与 $W\subseteq V$ 比较，先定义自然映射
+
+$$
+J:V\longrightarrow V^{**},
+\qquad
+J(\mathbf v)(\varphi)=\varphi(\mathbf v).
+$$
+
+它将一个向量变成“对泛函求值”的规则，不需要选择基或内积。
+
+第一步，证明 $J$ 为单射。若 $J(\mathbf v)=0$，则所有泛函都在 $\mathbf v$ 上取零。若 $\mathbf v\ne0$，将其扩充为一组基，可定义一个在 $\mathbf v$ 上取值为 $1$ 的泛函，产生矛盾。因此 $\mathbf v=0$。由于有限维时 $\dim V=\dim V^{**}$，$J$ 也是满射。
+
+第二步，证明包含关系。任取 $\mathbf w\in W$，对任意 $\varphi\in W^0$ 都有 $\varphi(\mathbf w)=0$，因此
+
+$$
+J(W)\subseteq(W^0)^0.
+$$
+
+第三步，比较维数：
+
+$$
+\dim(W^0)^0
+=\dim V^*-\dim W^0
+=\dim V-(\dim V-\dim W)
+=\dim W.
+$$
+
+包含且等维，所以 $J(W)=(W^0)^0$。通过自然同构 $J$ 识别 $V$ 与 $V^{**}$ 后，可简写为
+
+$$
+\boxed{(W^0)^0=W.}
+$$
+
+这与“$V$ 和 $V^*$ 等维但需要额外选择才能指定同构”不同：有限维的 $V\cong V^{**}$ 是自然的。到这里，射影对偶的对象、关联和双向结构都已经建立，无需先引入任何射影变换。
+
+## 六、射影变换与单应性
+
+### 6.1 线性映射如何作用于射影点
+
+现在引入可逆线性映射 $H:V\to V$，并定义
+
+$$
+T_H:\mathbb P(V)\longrightarrow\mathbb P(V),
+\qquad
+T_H([\mathbf x])=[H\mathbf x].
+$$
+
+这需要检查两件事。
+
+第一，输入代表的选择不能影响结果。若 $\widetilde{\mathbf x}=\lambda\mathbf x$，则由线性性，
+
+$$
+H\widetilde{\mathbf x}
+=H(\lambda\mathbf x)=\lambda H\mathbf x.
+$$
+
+所以二者输出的射影点相同。
+
+第二，非零输入不能得到零输出。为了在整个射影空间上定义此映射，需要
+
+$$
+\mathbf x\ne0\Longrightarrow H\mathbf x\ne0,
+\qquad\text{即 }\ker H=\{\mathbf0\}.
+$$
+
+对有限维方阵，这等价于 $H$ 可逆。因此本文将<strong>射影变换</strong>用于这种由可逆线性映射诱导的射影自同构：
+
+$$
+\boxed{
+[\mathbf x]\longmapsto[H\mathbf x],
+\qquad H\in\operatorname{GL}(n+1,\mathbb R).
+}
+$$
+
+若方阵不可逆，仍可在去掉其核的射影化之后讨论映射，但它不是整个空间上的射影自同构。第八章的非方阵相机投影也需要明确排除核所对应的点。
+
+常见记号
+
+$$
+\mathbf x'\sim H\mathbf x
+$$
+
+表示所选输出代表 $\mathbf x'$ 只需与 $H\mathbf x$ 相差非零比例，并不要求逐分量相等。推导时可方便地选取 $\mathbf x'=H\mathbf x$。
+
+### 6.2 射影直线上的缩放、平移与分式变换
+
+在 $\mathbb P^1$ 中取 $\mathbf p=(x,w)^{\mathsf T}$。矩阵
+
+$$
+H_s=\begin{pmatrix}2&0\\0&1\end{pmatrix}
+$$
+
+使 $x'=2x$、$w'=w$，在仿射坐标 $X=x/w$ 中得到 $X'=2X$。
+
+矩阵
+
+$$
+H_t=\begin{pmatrix}1&1\\0&1\end{pmatrix}
+$$
+
+使 $x'=x+w$、$w'=w$，所以
+
+$$
+X'=\frac{x+w}{w}=X+1.
+$$
+
+仿射坐标中的平移不保持原点，因此不是关于 $X$ 的线性映射；但它可以由二维齐次向量空间中的线性映射表示。
+
+更一般地，设
+
+$$
+H=\begin{pmatrix}a&b\\c&d\end{pmatrix},
+\qquad ad-bc\ne0.
+$$
+
+则 $x'=ax+bw$、$w'=cx+dw$。当输入、输出都在所选有限图中时，
+
+$$
+\boxed{
+X'=\frac{x'}{w'}
+=\frac{a(x/w)+b}{c(x/w)+d}
+=\frac{aX+b}{cX+d}.
+}
+$$
+
+这称为分式线性变换。在 $cX+d=0$ 时，输出仍是合法射影点，只是落在当前输出仿射图之外。齐次空间中的线性运算与最后的归一化共同产生了这个分式表达。
+
+### 6.3 射影平面的共同分母
+
+在 $\mathbb P^2$ 中令
+
+$$
+H=
+\begin{pmatrix}
+h_{11}&h_{12}&h_{13}\\
+h_{21}&h_{22}&h_{23}\\
+h_{31}&h_{32}&h_{33}
+\end{pmatrix},
+\qquad\det H\ne0.
+$$
+
+输入选取 $(X,Y,1)^{\mathsf T}$，则输出代表为
+
+$$
+\begin{pmatrix}x'\\y'\\w'\end{pmatrix}
+=
+\begin{pmatrix}
+h_{11}X+h_{12}Y+h_{13}\\
+h_{21}X+h_{22}Y+h_{23}\\
+h_{31}X+h_{32}Y+h_{33}
+\end{pmatrix}.
+$$
+
+在 $w'\ne0$ 时，
+
+$$
+\boxed{
+\begin{aligned}
+X'&=\frac{h_{11}X+h_{12}Y+h_{13}}
+{h_{31}X+h_{32}Y+h_{33}},\\
+Y'&=\frac{h_{21}X+h_{22}Y+h_{23}}
+{h_{31}X+h_{32}Y+h_{33}}.
+\end{aligned}
+}
+$$
+
+两个坐标共享同一个分母，因为它们必须除以同一个齐次分量 $w'$。一般而言这个分母依赖位置，所以在仿射图中表现为位置相关的尺度变化。
+
+### 6.4 矩阵尺度、射影一般线性群与自由度
+
+任取 $\lambda\ne0$，
+
+$$
+[(\lambda H)\mathbf x]=[\lambda(H\mathbf x)]=[H\mathbf x].
+$$
+
+所以 $H$ 与 $\lambda H$ 表示同一个射影变换。反过来，若两个可逆矩阵对所有射影点的作用相同，则它们只差一个非零标量：令其商为 $A$，$A$ 保持每条一维子空间；在一组基上必有 $A\mathbf e_i=\lambda_i\mathbf e_i$，再考虑 $\mathbf e_i+\mathbf e_j$ 所在的直线，得到所有 $\lambda_i=\lambda_j$。
+
+因此射影变换群为
+
+$$
+\boxed{
+\operatorname{PGL}(n+1,\mathbb R)
+=
+\operatorname{GL}(n+1,\mathbb R)/
+\{\lambda I:\lambda\in\mathbb R^\times\},
+}
+$$
+
+其中 $\mathbb R^\times=\mathbb R\setminus\{0\}$，分母是非零标量矩阵构成的子群。
+
+一个 $(n+1)\times(n+1)$ 矩阵有 $(n+1)^2$ 个元素，去掉整体尺度后，射影变换有 $(n+1)^2-1$ 个自由度。二维单应矩阵因此有 $9-1=8$ 个自由度。
+
+在本文的计算机视觉语境中，<strong>二维单应性（homography）</strong>指两个射影平面之间由可逆 $3\times3$ 矩阵表示、只确定到整体尺度的射影映射。
+
+### 6.5 为什么直线按照逆转置变换
+
+前面已经建立了对偶空间，现在可以研究对偶对象的变换。设点代表满足
+
+$$
+\mathbf p'=H\mathbf p.
+$$
+
+原泛函为 $\varphi$。若希望对应的新泛函在变换后的向量上保留原求值，需要
+
+$$
+\varphi'(\mathbf p')=\varphi(\mathbf p).
+$$
+
+代入 $\mathbf p=H^{-1}\mathbf p'$，得到
+
+$$
+\boxed{\varphi'=\varphi\circ H^{-1}.}
+$$
+
+若用列系数 $\mathbf l$ 表示 $\varphi$，则
+
+$$
+\varphi'(\mathbf p')
+=\mathbf l^{\mathsf T}H^{-1}\mathbf p'
+=(H^{-T}\mathbf l)^{\mathsf T}\mathbf p'.
+$$
+
+这里 $H^{-T}=(H^{-1})^{\mathsf T}$，因此可以选取
+
+$$
+\boxed{\mathbf l'=H^{-T}\mathbf l.}
+$$
+
+从原直线方程直接推导也得到同样结论：
+
+$$
+\mathbf l^{\mathsf T}\mathbf p=0
+\iff
+\mathbf l^{\mathsf T}H^{-1}\mathbf p'=0
+\iff
+(H^{-T}\mathbf l)^{\mathsf T}\mathbf p'=0.
+$$
+
+进一步验证，
+
+$$
+\begin{aligned}
+\mathbf l'^{\mathsf T}\mathbf p'
+&=(H^{-T}\mathbf l)^{\mathsf T}(H\mathbf p)\\
+&=\mathbf l^{\mathsf T}H^{-1}H\mathbf p\\
+&=\mathbf l^{\mathsf T}\mathbf p.
+\end{aligned}
+$$
+
+在这组相容的代表下，自然配对数值保持；若独立缩放点和直线的代表，数值可变，但是否为零仍保持。因此射影层面保持的是点与直线的关联。
+
+这里的 $H^{-T}$ 来自“将原超平面随点变换到新位置”的操作。若讨论一个目标泛函沿 $H$ 拉回，则复合是 $\varphi\circ H$，对应 $H^{\mathsf T}$；方向不同，不应混用。
+
+### 6.6 平移直线的数值验证
+
+取平移矩阵
+
+$$
+H=
+\begin{pmatrix}
+1&0&2\\
+0&1&0\\
+0&0&1
+\end{pmatrix},
+\qquad X'=X+2,\quad Y'=Y.
+$$
+
+原直线 $X=1$ 的系数是 $\mathbf l=(1,0,-1)^{\mathsf T}$。几何上，向右平移 $2$ 后应得到 $X'=3$。
+
+计算
+
+$$
+H^{-1}=
+\begin{pmatrix}1&0&-2\\0&1&0\\0&0&1\end{pmatrix},
+\qquad
+H^{-T}=
+\begin{pmatrix}1&0&0\\0&1&0\\-2&0&1\end{pmatrix}.
+$$
+
+于是
+
+$$
+\mathbf l'
+=H^{-T}\mathbf l
+=
+\begin{pmatrix}1\\0\\-3\end{pmatrix},
+$$
+
+新方程是 $x'-3w'=0$，正好得到 $X'=3$。将直线系数直接乘 $H$ 不会表达这条平移后的直线。
+
+### 6.7 叉积公式与逆转置如何相容
+
+设 $H\in\operatorname{GL}(3,\mathbb R)$。对任意 $\mathbf u,\mathbf v\in\mathbb R^3$，有
+
+$$
+\boxed{
+(H\mathbf u)\times(H\mathbf v)
+=(\det H)H^{-T}(\mathbf u\times\mathbf v).
+}
+$$
+
+证明取任意 $\mathbf r\in\mathbb R^3$。由标量三重积与行列式，
+
+$$
+\begin{aligned}
+(H\mathbf r)^{\mathsf T}
+\bigl((H\mathbf u)\times(H\mathbf v)\bigr)
+&=\det[H\mathbf u\ H\mathbf v\ H\mathbf r]\\
+&=(\det H)\det[\mathbf u\ \mathbf v\ \mathbf r]\\
+&=(\det H)\mathbf r^{\mathsf T}(\mathbf u\times\mathbf v).
+\end{aligned}
+$$
+
+另一方面，
+
+$$
+\begin{aligned}
+(H\mathbf r)^{\mathsf T}
+\bigl((\det H)H^{-T}(\mathbf u\times\mathbf v)\bigr)
+&=(\det H)\mathbf r^{\mathsf T}
+H^{\mathsf T}H^{-T}(\mathbf u\times\mathbf v)\\
+&=(\det H)\mathbf r^{\mathsf T}(\mathbf u\times\mathbf v).
+\end{aligned}
+$$
+
+由于 $H\mathbf r$ 遍历所有向量，两个被配对的向量必须相同，恒等式得证。
+
+若原直线由两点连线得到 $\mathbf l=\mathbf p_1\times\mathbf p_2$，先变换两点再连线，会得到
+
+$$
+(H\mathbf p_1)\times(H\mathbf p_2)
+=(\det H)H^{-T}\mathbf l
+\sim H^{-T}\mathbf l.
+$$
+
+因为 $\det H\ne0$，多出的因子不影响射影直线。因此“先求直线再变换”和“先变换两点再连线”完全相容。
+
+### 6.8 子空间、不变量与变换的复合
+
+对任意线性子空间 $W$，可逆映射 $H$ 将它送到 $H(W)$，并且 $\dim H(W)=\dim W$。所以
+
+$$
+T_H(\mathbb P(W))=\mathbb P(H(W))
+$$
+
+是相同维数的射影子空间。于是点到点、线到线、面到面，包含关系、共线与共点关系都保持。
+
+两个射影变换的复合仍然由矩阵乘法表示：
+
+$$
+T_B\circ T_A([\mathbf x])
+=[BA\mathbf x]
+=T_{BA}([\mathbf x]).
+$$
+
+先作用 $A$ 再作用 $B$，乘积是 $BA$。逆变换为 $T_{H^{-1}}$，恒等变换由 $I$ 或任意非零标量矩阵表示。
+
+射影变换通常不保持长度、角度、面积、中点、同一直线上的普通比例及相对于固定仿射图的平行性。它保持更基础的关联结构，以及下一章的交比。
+
+### 6.9 仿射变换为何是特殊的射影变换
+
+可逆仿射变换
+
+$$
+\mathbf X'=A\mathbf X+\mathbf t,\qquad A\in\operatorname{GL}(n,\mathbb R)
+$$
+
+可以写为齐次矩阵
+
+$$
+\begin{pmatrix}\mathbf x'\\w'\end{pmatrix}
+=
+\begin{pmatrix}
+A&\mathbf t\\
+\mathbf0^{\mathsf T}&1
+\end{pmatrix}
+\begin{pmatrix}\mathbf x\\w\end{pmatrix}.
+$$
+
+它满足 $w'=w$，从而将 $w=0$ 的无穷远超平面整体保持。具有相同方向点的仿射平行线，变换后仍共享某个无穷远点，因此仍平行。
+
+反过来，一个射影变换若保持所选无穷远超平面，其矩阵最后一行的前 $n$ 个系数必须为零。可逆性保证最后一个系数非零，整体归一化后就是上述仿射矩阵。这里说的是保持超平面<strong>作为集合</strong>，不是将其中每个方向点逐点固定。
+
+一般二维矩阵可写为
+
+$$
+H=\begin{pmatrix}
+a&b&t_x\\
+c&d&t_y\\
+p&q&r
+\end{pmatrix}.
+$$
+
+若 $p=q=0$，分母为非零常数，得到仿射变换；若 $(p,q)\ne(0,0)$，分母依赖 $X,Y$，无穷远直线一般会被送到另一条直线，其系数为 $H^{-T}\mathbf l_\infty$。
+
+由此得到几何变换的层级：
+
+$$
+\text{欧氏变换}\subset
+\text{相似变换}\subset
+\text{可逆仿射变换}\subset
+\text{射影变换}.
+$$
+
+| 变换类别 | 典型保持量 |
+| --- | --- |
+| 欧氏变换 | 距离、角度 |
+| 相似变换 | 角度、长度比例 |
+| 可逆仿射变换 | 平行性、共线点的有向比例、仿射组合 |
+| 射影变换 | 关联、子空间维数、共线、共点、交比 |
+
+向右允许的变换更多，需要额外结构才能定义的度量信息逐步减少。
+
+### 6.10 有限点到无穷远的具体例子
+
+取
+
+$$
+H=
+\begin{pmatrix}
+1&0&0\\
+0&1&0\\
+\frac12&0&1
+\end{pmatrix}.
+$$
+
+对输入 $(X,Y,1)^{\mathsf T}$，
+
+$$
+H\begin{pmatrix}X\\Y\\1\end{pmatrix}
+=
+\begin{pmatrix}X\\Y\\1+\frac12X\end{pmatrix}.
+$$
+
+所以在有限输出图内，
+
+$$
+X'=\frac{X}{1+\frac12X},
+\qquad
+Y'=\frac{Y}{1+\frac12X}.
+$$
+
+当 $X=-2$ 时，输出为 $[-2:Y:0]$。这是合法的射影点，说明整条有限仿射直线 $X=-2$ 的点都被送到输出无穷远直线上；连同它自身的无穷远点，其射影延拓映到整条输出无穷远直线。
+
+这里没有出现非法的全零输出，因为 $H$ 可逆。仿射公式的分母为零，只表示当前输出图无法覆盖相应射影点，不表示射影变换本身无定义。
+
+### 6.11 四组点对应与二维单应性
+
+二维单应矩阵有 $8$ 个自由度。每组点对应 $\mathbf p_i'\sim H\mathbf p_i$ 可写为
+
+$$
+\mathbf p_i'\times(H\mathbf p_i)=\mathbf0.
+$$
+
+虽然写成三个标量方程，但每组通常只有两个独立约束，因此四组对应提供八个约束。
+
+要保证存在唯一的可逆单应性，需要源、目标各四个点分别构成<strong>射影标架</strong>：点两两不同，任意三点不共线。只排除“四点全部共线”还不够；三点共线已经是退化情况。
+
+可以用标架构造理解唯一性。选择前三点的代表 $\mathbf p_1,\mathbf p_2,\mathbf p_3$ 为基，第四点写为
+
+$$
+\mathbf p_4=\alpha_1\mathbf p_1+\alpha_2\mathbf p_2+\alpha_3\mathbf p_3.
+$$
+
+任意三点不共线保证各 $\alpha_i\ne0$。将前三个代表改成 $\alpha_i\mathbf p_i$，第四点就成为这三个新代表的和。对目标四点做同样处理，存在唯一的线性映射将三个新基向量送到对应目标基向量，并自动将第四点送到目标第四点。
+
+若另一个射影映射也满足四组对应，相对于这些基，它先由前三个点约束为对角矩阵，再由第四个“各分量都非零”的点约束为标量矩阵，因此射影作用相同。这比单纯数自由度进一步说明了条件为何必要。
+
+## 七、交比与射影不变量
+
+### 7.1 从距离到有向比例
+
+若几何量 $I$ 满足
+
+$$
+I(T(P_1),\ldots,T(P_k))=I(P_1,\ldots,P_k),
+$$
+
+就称它在变换 $T$ 下不变。比如实数轴平移 $T(X)=X+5$ 将 $1,4$ 送到 $6,9$，距离仍为 $3$。缩放 $T(X)=2X$ 将 $0,2,5$ 送到 $0,4,10$，距离改变，但从第一个点出发的距离比仍为 $2/5=4/10$。
+
+对一维可逆仿射变换 $T(X)=aX+b$，$a\ne0$，三个不同点的有向比例
+
+$$
+R(A,B,C)=\frac{A-C}{B-C}
+$$
+
+也保持，因为
+
+$$
+\frac{T(A)-T(C)}{T(B)-T(C)}
+=\frac{a(A-C)}{a(B-C)}
+=\frac{A-C}{B-C}.
+$$
+
+这些差值允许为负，所以记录了点在同一坐标轴上的有向关系。仿射变换也保持中点：
+
+$$
+T\left(\frac{A+B}{2}\right)
+=a\frac{A+B}{2}+b
+=\frac{T(A)+T(B)}2.
+$$
+
+但射影变换
+
+$$
+T(X)=\frac{X}{X+1},
+\qquad
+H=\begin{pmatrix}1&0\\1&1\end{pmatrix}
+$$
+
+将 $A=0,B=1,C=2$ 送到 $0,1/2,2/3$，于是
+
+$$
+R=\frac{0-2}{1-2}=2,
+\qquad
+R'=\frac{0-\frac23}{\frac12-\frac23}=4.
+$$
+
+普通有向比例不再保持。要得到非平凡的数值射影不变量，需要引入第四个点。
+
+### 7.2 四个有序点的交比
+
+先设四个互不相同的点都在同一有限仿射图中，坐标依次为 $X_1,X_2,X_3,X_4$。本文固定约定
+
+$$
+\boxed{
+\operatorname{CR}(P_1,P_2;P_3,P_4)
+=\frac{(X_1-X_3)(X_2-X_4)}
+{(X_1-X_4)(X_2-X_3)}.
+}
+$$
+
+写成点的名字就是
+
+$$
+\operatorname{CR}(A,B;C,D)
+=
+\frac{\dfrac{A-C}{B-C}}{\dfrac{A-D}{B-D}}.
+$$
+
+它是两个有向比例的比值。四点顺序是定义的一部分；不同教材的约定可能不同，比较公式时必须先核对顺序。
+
+例如
+
+$$
+\operatorname{CR}(0,1;2,3)
+=\frac{(0-2)(1-3)}{(0-3)(1-2)}
+=\frac{4}{3}.
+$$
+
+将四点同时通过 $T(X)=X/(X+1)$ 变换，得到
+
+$$
+0,\quad\frac12,\quad\frac23,\quad\frac34.
+$$
+
+再算交比：
+
+$$
+\begin{aligned}
+\operatorname{CR}\left(0,\frac12;\frac23,\frac34\right)
+&=\frac{\left(-\frac23\right)\left(-\frac14\right)}
+{\left(-\frac34\right)\left(-\frac16\right)}\\
+&=\frac{1/6}{1/8}
+=\frac43.
+\end{aligned}
+$$
+
+三个点的普通比例变了，四点交比却没有变。
+
+### 7.3 分式线性变换下的不变性证明
+
+设
+
+$$
+T(X)=\frac{aX+b}{cX+d},
+\qquad \delta=ad-bc\ne0.
+$$
+
+先假设所用点及其像都在有限仿射图内，记 $q_i=cX_i+d\ne0$。
+
+第一步，计算两个像的坐标差：
+
+$$
+\begin{aligned}
+X_i'-X_j'
+&=\frac{(aX_i+b)(cX_j+d)-(aX_j+b)(cX_i+d)}
+{q_iq_j}.
+\end{aligned}
+$$
+
+分子展开后为
+
+$$
+\begin{aligned}
+&acX_iX_j+adX_i+bcX_j+bd\\
+&\quad-acX_iX_j-adX_j-bcX_i-bd\\
+&=(ad-bc)(X_i-X_j).
+\end{aligned}
+$$
+
+因此
+
+$$
+\boxed{X_i'-X_j'=\frac{\delta(X_i-X_j)}{q_iq_j}.}
+$$
+
+两点差值除了公共的 $\delta$，还受到各点分母的影响。这解释了三点有向比例为何通常不保持。
+
+第二步，将四个差值代入交比：
+
+$$
+\begin{aligned}
+R'
+&=\frac{
+\dfrac{\delta(X_1-X_3)}{q_1q_3}
+\dfrac{\delta(X_2-X_4)}{q_2q_4}
+}{
+\dfrac{\delta(X_1-X_4)}{q_1q_4}
+\dfrac{\delta(X_2-X_3)}{q_2q_3}
+}\\
+&=\frac{
+\dfrac{\delta^2(X_1-X_3)(X_2-X_4)}{q_1q_2q_3q_4}
+}{
+\dfrac{\delta^2(X_1-X_4)(X_2-X_3)}{q_1q_2q_3q_4}
+}\\
+&=\frac{(X_1-X_3)(X_2-X_4)}
+{(X_1-X_4)(X_2-X_3)}
+=R.
+\end{aligned}
+$$
+
+所有位置相关的分母因子完全抵消。这证明了当前有限坐标条件下的交比不变性。要包含无穷远点，需要改用齐次定义。
+
+### 7.4 齐次行列式定义与代表无关性
+
+设 $P_i=[\mathbf p_i]\in\mathbb P^1$，其中
+
+$$
+\mathbf p_i=\begin{pmatrix}x_i\\w_i\end{pmatrix}\ne\mathbf0.
+$$
+
+对两个代表定义
+
+$$
+\Delta_{ij}
+=\det[\mathbf p_i\ \mathbf p_j]
+=x_iw_j-x_jw_i.
+$$
+
+则交比可定义为
+
+$$
+\boxed{
+\operatorname{CR}(P_1,P_2;P_3,P_4)
+=\frac{\Delta_{13}\Delta_{24}}
+{\Delta_{14}\Delta_{23}}.
+}
+$$
+
+这里要求四点互不相同，因此任意两点代表都线性无关，相关的二阶行列式均非零，分母有定义。完全不要求 $w_i\ne0$。
+
+若所有点有限，选 $\mathbf p_i=(X_i,1)^{\mathsf T}$，便有 $\Delta_{ij}=X_i-X_j$，恢复 7.2 节的公式。
+
+还要证明独立缩放四个代表不会改变结果。若
+
+$$
+\widetilde{\mathbf p}_i=\lambda_i\mathbf p_i,\qquad\lambda_i\ne0,
+$$
+
+则由行列式的双线性性，
+
+$$
+\widetilde{\Delta}_{ij}=\lambda_i\lambda_j\Delta_{ij}.
+$$
+
+于是
+
+$$
+\widetilde R
+=\frac{
+(\lambda_1\lambda_3)(\lambda_2\lambda_4)
+}{
+(\lambda_1\lambda_4)(\lambda_2\lambda_3)
+}
+\frac{\Delta_{13}\Delta_{24}}{\Delta_{14}\Delta_{23}}
+=R.
+$$
+
+因此交比属于四个有序射影点，而不属于任意选取的坐标代表。
+
+### 7.5 用行列式重新证明射影不变性
+
+令 $H\in\operatorname{GL}(2,\mathbb R)$，选择输出代表 $\mathbf p_i'=H\mathbf p_i$。那么
+
+$$
+\begin{aligned}
+\Delta_{ij}'
+&=\det[H\mathbf p_i\ H\mathbf p_j]\\
+&=\det\bigl(H[\mathbf p_i\ \mathbf p_j]\bigr)\\
+&=(\det H)\Delta_{ij}.
+\end{aligned}
+$$
+
+代入交比，
+
+$$
+R'
+=\frac{(\det H)^2\Delta_{13}\Delta_{24}}
+{(\det H)^2\Delta_{14}\Delta_{23}}
+=R.
+$$
+
+这个证明直接在底层线性空间中进行，既不用透视除法，也不要求点或像处于某张有限图。无穷远点自动包含在内，前一个分式证明则帮助解释“比例的比例”如何消去分母。
+
+### 7.6 含无穷远点的计算
+
+取
+
+$$
+A=[0:1],\quad B=[1:1],\quad
+C=[2:1],\quad D=[1:0].
+$$
+
+逐项计算：
+
+$$
+\Delta_{AC}=-2,\quad
+\Delta_{BD}=-1,\quad
+\Delta_{AD}=-1,\quad
+\Delta_{BC}=-1.
+$$
+
+因此
+
+$$
+\operatorname{CR}(0,1;2,\infty)
+=\frac{(-2)(-1)}{(-1)(-1)}
+=2.
+$$
+
+整个过程没有把 $\infty$ 代入实数除法。
+
+一般地，有限点 $A,B,C$ 与无穷远点 $[1:0]$ 满足
+
+$$
+\Delta_{AC}=A-C,\quad
+\Delta_{B\infty}=-1,\quad
+\Delta_{A\infty}=-1,\quad
+\Delta_{BC}=B-C,
+$$
+
+所以
+
+$$
+\boxed{
+\operatorname{CR}(A,B;C,\infty)=\frac{A-C}{B-C}.
+}
+$$
+
+普通仿射三点比例，正是将第四点指定为无穷远点后的交比。
+
+射影不变性始终给出
+
+$$
+\operatorname{CR}(T(A),T(B);T(C),T(\infty))
+=\operatorname{CR}(A,B;C,\infty).
+$$
+
+对仿射变换，$T(\infty)=\infty$，从而得到三点比例不变；一般射影变换会移动所指定的无穷远点，因而不能把左侧最后一点擅自换回 $\infty$。
+
+### 7.7 任意射影直线上的交比
+
+在任意 $\mathbb P^n$ 中，设直线 $L=\mathbb P(W)$，其中 $\dim W=2$。选取 $W$ 的基 $\mathbf u,\mathbf v$，线上点可写为
+
+$$
+P_i=[s_i\mathbf u+t_i\mathbf v],
+\qquad(s_i,t_i)\ne(0,0).
+$$
+
+用二维参数 $\mathbf q_i=(s_i,t_i)^{\mathsf T}$ 定义
+
+$$
+\Delta_{ij}=s_it_j-s_jt_i,
+\qquad
+\operatorname{CR}(P_1,P_2;P_3,P_4)
+=\frac{\Delta_{13}\Delta_{24}}{\Delta_{14}\Delta_{23}}.
+$$
+
+注意这里计算的是直线内部的<strong>二维参数行列式</strong>，不是直接对高维点代表取一个不存在的二阶方阵行列式。
+
+若改用另一组基，满足
+
+$$
+[\widetilde{\mathbf u}\ \widetilde{\mathbf v}]
+=[\mathbf u\ \mathbf v]M,\qquad M\in\operatorname{GL}(2,\mathbb R),
+$$
+
+则参数变为 $\widetilde{\mathbf q}_i=M^{-1}\mathbf q_i$。因此
+
+$$
+\widetilde{\Delta}_{ij}=\det(M^{-1})\Delta_{ij},
+$$
+
+共同因子仍在交比中抵消，故定义与所选参数基无关。
+
+若高维射影变换由 $H$ 给出，则
+
+$$
+P_i'=[s_iH\mathbf u+t_iH\mathbf v].
+$$
+
+$H\mathbf u,H\mathbf v$ 是像直线底层空间的一组基，各点参数仍为 $[s_i:t_i]$，交比自然保持。因此交比并不限于 $\mathbb P^1$ 作为整个环境的情况，它适用于任意维射影空间中同一直线上的四个不同点。
+
+### 7.8 调和四点组与中点关系
+
+若
+
+$$
+\operatorname{CR}(A,B;C,D)=-1,
+$$
+
+称这四个有序点构成调和点列或调和四点组。例如
+
+$$
+\operatorname{CR}(-1,1;0,\infty)
+=\frac{-1-0}{1-0}=-1.
+$$
+
+更一般地，若 $M=(A+B)/2$ 是两个不同有限点的中点，则
+
+$$
+\operatorname{CR}(A,B;M,\infty)
+=\frac{A-M}{B-M}=-1.
+$$
+
+但调和关系比固定仿射图中的中点关系更一般。取
+
+$$
+T(X)=\frac{X}{X+2},
+\qquad H=\begin{pmatrix}1&0\\1&2\end{pmatrix}.
+$$
+
+它将 $(-1,1,0,\infty)$ 依次送到 $(-1,1/3,0,1)$，因为
+
+$$
+H\begin{pmatrix}1\\0\end{pmatrix}
+=\begin{pmatrix}1\\1\end{pmatrix}.
+$$
+
+新的两端点中点是 $(-1+1/3)/2=-1/3$，已经不是 $0$。然而
+
+$$
+\operatorname{CR}\left(-1,\frac13;0,1\right)
+=
+\frac{(-1)\left(-\frac23\right)}
+{(-2)\left(\frac13\right)}
+=-1.
+$$
+
+射影变换保留了完整的四点调和关系，而没有保留指定无穷远点之后的中点解释。
+
+### 7.9 点序排列产生的六种值
+
+设 $r=\operatorname{CR}(A,B;C,D)$。由固定定义可直接验证
+
+$$
+\operatorname{CR}(B,A;C,D)=\frac1r,
+\qquad
+\operatorname{CR}(A,C;B,D)=1-r.
+$$
+
+所有四点排列至多给出六个值：
+
+$$
+r,\quad\frac1r,\quad1-r,\quad\frac1{1-r},
+\quad\frac{r}{r-1},\quad\frac{r-1}{r}.
+$$
+
+对于互不相同的四点，$r\ne0,1$，所列分式有定义；某些特殊值会让六种结果重复。例如调和交比对应的排列值集合只有 $-1,2,1/2$。
+
+前面的例子中，$\operatorname{CR}(0,1;2,3)=4/3$，交换前两点后为 $3/4$。比较教材或程序结果时，不能忽略点序。
+
+### 7.10 三个不同点如何归一化为零、一与无穷远
+
+在 $\mathbb P^1$ 上，任意三个互不相同的有序点，都能通过一个射影变换送到 $0,1,\infty$。
+
+先设三点都是有限点 $A=a,B=b,C=c$，定义
+
+$$
+F(X)=\frac{(X-a)(b-c)}{(X-c)(b-a)}.
+$$
+
+直接代入得到 $F(a)=0$、$F(b)=1$；$X=c$ 时分母为零而分子非零，因此射影像为 $\infty$。
+
+相应矩阵为
+
+$$
+H_F=
+\begin{pmatrix}
+b-c&-a(b-c)\\
+b-a&-c(b-a)
+\end{pmatrix}.
+$$
+
+其行列式为
+
+$$
+\begin{aligned}
+\det H_F
+&=-c(b-c)(b-a)+a(b-c)(b-a)\\
+&=(b-c)(b-a)(a-c)\ne0,
+\end{aligned}
+$$
+
+因为三点两两不同，所以这确实是可逆射影变换。
+
+为了包含输入三点中已有无穷远点的情况，改用齐次构造。设
+
+$$
+P_i=[u_i:v_i],\qquad i=1,2,3,
+$$
+
+并定义线性函数
+
+$$
+\ell_i(x,w)=v_ix-u_iw.
+$$
+
+它恰好在 $P_i$ 处为零。由于三点不同，
+
+$$
+\ell_1(u_2,v_2)\ne0,\qquad
+\ell_3(u_2,v_2)\ne0.
+$$
+
+令
+
+$$
+k=\frac{\ell_3(u_2,v_2)}{\ell_1(u_2,v_2)},
+$$
+
+并构造
+
+$$
+N([x:w])=[k\ell_1(x,w):\ell_3(x,w)].
+$$
+
+$\ell_1,\ell_3$ 不成比例，所以构成可逆的二阶矩阵。逐点检查：
+
+$$
+N(P_1)=[0:1]=0,\qquad
+N(P_2)=[1:1]=1,\qquad
+N(P_3)=[1:0]=\infty.
+$$
+
+这个构造不需要假设任何 $v_i$ 非零。
+
+### 7.11 三组有序点对应为何唯一确定变换
+
+先证明一个引理：固定 $0,1,\infty$ 的射影变换只能是恒等变换。
+
+设该变换由
+
+$$
+H=\begin{pmatrix}\alpha&\beta\\\gamma&\delta\end{pmatrix}
+$$
+
+表示。固定 $0=[0:1]$ 意味着 $[\beta:\delta]=[0:1]$，所以 $\beta=0$；固定 $\infty=[1:0]$ 意味着 $[\alpha:\gamma]=[1:0]$，所以 $\gamma=0$。可逆性保证 $\alpha,\delta\ne0$。最后固定 $1=[1:1]$ 要求 $[\alpha:\delta]=[1:1]$，因此 $\alpha=\delta$。于是 $H$ 是非零标量矩阵，射影作用为恒等。
+
+现在设源点 $P_1,P_2,P_3$ 两两不同，目标点 $Q_1,Q_2,Q_3$ 也两两不同。
+
+第一步，证明存在。分别用上一节的构造选取 $N_P,N_Q$，将源、目标三点都按序送到 $0,1,\infty$。则
+
+$$
+T=N_Q^{-1}\circ N_P
+$$
+
+满足 $T(P_i)=Q_i$。
+
+第二步，证明唯一。若 $F,G$ 都满足这三组对应，令
+
+$$
+U=G^{-1}\circ F.
+$$
+
+则 $U(P_i)=P_i$。再定义共轭变换
+
+$$
+K=N_P\circ U\circ N_P^{-1}.
+$$
+
+因为 $N_P(P_i)$ 依次是 $0,1,\infty$，所以 $K$ 固定这三个标准点。由引理，$K=\operatorname{id}$，从而
+
+$$
+U=N_P^{-1}\circ K\circ N_P=\operatorname{id}.
+$$
+
+因此 $G^{-1}\circ F=\operatorname{id}$，即 $F=G$。这就得到：
+
+$$
+\boxed{
+\text{射影直线上三组有序互异点对应唯一确定一个射影变换}
+}
+$$
+
+### 7.12 第四个点为何携带真正的射影信息
+
+前三个不同点可以任意指定到另外三个不同点，因此三点组本身没有额外的非平凡数值射影不变量。第四点的像却不能再自由选择，因为前三点已经确定了整个变换。
+
+具体地，将前三点送到 $0,1,\infty$ 后，第四点是某个有限点 $d\ne0,1$，由齐次公式
+
+$$
+\operatorname{CR}(0,1;\infty,d)=\frac{d-1}{d}=1-\frac1d.
+$$
+
+所以在本文的点序约定下，
+
+$$
+d=\frac1{1-r},
+\qquad r=\operatorname{CR}(A,B;C,D).
+$$
+
+交比唯一控制归一化之后第四点的位置。
+
+于是，对两个互异的有序四点组，存在逐一对应的射影变换，当且仅当交比相等。必要性是交比不变性；充分性则先用唯一的三点变换匹配前三点，再由交比确定第四点也必须匹配。
+
+交比因此不仅是一个保持不变的数，还完全刻画了射影直线上四个不同有序点的射影等价类。
+
+### 7.13 透视测量中的交比
+
+在下一章的针孔模型中，一条不经过相机中心的三维射影直线，会一一映到一条图像射影直线。限制在这条线上的映射是两个 $\mathbb P^1$ 之间的射影同构，因此四个不同共线点在投影前后具有相同交比。
+
+沿直线排列的物体在图像中的间距可以越来越小，普通长度比例会改变，但四点交比仍然提供几何约束。若再给定已知点、方向或其他场景条件，可将这种约束用于透视测量。
+
+交比本身并不提供完整的欧氏长度信息：单张图像中的四点关系，不能在没有额外尺度或场景约束时恢复所有真实距离。
+
+## 八、透视投影、相机矩阵与消失点
+
+### 8.1 相机局部坐标与虚拟成像平面
+
+先固定一个理想针孔相机的<strong>局部坐标约定</strong>：
+
+- 相机中心在局部原点，光轴沿 $+Z_c$。
+- 焦距 $f>0$，可见前方点满足 $Z_c>0$。
+- 使用位于相机前方 $Z_c=f$ 的虚拟成像平面，以避免真实针孔后方成像的倒置负号。
+- 成像平面上的坐标轴分别与相机的 $X_c,Y_c$ 轴方向相容。
+
+这是相机局部坐标的定义。项目世界坐标仍使用右手系、$z$ 轴向上的约定，世界轴与相机轴通过旋转联系，不把世界“向上”轴直接当成相机光轴。屏幕或图像若使用向下增长的纵坐标，应在局部轴或成像坐标换算中一致处理，不能在推导中途单独改变一个符号。
+
+为简化标准相机的局部计算，以下先将 $(X_c,Y_c,Z_c)$ 简写为 $(X,Y,Z)$。三维仿射点记为 $Q$，图像仿射点记为 $q=(u,v)$。
+
+### 8.2 从直线与平面求交推导透视公式
+
+取前方点 $Q=(X,Y,Z)$。连接相机中心与 $Q$ 的直线可写成
+
+$$
+L(\tau)=\tau(X,Y,Z).
+$$
+
+要求交点位于成像平面 $Z=f$，得到
+
+$$
+\tau Z=f,\qquad \tau=\frac fZ.
+$$
+
+代入前两个坐标，得到
+
+$$
+\boxed{u=f\frac XZ,\qquad v=f\frac YZ.}
+$$
+
+它也可以由相似三角形推出。尺度因子是 $f/Z$，因此固定横向尺寸在更大深度处投影得更小。
+
+例如 $f=2$，点 $Q_1=(2,0,4)$ 与 $Q_2=(2,0,8)$ 的横向投影为
+
+$$
+u_1=2\frac24=1,\qquad
+u_2=2\frac28=\frac12.
+$$
+
+更一般地，一段与成像平面平行、长度为 $L$、整段深度都为 $Z$ 的线段，在成像平面上的长度是
+
+$$
+\ell=\frac{fL}{Z}.
+$$
+
+深度加倍，投影长度减半。这里使用的是光轴深度 $Z$，而不是任意点到相机中心的欧氏距离。
+
+作为仿射坐标中的映射，
+
+$$
+\pi(X,Y,Z)=\left(f\frac XZ,f\frac YZ\right)
+$$
+
+通常不是仿射映射，因为分母随点的位置变化。其线性结构需要在齐次坐标中表达。
+
+### 8.3 三维点、图像点与相机矩阵
+
+三维射影点属于 $\mathbb P^3$，代表写为
+
+$$
+\widetilde{\mathbf Q}
+=\begin{pmatrix}X\\Y\\Z\\W\end{pmatrix}.
+$$
+
+在有限世界图中，普通三维坐标为 $(X/W,Y/W,Z/W)$，通常选 $W=1$。图像点属于 $\mathbb P^2$，代表写为
+
+$$
+\mathbf q=\begin{pmatrix}x\\y\\w\end{pmatrix},
+\qquad u=\frac xw,\quad v=\frac yw.
+$$
+
+三维齐次分量 $W$ 和图像齐次分量 $w$ 属于不同空间。
+
+标准相机可以选择
+
+$$
+P=
+\begin{pmatrix}
+f&0&0&0\\
+0&f&0&0\\
+0&0&1&0
+\end{pmatrix}.
+$$
+
+对有限点代表，
+
+$$
+P\begin{pmatrix}X\\Y\\Z\\1\end{pmatrix}
+=\begin{pmatrix}fX\\fY\\Z\end{pmatrix}.
+$$
+
+最后除以图像分量 $w=Z$，就得到刚才的透视公式。用一般的齐次代表表示为
+
+$$
+\boxed{\mathbf q\sim P\widetilde{\mathbf Q}.}
+$$
+
+需要区分几种矩阵：
+
+| 映射 | 矩阵 | 几何类型 |
+| --- | --- | --- |
+| 二维单应性 | 可逆 $3\times3$ | $\mathbb P^2\to\mathbb P^2$ |
+| 三维射影变换 | 可逆 $4\times4$ | $\mathbb P^3\to\mathbb P^3$ |
+| 满行秩针孔投影 | $3\times4$ | $\mathbb P^3\dashrightarrow\mathbb P^2$ |
+
+虚线箭头提示相机投影并非处处定义的可逆射影变换。图形管线保留裁剪空间坐标的 $4\times4$ 投影矩阵，与这里直接得到二维齐次图像的 $3\times4$ 相机矩阵也不是同一个矩阵。
+
+### 8.4 深度歧义与相机中心的零空间
+
+取 $f=1$。不同三维点
+
+$$
+Q_1=(1,2,1),\quad
+Q_2=(2,4,2),\quad
+Q_3=(10,20,10)
+$$
+
+都投影到 $(u,v)=(1,2)$。它们分别对应
+
+$$
+[1:2:1:1],\quad[2:4:2:1],\quad[10:20:10:1],
+$$
+
+是三个不同的 $\mathbb P^3$ 点，因为前三个分量缩放时，最后一个分量没有同比缩放。相机矩阵消去第四分量后，却得到同一个 $\mathbb P^2$ 点。
+
+任意 $t>0$ 的点 $Q(t)=(t,2t,t)$ 都给出相同图像。因此一个图像点一般只确定观察方向，不能确定深度。
+
+标准相机的中心代表为
+
+$$
+\mathbf C=(0,0,0,1)^{\mathsf T},
+\qquad P\mathbf C=\mathbf0.
+$$
+
+零输出不表示合法射影点，所以相机中心本身没有投影：从中心指向自身，无法确定观察方向。
+
+一般满行秩 $3\times4$ 相机矩阵满足
+
+$$
+\dim\ker P=4-3=1.
+$$
+
+其核的一维生成向量 $\mathbf C$ 表示唯一的射影中心 $C=[\mathbf C]$。因此准确的映射是
+
+$$
+\boxed{
+\pi_P:\mathbb P^3\setminus\{C\}\longrightarrow\mathbb P^2,
+\qquad
+\pi_P([\widetilde{\mathbf Q}])=[P\widetilde{\mathbf Q}].
+}
+$$
+
+固定图像点 $[\mathbf q]$ 的逆像由 $P\widetilde{\mathbf Q}\in\operatorname{span}(\mathbf q)\setminus\{\mathbf0\}$ 描述。由于 $P$ 满行秩，$P^{-1}(\operatorname{span}(\mathbf q))$ 是包含 $\ker P$ 的二维线性子空间。射影化后是一条经过 $C$ 的直线，去掉无定义的中心点，就是该像点的全部逆像。
+
+在欧氏有限空间中再限制为相机前方，才得到通常的观察射线。<strong>相机的深度歧义与射影点的尺度等价是两个层次的现象。</strong>
+
+### 8.5 世界坐标、相机外参与中心位置
+
+现在恢复坐标系下标。世界点与相机点满足
+
+$$
+\mathbf X_c=R\mathbf X_w+\mathbf t,
+\qquad R\in\operatorname{SO}(3).
+$$
+
+这里 $R,\mathbf t$ 表示<strong>从世界坐标到相机坐标</strong>的变换；$\mathbf t$ 不是相机中心的世界位置。
+
+若相机中心的世界坐标为 $\mathbf C_w$，将其代入应得到局部原点：
+
+$$
+\mathbf0=R\mathbf C_w+\mathbf t.
+$$
+
+所以
+
+$$
+\mathbf t=-R\mathbf C_w,\qquad
+\mathbf C_w=-R^{\mathsf T}\mathbf t,
+$$
+
+并且
+
+$$
+\boxed{\mathbf X_c=R(\mathbf X_w-\mathbf C_w).}
+$$
+
+这表示先减去相机中心，再将差向量转换到相机基下。
+
+若世界齐次代表为 $\widetilde{\mathbf X}_w=(\mathbf X_w^{\mathsf T},1)^{\mathsf T}$，则
+
+$$
+\mathbf X_c=[R\mid\mathbf t]\widetilde{\mathbf X}_w.
+$$
+
+若保留第四分量，可以写为
+
+$$
+\begin{pmatrix}\mathbf X_c\\1\end{pmatrix}
+=
+\underbrace{
+\begin{pmatrix}
+R&\mathbf t\\
+\mathbf0^{\mathsf T}&1
+\end{pmatrix}
+}_{E}
+\begin{pmatrix}\mathbf X_w\\1\end{pmatrix}.
+$$
+
+$E$ 是可逆的世界到相机外参变换。投影之前的这一步仍是仿射变换。
+
+### 8.6 内参矩阵与完整针孔模型
+
+在成像平面坐标进一步换算尺度并移动原点后，可以写为
+
+$$
+u=f_x\frac{X_c}{Z_c}+c_x,
+\qquad
+v=f_y\frac{Y_c}{Z_c}+c_y.
+$$
+
+其中 $f_x,f_y$ 是以相应图像坐标单位表示的有效焦距，$c_x,c_y$ 为主点坐标。成像轴方向与上文约定一致时，可取 $f_x,f_y>0$。若考虑两个图像坐标轴的斜交参数 $\sigma$，则
+
+$$
+u=\frac{f_xX_c+\sigma Y_c+c_xZ_c}{Z_c}.
+$$
+
+这些关系由内参矩阵
+
+$$
+K=
+\begin{pmatrix}
+f_x&\sigma&c_x\\
+0&f_y&c_y\\
+0&0&1
+\end{pmatrix}
+$$
+
+表示。本文数值例子取 $\sigma=0$。由于第三分量是 $Z_c$，有
+
+$$
+\mathbf q\sim K\mathbf X_c
+=K[R\mid\mathbf t]\widetilde{\mathbf X}_w.
+$$
+
+因此完整相机矩阵为
+
+$$
+\boxed{P=K[R\mid\mathbf t].}
+$$
+
+在此模型中 $K$ 可逆，$[R\mid\mathbf t]$ 满行秩，所以 $P$ 满行秩；中心可选代表 $(\mathbf C_w^{\mathsf T},1)^{\mathsf T}$。这是理想针孔模型，镜头畸变等效应不包含在该线性齐次表达中。
+
+数值例子取 $R=I$、$\mathbf t=\mathbf0$，
+
+$$
+K=
+\begin{pmatrix}
+800&0&320\\
+0&800&240\\
+0&0&1
+\end{pmatrix},
+\qquad
+\mathbf X_c=\begin{pmatrix}1\\0.5\\2\end{pmatrix}.
+$$
+
+先乘矩阵：
+
+$$
+K\mathbf X_c
+=
+\begin{pmatrix}
+800\cdot1+320\cdot2\\
+800\cdot0.5+240\cdot2\\
+2
+\end{pmatrix}
+=
+\begin{pmatrix}1440\\880\\2\end{pmatrix}.
+$$
+
+再归一化：
+
+$$
+\boxed{(u,v)=(1440/2,880/2)=(720,440).}
+$$
+
+### 8.7 三维直线的像与退化情况
+
+给定仿射直线
+
+$$
+\mathbf X(t)=\mathbf A+t\mathbf D,\qquad\mathbf D\ne\mathbf0.
+$$
+
+齐次代表可拆为
+
+$$
+\widetilde{\mathbf X}(t)
+=
+\begin{pmatrix}\mathbf A\\1\end{pmatrix}
++t\begin{pmatrix}\mathbf D\\0\end{pmatrix}.
+$$
+
+其中 $[\mathbf D:0]$ 表示该直线的三维无穷远点。投影后，
+
+$$
+P\widetilde{\mathbf X}(t)
+=
+\underbrace{P\begin{pmatrix}\mathbf A\\1\end{pmatrix}}_{\mathbf a}
++t\underbrace{P\begin{pmatrix}\mathbf D\\0\end{pmatrix}}_{\mathbf d}.
+$$
+
+所有像代表都落在 $\operatorname{span}(\mathbf a,\mathbf d)$ 中。
+
+若原射影直线不经过相机中心，其底层二维子空间与 $\ker P$ 只交于零向量，$P$ 在这个子空间上单射，所以 $\mathbf a,\mathbf d$ 线性无关。像空间为二维，射影化后是一条图像直线；包含无穷远参数后，两条射影直线之间的映射是一一对应的射影同构。
+
+若原直线经过相机中心，其底层二维空间包含一维核，限制映射的秩只有 $1$。因此除中心本身无定义外，整条射影直线都投影到同一个图像点。这说明“相机将直线映为直线”需要排除经过中心的退化情况。
+
+也由此补全交比的投影解释：对不经过中心的直线，限制映射为可逆的二维线性映射所诱导，所以线上四个不同点的交比保持。
+
+### 8.8 平行线、方向点与消失点
+
+对标准相机，直线 $\mathbf X(t)=\mathbf A+t\mathbf D$ 的齐次图像代表为
+
+$$
+\begin{pmatrix}
+f(A_X+tD_X)\\
+f(A_Y+tD_Y)\\
+A_Z+tD_Z
+\end{pmatrix}.
+$$
+
+在射影意义下，让 $t$ 趋于无穷并将代表除以 $t$，得到
+
+$$
+\mathbf q_\infty
+\sim
+\begin{pmatrix}fD_X\\fD_Y\\D_Z\end{pmatrix}.
+$$
+
+它与 $\mathbf A$ 无关，只取决于方向。若 $D_Z\ne0$，其有限坐标为
+
+$$
+\boxed{
+u_\infty=f\frac{D_X}{D_Z},
+\qquad
+v_\infty=f\frac{D_Y}{D_Z}.
+}
+$$
+
+这就是该平行方向的消失点。取向上若 $D_Z<0$，可将 $\mathbf D$ 反向以讨论朝前方延伸的极限，射影方向点保持不变。
+
+若 $D_Z=0$，则 $\mathbf q_\infty$ 的最后一分量为零，消失点位于图像无穷远直线。例如 $\mathbf D=(1,0,0)$ 给出 $[1:0:0]$，相应图像直线仍然平行。因此不是所有平行线族都有有限消失点。
+
+对一般相机，世界方向 $\mathbf D_w$ 对应三维无穷远点
+
+$$
+Q_\infty=[D_{wX}:D_{wY}:D_{wZ}:0].
+$$
+
+代入 $P=K[R\mid\mathbf t]$：
+
+$$
+\boxed{
+\mathbf q_\infty
+\sim P\begin{pmatrix}\mathbf D_w\\0\end{pmatrix}
+=KR\mathbf D_w.
+}
+$$
+
+平移项消失，说明固定朝向和内参时，消失点不依赖相机的位置。应检查的是相机方向 $\mathbf D_c=R\mathbf D_w$ 的深度分量是否为零。
+
+这也给出消失点的本质定义：
+
+$$
+\boxed{\text{消失点}=\text{三维方向对应的无穷远点的相机投影}.}
+$$
+
+一族三维平行线共享 $Q_\infty$，因此它们非退化的图像直线都经过 $q_\infty$。三维的平行性通过共同方向点，转化为图像中的共点性。
+
+### 8.9 消失点的完整数值例子
+
+取 $f=1$，考虑两条三维平行直线的前方部分
+
+$$
+L_1(t)=(t,0,1+t),\qquad
+L_2(t)=(t,1,1+t),\qquad t\ge0.
+$$
+
+共同方向为 $\mathbf D=(1,0,1)$。第一条投影为
+
+$$
+u_1(t)=\frac{t}{1+t},\qquad v_1(t)=0,
+$$
+
+所以其图像所在直线为 $v=0$。第二条投影为
+
+$$
+u_2(t)=\frac{t}{1+t},\qquad
+v_2(t)=\frac1{1+t},
+$$
+
+满足 $u_2+v_2=1$，图像所在直线为 $u+v=1$。两条图像直线交于
+
+$$
+(u,v)=(1,0).
+$$
+
+这也是 $t\to+\infty$ 时两条投影曲线共同趋近的点。对有限参数，两个三维仿射点并未在此实际相遇；相遇的是两条直线的射影延拓。
+
+用方向公式直接计算，
+
+$$
+(u_\infty,v_\infty)
+=\left(\frac11,\frac01\right)=(1,0),
+$$
+
+与求交结果完全一致。
+
+### 8.10 固定深度平面的单应性
+
+相机从整个三维空间到图像的投影不可逆，但如果将点限制在一个不经过相机中心的平面上，就得到两个二维射影空间之间的单应性。
+
+先取标准相机前方平面 $Z=z_0$，$z_0>0$。平面上的点只需要二维坐标 $(X,Y)$，其平面齐次代表为 $(X,Y,1)^{\mathsf T}$。投影满足
+
+$$
+\begin{pmatrix}x\\y\\w\end{pmatrix}
+=
+\underbrace{
+\begin{pmatrix}
+f&0&0\\
+0&f&0\\
+0&0&z_0
+\end{pmatrix}
+}_{H}
+\begin{pmatrix}X\\Y\\1\end{pmatrix}.
+$$
+
+由于 $\det H=f^2z_0\ne0$，这是单应性。归一化后
+
+$$
+u=\frac f{z_0}X,\qquad v=\frac f{z_0}Y,
+$$
+
+在这个特殊例子中，它只是二维缩放。倾斜平面则一般产生随平面位置变化的分母。
+
+### 8.11 任意平面嵌入与退化条件
+
+选取平面上的参考点 $\mathbf A$，以及两个线性无关的平面内方向 $\mathbf U,\mathbf V$，用参数 $\xi,\eta$ 表示
+
+$$
+\mathbf X(\xi,\eta)=\mathbf A+\xi\mathbf U+\eta\mathbf V.
+$$
+
+用 $\xi,\eta$ 区别于图像坐标 $u,v$。定义满列秩矩阵
+
+$$
+B=
+\begin{pmatrix}
+U_X&V_X&A_X\\
+U_Y&V_Y&A_Y\\
+U_Z&V_Z&A_Z\\
+0&0&1
+\end{pmatrix}.
+$$
+
+则
+
+$$
+\widetilde{\mathbf X}(\xi,\eta)
+=B\begin{pmatrix}\xi\\\eta\\1\end{pmatrix}.
+$$
+
+$B$ 将平面的二维齐次参数嵌入三维齐次空间。再施加相机矩阵，
+
+$$
+\mathbf q\sim
+PB\begin{pmatrix}\xi\\\eta\\1\end{pmatrix}.
+$$
+
+因此平面到图像的矩阵为
+
+$$
+\boxed{H=PB,\qquad
+P\in\mathbb R^{3\times4},\quad
+B\in\mathbb R^{4\times3},\quad
+H\in\mathbb R^{3\times3}.}
+$$
+
+它何时可逆？若 $(PB)\mathbf z=\mathbf0$，则 $B\mathbf z$ 落在 $\operatorname{im}B\cap\ker P$ 中。由于 $B$ 单射，$PB$ 可逆当且仅当这个交集只有零向量，也就是平面的射影延拓不包含相机中心。
+
+对当前有限中心针孔相机，这恰好意味着原仿射平面不经过相机中心。若经过中心，则平面底层三维空间包含一维核，限制映射的秩降为 $2$，投影成为图像直线，并且在中心点处无定义。
+
+### 8.12 两个视角之间的平面诱导单应性
+
+两台相机 $P_1,P_2$ 观察同一个平面，使用同一个嵌入矩阵 $B$。令
+
+$$
+H_1=P_1B,\qquad H_2=P_2B.
+$$
+
+对平面齐次坐标 $\mathbf s$，
+
+$$
+\mathbf q_1\sim H_1\mathbf s,\qquad
+\mathbf q_2\sim H_2\mathbf s.
+$$
+
+若两个相机中心都不在该平面上，$H_1,H_2$ 可逆，从第一式消去平面坐标：
+
+$$
+\mathbf s\sim H_1^{-1}\mathbf q_1.
+$$
+
+代入第二式得到
+
+$$
+\boxed{
+\mathbf q_2\sim H_{21}\mathbf q_1,
+\qquad H_{21}=H_2H_1^{-1}.
+}
+$$
+
+这解释了倾斜纸张的透视校正、同一平面区域的图像配准等操作为何能用一个 $3\times3$ 矩阵描述。
+
+若场景不共面，并且相机中心发生平移，不同深度通常产生不同视差，单个单应矩阵一般无法对齐整个立体场景。相机中心不变、仅改变朝向等特殊情形可以例外，因此“图像间存在单应性”本身不能无条件推出场景一定共面。
+
+## 九、透视正确插值与有理表达
+
+### 9.1 三维线段参数与屏幕参数
+
+设三维线段端点为 $Q_0,Q_1$，两端携带属性 $a_0,a_1$，并假设该属性按照原线段的仿射参数 $t$ 变化：
+
+$$
+Q(t)=(1-t)Q_0+tQ_1,\qquad
+a(t)=(1-t)a_0+ta_1,\qquad 0\le t\le1.
+$$
+
+把线段透视投影到屏幕后，屏幕中点一般不对应三维中点。因而不能直接把屏幕上的线性权重当成 $t$。
+
+先在相机局部 $XZ$ 平面中推导，省略恒为零的 $Y$ 分量。记 $Q_i=(X_i,Z_i)$，并要求 $Z_0,Z_1>0$。线段坐标是
+
+$$
+X(t)=(1-t)X_0+tX_1,\qquad
+Z(t)=(1-t)Z_0+tZ_1.
+$$
+
+标准相机下，端点屏幕坐标为
+
+$$
+u_i=f\frac{X_i}{Z_i}.
+$$
+
+假设 $u_0\ne u_1$，定义屏幕仿射参数 $s$：
+
+$$
+u(t)=(1-s)u_0+su_1,\qquad
+s=\frac{u(t)-u_0}{u_1-u_0}.
+$$
+
+若横坐标相同但投影线段不退化，可以选另一个有变化的屏幕坐标进行同样推导。
+
+### 9.2 从三维参数推导屏幕参数
+
+直接投影线段上的点：
+
+$$
+u(t)
+=f\frac{(1-t)X_0+tX_1}{(1-t)Z_0+tZ_1}.
+$$
+
+由端点公式 $fX_0=Z_0u_0$、$fX_1=Z_1u_1$，可得
+
+$$
+u(t)
+=\frac{(1-t)Z_0u_0+tZ_1u_1}
+{(1-t)Z_0+tZ_1}.
+$$
+
+记 $D(t)=(1-t)Z_0+tZ_1$，则
+
+$$
+u(t)
+=\frac{(1-t)Z_0}{D(t)}u_0
++\frac{tZ_1}{D(t)}u_1.
+$$
+
+这两个系数之和为 $1$，而屏幕线段的仿射参数唯一，所以
+
+$$
+\boxed{
+1-s=\frac{(1-t)Z_0}{D(t)},
+\qquad
+s=\frac{tZ_1}{D(t)}.
+}
+$$
+
+只有在特殊情形，例如 $Z_0=Z_1$ 时，才对所有 $t$ 有 $s=t$。
+
+### 9.3 反向求三维参数与属性
+
+分别将上式除以对应深度：
+
+$$
+\frac{1-s}{Z_0}=\frac{1-t}{D(t)},
+\qquad
+\frac{s}{Z_1}=\frac{t}{D(t)}.
+$$
+
+相加得到
+
+$$
+\frac{1-s}{Z_0}+\frac{s}{Z_1}=\frac1{D(t)}.
+$$
+
+于是
+
+$$
+\boxed{
+t=\frac{s/Z_1}{(1-s)/Z_0+s/Z_1},
+\qquad
+1-t=\frac{(1-s)/Z_0}{(1-s)/Z_0+s/Z_1}.
+}
+$$
+
+将它们代入原属性 $a(t)=(1-t)a_0+ta_1$，得到
+
+$$
+\boxed{
+a(s)=
+\frac{(1-s)a_0/Z_0+sa_1/Z_1}
+{(1-s)/Z_0+s/Z_1}.
+}
+$$
+
+这就是线段上的<strong>透视正确插值</strong>。它先在线性屏幕参数下插值 $a/Z$ 与 $1/Z$，然后相除。倒数深度来源于消去透视除法引入的分母，而不是一个经验修正因子。
+
+### 9.4 屏幕中点对应三维四分之一位置
+
+取 $f=1$，在 $XZ$ 平面中的端点为
+
+$$
+Q_0=(0,1),\qquad Q_1=(3,3),
+$$
+
+即完整三维坐标为 $(0,0,1)$、$(3,0,3)$。投影端点为
+
+$$
+u_0=0,\qquad u_1=1.
+$$
+
+屏幕中点 $u=1/2$ 对应 $s=1/2$。反求原参数：
+
+$$
+\begin{aligned}
+t
+&=\frac{(1/2)/3}{(1/2)/1+(1/2)/3}\\
+&=\frac{1/6}{1/2+1/6}
+=\frac{1/6}{2/3}
+=\frac14.
+\end{aligned}
+$$
+
+原线段上此点的坐标为
+
+$$
+X=\frac34,\qquad Z=\frac32,
+\qquad \frac XZ=\frac12,
+$$
+
+与屏幕中点一致。
+
+若 $a_0=0,a_1=1$，正确属性为 $a=t=1/4$；直接用屏幕权重插值会得到 $1/2$。再例如 $s=0.64=16/25$，正确参数为
+
+$$
+t=
+\frac{(16/25)/3}{(9/25)/1+(16/25)/3}
+=\frac{16}{43}\approx0.372093,
+$$
+
+同样明显不同于屏幕参数 $0.64$。
+
+### 9.5 三角形的两组重心坐标
+
+设三维三角形顶点为 $Q_0,Q_1,Q_2$，相机坐标深度满足 $Z_i>0$，且投影后的三个顶点不共线。
+
+三角形上的点 $Q$ 有原三维仿射重心坐标
+
+$$
+Q=\sum_{i=0}^2\lambda_iQ_i,\qquad
+\sum_{i=0}^2\lambda_i=1.
+$$
+
+内部点还满足 $\lambda_i\ge0$。一个在三角形上仿射变化的属性应为
+
+$$
+a=\sum_{i=0}^2\lambda_i a_i.
+$$
+
+投影到屏幕后，光栅化所用的屏幕重心坐标记为 $\beta_i$，满足 $\sum_i\beta_i=1$。透视投影一般使 $\beta_i\ne\lambda_i$，下面推导二者关系。
+
+对每个顶点选择由同一个标准相机矩阵实际计算的图像代表：
+
+$$
+\widetilde{\mathbf q}_i
+=
+\begin{pmatrix}fX_i\\fY_i\\Z_i\end{pmatrix}
+=Z_i\begin{pmatrix}u_i\\v_i\\1\end{pmatrix}.
+$$
+
+原顶点均使用第四分量为 $1$ 的三维齐次代表。由于 $\sum_i\lambda_i=1$，点 $Q$ 的对应代表是这些代表的线性组合；相机矩阵线性，所以
+
+$$
+\widetilde{\mathbf q}
+=\sum_{i=0}^2\lambda_i\widetilde{\mathbf q}_i
+=\sum_{i=0}^2\lambda_i Z_i
+\begin{pmatrix}u_i\\v_i\\1\end{pmatrix}.
+$$
+
+最后一分量为 $D=\sum_j\lambda_jZ_j>0$，归一化得到
+
+$$
+\begin{pmatrix}u\\v\\1\end{pmatrix}
+=\sum_{i=0}^2
+\frac{\lambda_iZ_i}{D}
+\begin{pmatrix}u_i\\v_i\\1\end{pmatrix}.
+$$
+
+另一方面，屏幕重心坐标定义为
+
+$$
+\begin{pmatrix}u\\v\\1\end{pmatrix}
+=\sum_{i=0}^2\beta_i
+\begin{pmatrix}u_i\\v_i\\1\end{pmatrix}.
+$$
+
+投影三角形非退化，重心坐标唯一，因此逐项比较：
+
+$$
+\boxed{\beta_i=\frac{\lambda_iZ_i}{\sum_j\lambda_jZ_j}.}
+$$
+
+### 9.6 反求权重与三角形属性公式
+
+由 $\beta_i=\lambda_iZ_i/D$，
+
+$$
+\frac{\beta_i}{Z_i}=\frac{\lambda_i}{D}.
+$$
+
+对 $i$ 求和并利用 $\sum_i\lambda_i=1$：
+
+$$
+\sum_i\frac{\beta_i}{Z_i}=\frac1D.
+$$
+
+因此
+
+$$
+\boxed{
+\lambda_i
+=\frac{\beta_i/Z_i}{\sum_j\beta_j/Z_j}.
+}
+$$
+
+代回属性的原仿射表达式，得到
+
+$$
+\boxed{
+a=
+\frac{\displaystyle\sum_{i=0}^2\beta_i a_i/Z_i}
+{\displaystyle\sum_{i=0}^2\beta_i/Z_i}.
+}
+$$
+
+若属性是纹理坐标、颜色或其他向量值，公式逐分量成立，前提仍然是该属性按原三角形的仿射重心坐标变化。插值后的单位法线若需要保持单位长度，还需另行归一化。
+
+### 9.7 推广到裁剪空间的齐次分量
+
+在图形管线中，通常先从统一的输入代表计算
+
+$$
+\mathbf c_i
+=M\begin{pmatrix}\mathbf X_i\\1\end{pmatrix}
+=\begin{pmatrix}x_i^c\\y_i^c\\z_i^c\\w_i\end{pmatrix}.
+$$
+
+这里 $M$ 包含所需的线性齐次变换，$w_i$ 是实际裁剪坐标的第四分量。在本文 $+Z_c$ 为前方的一种标准透视矩阵中，可取 $w_i=Z_{c,i}$；其他约定可能有符号或比例差异，因此一般写成
+
+$$
+\boxed{
+a=
+\frac{\sum_i\beta_i a_i/w_i}{\sum_i\beta_i/w_i}.
+}
+$$
+
+这个公式依赖代表的一致性：$\mathbf c_i$ 来自同一个矩阵作用于第四分量为 $1$ 的输入点。虽然独立缩放每个 $\mathbf c_i$ 不改变顶点的射影位置，却会改变其作为原仿射插值之线性像的相对尺度。<strong>不能在保持原属性和原插值含义不变的同时，任意独立重缩放各顶点代表，再把改变后的 $w_i$ 直接代入。</strong>所有顶点共同乘以同一个非零尺度则会在最终比值中抵消。
+
+上面的简洁推导限定了有效的非零分母和非退化投影。跨越相机平面、需要裁剪的几何应先在齐次裁剪空间中处理，生成相容的新顶点及属性，再对有效投影三角形使用插值公式，不能直接跨越 $w=0$ 做普通屏幕插值。
+
+### 9.8 为什么只需插值属性除以深度与倒数深度
+
+在顶点处定义
+
+$$
+r_i=\frac1{w_i},\qquad b_i=\frac{a_i}{w_i}.
+$$
+
+对屏幕重心坐标作仿射插值：
+
+$$
+r=\sum_i\beta_i r_i,\qquad
+b=\sum_i\beta_i b_i.
+$$
+
+然后恢复
+
+$$
+a=\frac br.
+$$
+
+这解释了透视正确插值的代数实现：屏幕空间中仍能使用仿射插值，只是插值对象应为 $a_i/w_i$ 和 $1/w_i$，之后再做一次除法。
+
+也可以反向看：原空间的仿射组合经过齐次线性映射后，除以随点变化的分母，成为屏幕坐标中的有理表达。倒数齐次分量正是将屏幕权重还原为原权重所需的信息。
+
+### 9.9 NDC 深度与真实相机深度不同
+
+真实相机深度 $Z$ 一般不是屏幕空间中的仿射函数，但其倒数满足
+
+$$
+\frac1Z=\sum_i\beta_i\frac1{Z_i}.
+$$
+
+对常见的标准透视深度映射，可以写成
+
+$$
+z_{\mathrm{ndc}}=A+\frac BZ,
+$$
+
+其中 $A,B$ 是投影矩阵确定的常数，不同深度范围和坐标约定会改变这些常数。于是
+
+$$
+\begin{aligned}
+z_{\mathrm{ndc}}
+&=A+B\sum_i\beta_i\frac1{Z_i}\\
+&=\sum_i\beta_i\left(A+\frac B{Z_i}\right)\\
+&=\sum_i\beta_i z_{\mathrm{ndc},i},
+\end{aligned}
+$$
+
+这里使用了 $\sum_i\beta_i=1$。
+
+因此这种 NDC 深度可以直接按屏幕重心坐标仿射插值；常见深度缓冲值若只是对它再做固定仿射换算，也具有同样性质。不能据此推断真实深度 $Z$ 或普通顶点属性也能直接做屏幕线性插值。
+
+### 9.10 与有理 Bézier、NURBS 的联系
+
+有理曲线常写为
+
+$$
+C(t)=
+\frac{\sum_iN_i(t)\omega_iP_i}
+{\sum_iN_i(t)\omega_i}.
+$$
+
+其中 $N_i$ 是基函数，$\omega_i$ 是控制点权重，分母要求非零。构造高一维的齐次控制点
+
+$$
+\widetilde P_i=
+\begin{pmatrix}\omega_iP_i\\\omega_i\end{pmatrix},
+$$
+
+先做线性组合
+
+$$
+\widetilde C(t)=\sum_iN_i(t)\widetilde P_i,
+$$
+
+再以前面的坐标分量除以最后的权重分量，就恢复 $C(t)$。
+
+透视正确插值也可形式化地令 $\omega_i=1/w_i$，写为
+
+$$
+a=
+\frac{\sum_i\beta_i\omega_i a_i}{\sum_i\beta_i\omega_i}.
+$$
+
+两者共享“齐次组合后归一化”的有理代数结构，但权重和基函数的来源不同：NURBS 权重属于建模参数；透视插值的倒数权重由投影产生；屏幕重心坐标也不是一般的 B-Spline 基函数。
+
+相关曲线构造与基函数推导见[《从 Bézier 到 B-Spline 再到 NURBS》](/posts/visualization/bezier-to-b-spline)。这里保留这一代数联系，以说明同一套齐次语言如何同时出现在射影几何、相机与曲线建模中。
+
+## 十、知识回顾与后续扩充
+
+### 10.1 从尺度等价到透视计算
+
+全文可以通过以下对象与结构的对应关系重新串联：
+
+| 起点 | 构造或关系 | 得到的几何解释 |
+| --- | --- | --- |
+| 齐次多项式 | $F(\lambda\mathbf x)=\lambda^dF(\mathbf x)$ | 零点条件与非零代表缩放无关 |
+| 非零向量 | $\mathbf x\sim\lambda\mathbf x$ | 一维线性子空间成为射影点 |
+| 所选仿射图 | $w\ne0$，再选 $w=1$ 代表 | 比值恢复有限仿射坐标 |
+| 图的补集 | $w=0$ | 方向点与无穷远超平面 |
+| 非零泛函 | $\varphi(\mathbf p)=0$ | 点与超平面的自然关联 |
+| 子空间 $W$ | 取零化子 $W^0$ | 包含反转的射影对偶 |
+| 可逆线性映射 $H$ | $[\mathbf x]\mapsto[H\mathbf x]$ | 射影变换及对偶逆转置作用 |
+| 四个不同共线点 | 齐次行列式的比值 | 交比这一数值射影不变量 |
+| 满行秩相机矩阵 $P$ | 排除核对应的中心后取 $[P\widetilde{\mathbf X}]$ | 深度不可逆的透视投影 |
+| 原仿射属性 | 用 $1/w_i$ 还原权重 | 透视正确插值的有理表达 |
+
+这些对象之间的区别同样关键：射影点不等于代表向量；方向点不等于保留长度的自由向量；对偶系数不等于原空间位置；相机投影也不等于可逆射影变换。
+
+齐次坐标把许多仿射计算中的特殊分支统一起来，但不会消除所有退化情况。全零代表仍然非法，重复点不能唯一连线，重复直线不能唯一求交，经过相机中心的直线仍会退化，相机中心自身仍然没有图像。保留这些条件，才能让定义、证明与实际计算彼此一致。
+
+### 10.2 后续扩充：圆锥曲线
+
+后续将在本文的齐次方程、射影变换与对偶框架上，扩充圆锥曲线的射影描述及其相关几何关系。本版到此为止，暂不展开这一部分。
+
+
+
+
+
+
+
+

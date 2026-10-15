@@ -146,11 +146,11 @@ test.describe("Monaco Editor 与全站设置中心 E2E 测试", () => {
 
     // 1. 注入一段故意带有类型错误的代码，验证 tsWorker 能够生成 TS2322 语义错误标记与 squiggly-error
     await page.evaluate(() => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const model = (window as any).monaco.editor
+      const monaco = window.monaco;
+      if (!monaco) return;
+      const model = monaco.editor
         .getModels()
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .find((m: any) => m.uri.path.endsWith(".ts"));
+        .find((candidate) => candidate.uri.path.endsWith(".ts"));
       if (model) {
         model.setValue('const badVal: number = "hello type error";\n');
       }
@@ -161,18 +161,16 @@ test.describe("Monaco Editor 与全站设置中心 E2E 测试", () => {
       .poll(
         async () => {
           return page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const model = (window as any).monaco.editor
+            const monaco = window.monaco;
+            if (!monaco) return [];
+            const model = monaco.editor
               .getModels()
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              .find((m: any) => m.uri.path.endsWith(".ts"));
+              .find((candidate) => candidate.uri.path.endsWith(".ts"));
             if (!model) return [];
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const markers = (window as any).monaco.editor.getModelMarkers({
+            const markers = monaco.editor.getModelMarkers({
               resource: model.uri,
             });
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            return markers.map((m: any) => m.message);
+            return markers.map((marker) => marker.message);
           });
         },
         { timeout: 15000 },
@@ -192,11 +190,11 @@ test.describe("Monaco Editor 与全站设置中心 E2E 测试", () => {
 
     // 4. 输入符合规范且调用 node/console 声明桩的代码，验证错误标记自动清除归零
     await page.evaluate(() => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const model = (window as any).monaco.editor
+      const monaco = window.monaco;
+      if (!monaco) return;
+      const model = monaco.editor
         .getModels()
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .find((m: any) => m.uri.path.endsWith(".ts"));
+        .find((candidate) => candidate.uri.path.endsWith(".ts"));
       if (model) {
         model.setValue("const val: number = 42;\nconsole.log(val);\n");
       }
@@ -206,19 +204,19 @@ test.describe("Monaco Editor 与全站设置中心 E2E 测试", () => {
       .poll(
         async () => {
           return page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const model = (window as any).monaco.editor
+            const monaco = window.monaco;
+            if (!monaco) return 999;
+            const model = monaco.editor
               .getModels()
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              .find((m: any) => m.uri.path.endsWith(".ts"));
+              .find((candidate) => candidate.uri.path.endsWith(".ts"));
             if (!model) return 999;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const markers = (window as any).monaco.editor.getModelMarkers({
+            const markers = monaco.editor.getModelMarkers({
               resource: model.uri,
             });
             // 过滤出 Error 级别诊断 (severity === 8)
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            return markers.filter((m: any) => m.severity === 8).length;
+            return markers.filter(
+              (marker) => marker.severity === monaco.MarkerSeverity.Error,
+            ).length;
           });
         },
         { timeout: 15000 },
@@ -245,11 +243,11 @@ test.describe("Monaco Editor 与全站设置中心 E2E 测试", () => {
 
     // 1. 设置具有推导类型和方法调用的代码
     await page.evaluate(() => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const model = (window as any).monaco.editor
+      const monaco = window.monaco;
+      if (!monaco) return;
+      const model = monaco.editor
         .getModels()
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .find((m: any) => m.uri.path.endsWith(".ts"));
+        .find((candidate) => candidate.uri.path.endsWith(".ts"));
       if (model) {
         model.setValue(
           "const greeting: string = 'hello';\nconsole.log(greeting);\n",
@@ -262,13 +260,11 @@ test.describe("Monaco Editor 与全站设置中心 E2E 测试", () => {
       .poll(
         async () => {
           return page.evaluate(async () => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const monaco = (window as any).monaco;
+            const monaco = window.monaco;
+            if (!monaco) return "";
             const model = monaco.editor
               .getModels()
-              .find((m: { uri: { path: string } }) =>
-                m.uri.path.endsWith(".ts"),
-              );
+              .find((candidate) => candidate.uri.path.endsWith(".ts"));
             if (!model) return "";
             try {
               const getWorker = await monaco.typescript.getTypeScriptWorker();
@@ -296,13 +292,11 @@ test.describe("Monaco Editor 与全站设置中心 E2E 测试", () => {
       .poll(
         async () => {
           return page.evaluate(async () => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const monaco = (window as any).monaco;
+            const monaco = window.monaco;
+            if (!monaco) return [];
             const model = monaco.editor
               .getModels()
-              .find((m: { uri: { path: string } }) =>
-                m.uri.path.endsWith(".ts"),
-              );
+              .find((candidate) => candidate.uri.path.endsWith(".ts"));
             if (!model) return [];
             try {
               const getWorker = await monaco.typescript.getTypeScriptWorker();

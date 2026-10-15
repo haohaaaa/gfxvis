@@ -53,7 +53,14 @@ interface PointSelection {
 }
 
 type ProbeHighlight =
-  "D" | "E0" | "E1" | "E2" | "lambda0" | "lambda1" | "lambda2" | null;
+  | "D"
+  | "E0"
+  | "E1"
+  | "E2"
+  | "lambda0"
+  | "lambda1"
+  | "lambda2"
+  | null;
 
 interface CoordinateDraft {
   x: string;

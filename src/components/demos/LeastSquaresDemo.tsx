@@ -11,7 +11,12 @@ import {
 } from "../../math/index";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import CanvasToolbar from "../framework/CanvasToolbar";
-import CapsuleTabs from "../framework/CapsuleTabs";
+import CanvasResizer from "../framework/CanvasResizer";
+import KdeWindowShell from "../framework/KdeWindowShell";
+import KdeCard from "../framework/KdeCard";
+import KdeTabs from "../framework/KdeTabs";
+import KdeReadout from "../framework/KdeReadout";
+import KdeCheckbox from "../framework/KdeCheckbox";
 import PresetSelector from "../framework/PresetSelector";
 import { AutoMath } from "../framework/AutoMath";
 import ParamSlider from "../framework/ParamSlider";
@@ -804,172 +809,197 @@ export default function LeastSquaresDemo({ height }: { height?: string }) {
     };
   }, [points, AtA, Atb, c, d, lambda, method]);
 
+  const reset2DView = () => {
+    handlePresetChange(presetKey);
+  };
+
+  const reset3DView = () => {
+    if (threeSceneRef.current) {
+      const { camera, controls } = threeSceneRef.current;
+      camera.position.set(6, 4.5, 6);
+      controls.target.set(1.5, 1.5, 1.5);
+      controls.update();
+    }
+  };
+
+  const modeTag =
+    method === "normal"
+      ? "正规方程法"
+      : method === "qr"
+        ? "QR 分解法"
+        : method === "svd"
+          ? "SVD 伪逆法"
+          : "Ridge 正则化";
+
   return (
     <AutoMath>
       <ExpandableDemo id="least-squares-demo" height={height}>
-        <div className="space-y-4">
-          {/* Top Control Bar */}
-          <div className="space-y-2 border-b border-border/80 pb-3">
-            {/* Row 1: Method Tabs & Right-aligned CanvasToolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              {/* Method Tabs */}
-              <CapsuleTabs
-                options={METHOD_TABS}
-                value={method}
-                onChange={(m) => setMethod(m as FitMethod)}
-              />
+        <KdeWindowShell
+          title="最小二乘法与正规方程 (Least Squares & Normal Equations)"
+          eyebrow="Linear Algebra · Projection & Optimization"
+          mark="AᵀAx̂ = Aᵀb"
+          modeTag={modeTag}
+          display={
+            <div className="space-y-3">
+              {/* Dual-View Split Canvas */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Left View: 2D Data Space Canvas */}
+                <div className="relative flex flex-col rounded-xl border border-border/80 bg-surface/50 p-3 shadow-inner">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-500" />
+                      {"数据拟合空间 (Data Space $\\mathbb{R}^2$)"}
+                    </span>
+                    <div className="text-[11px] font-mono text-muted">
+                      {`$y = ${c.toFixed(2)} + ${d.toFixed(2)} x$`}
+                    </div>
+                  </div>
 
-              {/* Right: Toolbar Controls (S / M / L & Expand) */}
-              <CanvasToolbar className="static" />
-            </div>
+                  <div className="relative h-[var(--demo-height,20rem)] w-full rounded-lg overflow-hidden border border-border/60 bg-slate-950">
+                    <canvas
+                      ref={canvas2DRef}
+                      onPointerDown={handlePointerDown2D}
+                      onPointerMove={handlePointerMove2D}
+                      onPointerUp={handlePointerUp2D}
+                      onPointerCancel={handlePointerUp2D}
+                      className="w-full h-full cursor-crosshair touch-none"
+                    />
+                    <div className="absolute bottom-2 left-2 pointer-events-none rounded bg-black/60 px-2 py-1 text-[10px] text-muted-foreground backdrop-blur-sm z-10">
+                      拖动蓝点调整坐标 (x, y)
+                    </div>
+                    <CanvasToolbar onReset={reset2DView} />
+                    <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
+                  </div>
 
-            {/* Row 2: Preset Selector */}
-            <div className="flex items-center">
-              <PresetSelector
-                options={Object.entries(PRESETS).map(([key, val]) => ({
-                  id: key,
-                  label: val.name,
-                }))}
-                value={presetKey}
-                onChange={handlePresetChange}
-              />
-            </div>
-          </div>
+                  <div className="mt-2 text-xs text-muted">
+                    残差平方和：
+                    {`$\\lVert \\mathbf{e} \\rVert^2 = ${residualNormSq.toFixed(3)}$`}
+                  </div>
+                </div>
 
-          {/* Ridge Lambda Slider if active */}
-          {method === "ridge" && (
-            <div className="flex items-center gap-4 rounded-lg bg-surface p-3 border border-border/60">
-              <ParamSlider
-                label={
-                  <span className="text-xs font-medium text-muted flex items-center gap-1">
-                    Ridge 惩罚系数 {"$\\lambda$"}:
-                  </span>
-                }
-                value={lambda}
-                min={0}
-                max={5}
-                step={0.05}
-                onChange={setLambda}
-                widthClass="flex-1"
-              />
-            </div>
-          )}
+                {/* Right View: 3D Vector Space Canvas (Three.js) */}
+                <div className="relative flex flex-col rounded-xl border border-border/80 bg-surface/50 p-3 shadow-inner">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                      {"向量子空间 (Vector Space $\\mathbb{R}^3$)"}
+                    </span>
+                    <div className="text-[11px] text-purple-400 font-mono">
+                      Aᵀe = [
+                      {Math.abs(a1_dot_e) < 1e-4 ? "0.00" : a1_dot_e.toFixed(2)}
+                      ,{" "}
+                      {Math.abs(a2_dot_e) < 1e-4 ? "0.00" : a2_dot_e.toFixed(2)}
+                      ]ᵀ
+                    </div>
+                  </div>
 
-          {/* Dual-View Split Canvas */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Left View: 2D Data Space Canvas */}
-            <div className="relative flex flex-col rounded-xl border border-border/80 bg-surface/50 p-3 shadow-inner">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-500" />
-                  数据拟合空间 (Data Space {"$\\mathbb{R}^2$"})
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowSquares((v) => !v)}
-                    className={`cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium border transition-colors ${
-                      showSquares
-                        ? "border-red-500/50 bg-red-500/15 text-red-400"
-                        : "border-border bg-surface text-muted"
-                    }`}
+                  <div
+                    ref={threeMountRef}
+                    className="relative h-[var(--demo-height,20rem)] w-full rounded-lg overflow-hidden border border-border/60 bg-slate-950"
                   >
-                    {showSquares ? "隐藏误差面积" : "显示误差面积 e²"}
-                  </button>
+                    <div className="absolute bottom-2 left-2 pointer-events-none rounded bg-black/60 px-2 py-1 text-[10px] text-muted-foreground backdrop-blur-sm z-10">
+                      按住鼠标左键旋转 3D 视角，右键平移
+                    </div>
+                    <CanvasToolbar onReset={reset3DView} />
+                    <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
+                  </div>
+
+                  {/* Legend & 3D Orthogonality Indicator */}
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
+                    <div className="flex items-center gap-3">
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-red-500" />
+                        {"$\\mathbf{b}$"} 观测
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                        {"$\\hat{\\mathbf{b}}$"} 投影
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-purple-500" />
+                        {"$\\mathbf{e}$"} 残差
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
-
-              <div className="relative h-[var(--demo-height,20rem)] w-full rounded-lg overflow-hidden border border-border/60 bg-slate-950">
-                <canvas
-                  ref={canvas2DRef}
-                  onPointerDown={handlePointerDown2D}
-                  onPointerMove={handlePointerMove2D}
-                  onPointerUp={handlePointerUp2D}
-                  onPointerCancel={handlePointerUp2D}
-                  className="w-full h-full cursor-crosshair touch-none"
+            </div>
+          }
+          controls={
+            <div className="space-y-3">
+              <KdeCard title="求解算法 (Solver Method)" variant="dense">
+                <KdeTabs
+                  options={METHOD_TABS}
+                  value={method}
+                  onChange={(m: string) => setMethod(m as FitMethod)}
                 />
-                <div className="absolute bottom-2 left-2 pointer-events-none rounded bg-black/60 px-2 py-1 text-[10px] text-muted-foreground backdrop-blur-sm">
-                  拖动蓝点调整坐标 (x, y)
+              </KdeCard>
+
+              <KdeCard title="数据几何预设" variant="dense">
+                <PresetSelector
+                  options={Object.entries(PRESETS).map(([key, val]) => ({
+                    id: key,
+                    label: val.name,
+                  }))}
+                  value={presetKey}
+                  onChange={handlePresetChange}
+                />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {PRESETS[presetKey]?.desc}
+                </p>
+              </KdeCard>
+
+              {method === "ridge" && (
+                <KdeCard title="Ridge 正则化惩罚系数" variant="dense">
+                  <ParamSlider
+                    label="$\\lambda$ 惩罚权重"
+                    value={lambda}
+                    min={0}
+                    max={5}
+                    step={0.05}
+                    onChange={setLambda}
+                    widthClass="w-full"
+                  />
+                </KdeCard>
+              )}
+
+              <KdeCard title="视图图层与辅助线" variant="dense">
+                <div className="flex flex-wrap items-center gap-4">
+                  <KdeCheckbox
+                    label="2D 误差平方面积 (e²)"
+                    checked={showSquares}
+                    onChange={setShowSquares}
+                  />
+                  <KdeCheckbox
+                    label="3D 列空间 col(A) 平面"
+                    checked={showColPlane}
+                    onChange={setShowColPlane}
+                  />
                 </div>
+              </KdeCard>
+
+              <div className="grid grid-cols-2 gap-1.5">
+                <KdeReadout label="拟合截距 c" value={c.toFixed(3)} dense />
+                <KdeReadout label="拟合斜率 d" value={d.toFixed(3)} dense />
+                <KdeReadout
+                  label="残差范数 ‖e‖"
+                  value={Math.sqrt(residualNormSq).toFixed(3)}
+                  variant="accent"
+                  dense
+                />
+                <KdeReadout
+                  label="正交检验 Aᵀe"
+                  value={`[${Math.abs(a1_dot_e) < 1e-4 ? "0.00" : a1_dot_e.toFixed(2)}, ${Math.abs(a2_dot_e) < 1e-4 ? "0.00" : a2_dot_e.toFixed(2)}]`}
+                  variant={
+                    Math.abs(a1_dot_e) < 0.05 && Math.abs(a2_dot_e) < 0.05
+                      ? "success"
+                      : "warning"
+                  }
+                  dense
+                />
               </div>
 
-              <div className="mt-2 text-xs text-muted">
-                最佳拟合直线：
-                {`$y = ${c.toFixed(2)} + ${d.toFixed(2)} x$`}
-                ，残差平方和：
-                {`$\\lVert \\mathbf{e} \\rVert^2 = ${residualNormSq.toFixed(3)}$`}
-              </div>
-            </div>
-
-            {/* Right View: 3D Vector Space Canvas (Three.js) */}
-            <div className="relative flex flex-col rounded-xl border border-border/80 bg-surface/50 p-3 shadow-inner">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                  向量子空间 (Vector Space {"$\\mathbb{R}^3$"})
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowColPlane((v) => !v)}
-                    className={`cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium border transition-colors ${
-                      showColPlane
-                        ? "border-sky-500/50 bg-sky-500/15 text-sky-400"
-                        : "border-border bg-surface text-muted"
-                    }`}
-                  >
-                    {showColPlane ? "隐藏列空间平面" : "显示 col(A) 平面"}
-                  </button>
-                </div>
-              </div>
-
-              <div
-                ref={threeMountRef}
-                className="relative h-[var(--demo-height,20rem)] w-full rounded-lg overflow-hidden border border-border/60 bg-slate-950"
-              >
-                <div className="absolute bottom-2 left-2 pointer-events-none rounded bg-black/60 px-2 py-1 text-[10px] text-muted-foreground backdrop-blur-sm z-10">
-                  按住鼠标左键旋转 3D 视角，右键平移
-                </div>
-              </div>
-
-              {/* Legend & 3D Orthogonality Indicator */}
-              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
-                <div className="flex items-center gap-3">
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-red-500" />
-                    {"$\\mathbf{b}$"} 观测向量
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    {"$\\hat{\\mathbf{b}} \\in \\operatorname{col}(A)$"} 投影
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-purple-500" />
-                    {"$\\mathbf{e} \\in \\ker(A^\\top)$"} 残差
-                  </span>
-                </div>
-                <div className="text-[11px] text-purple-400 font-mono">
-                  Aᵀe = [
-                  {Math.abs(a1_dot_e) < 1e-4 ? "0.00" : a1_dot_e.toFixed(2)},{" "}
-                  {Math.abs(a2_dot_e) < 1e-4 ? "0.00" : a2_dot_e.toFixed(2)}]ᵀ
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom Math Diagnostics & Matrix Cards */}
-          <div className="space-y-3">
-            {/* Top Row: Card 1 & Card 2 in 2 Columns */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-              {/* Card 1: Normal Equations / Step-by-Step Derivation */}
-              <div className="rounded-lg border border-border bg-surface p-3 space-y-2 text-xs">
-                <div className="font-semibold text-foreground flex items-center justify-between">
-                  <span>{currentDerivation.title}</span>
-                  <span className="text-[10px] text-muted font-mono">
-                    {currentDerivation.badge}
-                  </span>
-                </div>
-
+              <KdeCard title={currentDerivation.title} variant="dense">
                 <div className="space-y-1.5 pt-0.5">
                   {currentDerivation.steps.map((step, idx) => (
                     <div
@@ -987,76 +1017,37 @@ export default function LeastSquaresDemo({ height }: { height?: string }) {
                     </div>
                   ))}
                 </div>
+              </KdeCard>
 
-                <div className="text-[11px] text-accent font-semibold pt-1 border-t border-border/60 flex items-center justify-between">
-                  <span>拟合方程:</span>
-                  <span className="font-mono">
-                    y = {c.toFixed(2)} + {d.toFixed(2)}x
-                  </span>
-                </div>
-              </div>
-
-              {/* Card 2: Subspace & Orthogonality Check */}
-              <div className="rounded-lg border border-border bg-surface p-3 space-y-2 text-xs">
-                <div className="font-semibold text-foreground flex items-center justify-between">
-                  <span>四大子空间正交性检验</span>
-                  <span className="text-[10px] text-emerald-400 font-mono">
-                    e ⟂ col(A)
-                  </span>
-                </div>
-
+              <KdeCard title="四大子空间正交性检验" variant="dense">
                 <div className="space-y-1.5 pt-0.5">
-                  {/* Step 1: 投影向量具体数值 bHat = A xHat */}
                   <div className="rounded bg-surface-hover/50 p-1.5 border border-border/40 space-y-0.5">
-                    <div className="text-[10px] text-muted font-mono flex items-center justify-between">
-                      <span>1. 投影向量计算 b̂ = A x̂</span>
+                    <div className="text-[10px] text-muted font-mono">
+                      1. 投影向量 b̂ = Ax̂
                     </div>
                     <div className="overflow-x-auto overflow-y-hidden py-1 text-[11px] text-foreground">
-                      {`$\\hat{\\mathbf{b}} = A\\hat{\\mathbf{x}} = \\begin{pmatrix} 1 & ${points[0]?.x.toFixed(1) ?? "1.0"} \\\\ 1 & ${points[1]?.x.toFixed(1) ?? "2.0"} \\\\ 1 & ${points[2]?.x.toFixed(1) ?? "3.0"} \\end{pmatrix} \\begin{pmatrix} ${c.toFixed(3)} \\\\ ${d.toFixed(3)} \\end{pmatrix} = \\begin{pmatrix} ${(fitResult.bHat[0] ?? 0).toFixed(2)} \\\\ ${(fitResult.bHat[1] ?? 0).toFixed(2)} \\\\ ${(fitResult.bHat[2] ?? 0).toFixed(2)} \\end{pmatrix}$`}
+                      {`$\\hat{\\mathbf{b}} = A\\hat{\\mathbf{x}} = \\begin{pmatrix} ${(fitResult.bHat[0] ?? 0).toFixed(2)} \\\\ ${(fitResult.bHat[1] ?? 0).toFixed(2)} \\\\ ${(fitResult.bHat[2] ?? 0).toFixed(2)} \\end{pmatrix}$`}
                     </div>
                   </div>
 
-                  {/* Step 2: 残差向量具体数值 e = b - bHat */}
                   <div className="rounded bg-surface-hover/50 p-1.5 border border-border/40 space-y-0.5">
-                    <div className="text-[10px] text-muted font-mono flex items-center justify-between">
-                      <span>2. 残差向量计算 e = b - b̂</span>
+                    <div className="text-[10px] text-muted font-mono">
+                      2. 残差向量 e = b - b̂
                     </div>
                     <div className="overflow-x-auto overflow-y-hidden py-1 text-[11px] text-foreground">
-                      {`$\\mathbf{e} = \\mathbf{b} - \\hat{\\mathbf{b}} = \\begin{pmatrix} ${points[0]?.y.toFixed(1) ?? "1.0"} \\\\ ${points[1]?.y.toFixed(1) ?? "2.0"} \\\\ ${points[2]?.y.toFixed(1) ?? "2.0"} \\end{pmatrix} - \\begin{pmatrix} ${(fitResult.bHat[0] ?? 0).toFixed(2)} \\\\ ${(fitResult.bHat[1] ?? 0).toFixed(2)} \\\\ ${(fitResult.bHat[2] ?? 0).toFixed(2)} \\end{pmatrix} = \\begin{pmatrix} ${(fitResult.residuals[0] ?? 0).toFixed(2)} \\\\ ${(fitResult.residuals[1] ?? 0).toFixed(2)} \\\\ ${(fitResult.residuals[2] ?? 0).toFixed(2)} \\end{pmatrix}$`}
+                      {`$\\mathbf{e} = \\mathbf{b} - \\hat{\\mathbf{b}} = \\begin{pmatrix} ${(fitResult.residuals[0] ?? 0).toFixed(2)} \\\\ ${(fitResult.residuals[1] ?? 0).toFixed(2)} \\\\ ${(fitResult.residuals[2] ?? 0).toFixed(2)} \\end{pmatrix}$`}
                     </div>
                   </div>
 
-                  {/* Step 3: 基向量 a1 点乘 e */}
                   <div className="rounded bg-surface-hover/50 p-1.5 border border-border/40 space-y-0.5">
-                    <div className="text-[10px] text-muted font-mono flex items-center justify-between">
-                      <span>3. 基向量 a₁ · e 内积校验</span>
+                    <div className="text-[10px] text-muted font-mono">
+                      3. 正交形式 Aᵀe
                     </div>
                     <div className="overflow-x-auto overflow-y-hidden py-1 text-[11px] text-foreground">
-                      {`$\\mathbf{a}_1^\\top \\mathbf{e} = \\begin{pmatrix} 1 & 1 & 1 \\end{pmatrix} \\begin{pmatrix} ${(fitResult.residuals[0] ?? 0).toFixed(2)} \\\\ ${(fitResult.residuals[1] ?? 0).toFixed(2)} \\\\ ${(fitResult.residuals[2] ?? 0).toFixed(2)} \\end{pmatrix} = (1)(${(fitResult.residuals[0] ?? 0).toFixed(2)}) + (1)(${(fitResult.residuals[1] ?? 0).toFixed(2)}) + (1)(${(fitResult.residuals[2] ?? 0).toFixed(2)}) = ${Math.abs(a1_dot_e) < 1e-4 ? "0.00" : a1_dot_e.toFixed(2)}$`}
-                    </div>
-                  </div>
-
-                  {/* Step 4: 基向量 a2 点乘 e */}
-                  <div className="rounded bg-surface-hover/50 p-1.5 border border-border/40 space-y-0.5">
-                    <div className="text-[10px] text-muted font-mono flex items-center justify-between">
-                      <span>4. 基向量 a₂ · e 内积校验</span>
-                    </div>
-                    <div className="overflow-x-auto overflow-y-hidden py-1 text-[11px] text-foreground">
-                      {`$\\mathbf{a}_2^\\top \\mathbf{e} = \\begin{pmatrix} ${points[0]?.x.toFixed(1) ?? "1.0"} & ${points[1]?.x.toFixed(1) ?? "2.0"} & ${points[2]?.x.toFixed(1) ?? "3.0"} \\end{pmatrix} \\begin{pmatrix} ${(fitResult.residuals[0] ?? 0).toFixed(2)} \\\\ ${(fitResult.residuals[1] ?? 0).toFixed(2)} \\\\ ${(fitResult.residuals[2] ?? 0).toFixed(2)} \\end{pmatrix} = (${points[0]?.x.toFixed(1) ?? "1.0"})(${(fitResult.residuals[0] ?? 0).toFixed(2)}) + (${points[1]?.x.toFixed(1) ?? "2.0"})(${(fitResult.residuals[1] ?? 0).toFixed(2)}) + (${points[2]?.x.toFixed(1) ?? "3.0"})(${(fitResult.residuals[2] ?? 0).toFixed(2)}) = ${Math.abs(a2_dot_e) < 1e-4 ? "0.00" : a2_dot_e.toFixed(2)}$`}
-                    </div>
-                  </div>
-
-                  {/* Step 5: 矩阵紧凑形式 Aᵀe */}
-                  <div className="rounded bg-surface-hover/50 p-1.5 border border-border/40 space-y-0.5">
-                    <div className="text-[10px] text-muted font-mono flex items-center justify-between">
-                      <span>5. 矩阵形式 Aᵀe = 0</span>
-                    </div>
-                    <div className="overflow-x-auto overflow-y-hidden py-1 text-[11px] text-foreground">
-                      {`$A^\\top \\mathbf{e} = \\begin{pmatrix} 1 & 1 & 1 \\\\ ${points[0]?.x.toFixed(1) ?? "1.0"} & ${points[1]?.x.toFixed(1) ?? "2.0"} & ${points[2]?.x.toFixed(1) ?? "3.0"} \\end{pmatrix} \\begin{pmatrix} ${(fitResult.residuals[0] ?? 0).toFixed(2)} \\\\ ${(fitResult.residuals[1] ?? 0).toFixed(2)} \\\\ ${(fitResult.residuals[2] ?? 0).toFixed(2)} \\end{pmatrix} = \\begin{pmatrix} ${Math.abs(a1_dot_e) < 1e-4 ? "0.00" : a1_dot_e.toFixed(2)} \\\\ ${Math.abs(a2_dot_e) < 1e-4 ? "0.00" : a2_dot_e.toFixed(2)} \\end{pmatrix}$`}
+                      {`$A^\\top \\mathbf{e} = \\begin{pmatrix} ${Math.abs(a1_dot_e) < 1e-4 ? "0.00" : a1_dot_e.toFixed(2)} \\\\ ${Math.abs(a2_dot_e) < 1e-4 ? "0.00" : a2_dot_e.toFixed(2)} \\end{pmatrix}$`}
                     </div>
                   </div>
                 </div>
-
                 <div className="text-[11px] text-purple-400 font-medium pt-1 border-t border-border/60 flex items-center justify-between">
                   <span>代数结论:</span>
                   <span className="font-mono text-[10px]">
@@ -1065,47 +1056,40 @@ export default function LeastSquaresDemo({ height }: { height?: string }) {
                     }
                   </span>
                 </div>
-              </div>
-            </div>
+              </KdeCard>
 
-            {/* Bottom Row: Card 3 Full-width */}
-            <div className="rounded-lg border border-border bg-surface p-3 space-y-1 text-xs">
-              <div className="font-semibold text-foreground flex items-center justify-between">
-                <span>数值稳定性与条件数</span>
-                <span
-                  className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
-                    condAtA > 1000
-                      ? "bg-red-500/20 text-red-400"
-                      : condAtA > 100
-                        ? "bg-amber-500/20 text-amber-400"
-                        : "bg-emerald-500/20 text-emerald-400"
-                  }`}
-                >
-                  {condAtA > 1000
-                    ? "严重病态"
-                    : condAtA > 100
-                      ? "一般病态"
-                      : "良好稳定"}
-                </span>
-              </div>
-              <div className="text-muted text-[11px] flex flex-wrap items-center gap-6 pt-1">
-                <div>
-                  设计矩阵条件数: {`$\\kappa(A) = ${condA.toFixed(2)}$`}
+              <KdeCard title="数值稳定性与条件数" variant="dense">
+                <div className="space-y-1.5">
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <KdeReadout
+                      label="设计矩阵条件数 κ(A)"
+                      value={condA.toFixed(2)}
+                      dense
+                    />
+                    <KdeReadout
+                      label="正规方程条件数 κ(AᵀA)"
+                      value={condAtA.toFixed(1)}
+                      variant={
+                        condAtA > 1000
+                          ? "danger"
+                          : condAtA > 100
+                            ? "warning"
+                            : "success"
+                      }
+                      dense
+                    />
+                  </div>
+                  {condAtA > 100 && (
+                    <div className="text-[10px] text-amber-400 leading-tight pt-1">
+                      ⚠️ 正规方程平方放大了条件数，工程建议采用 QR 正交分解或 SVD
+                      求解！
+                    </div>
+                  )}
                 </div>
-                <div>
-                  正规方程条件数:{" "}
-                  {`$\\kappa(A^\\top A) = \\kappa(A)^2 = ${condAtA.toFixed(1)}$`}
-                </div>
-              </div>
-              {condAtA > 100 && (
-                <div className="text-[10px] text-amber-400 leading-tight pt-1">
-                  ⚠️ 正规方程平方放大了条件数，工程建议采用 QR 正交分解或 SVD
-                  求解！
-                </div>
-              )}
+              </KdeCard>
             </div>
-          </div>
-        </div>
+          }
+        />
       </ExpandableDemo>
     </AutoMath>
   );

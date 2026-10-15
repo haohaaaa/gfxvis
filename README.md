@@ -16,8 +16,8 @@ pnpm install   # 安装依赖
 pnpm dev       # 本地开发 http://localhost:51730
 pnpm build     # 校验并构建预渲染页面与 Node standalone 服务端到 dist/
 pnpm preview   # 启动 Node standalone 预览构建产物 http://localhost:51730
-pnpm lint      # ESLint 检查
-pnpm format    # Prettier 格式化
+pnpm lint      # Biome 检查
+pnpm format    # Biome 格式化代码与 Astro，Prettier 格式化 Markdown / MDX / CSS
 ```
 
 ## 写文章

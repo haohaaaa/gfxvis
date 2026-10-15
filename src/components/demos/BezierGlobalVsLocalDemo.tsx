@@ -407,8 +407,8 @@ export default function BezierGlobalVsLocalDemo() {
           Math.round(plot.toWorldY(event.clientY - rect.top) * 100) / 100;
 
         const prev = pointsRef.current;
-        const nextPts = prev.map((pt, i): Point2 =>
-          i === idx ? [nextX, nextY] : pt,
+        const nextPts = prev.map(
+          (pt, i): Point2 => (i === idx ? [nextX, nextY] : pt),
         );
 
         pointsRef.current = nextPts;

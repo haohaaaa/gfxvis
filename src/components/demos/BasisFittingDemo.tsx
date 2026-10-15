@@ -8,9 +8,13 @@ import {
   type Bounds2,
 } from "../../visualizations/core/2d/plot2d";
 import CanvasToolbar from "../framework/CanvasToolbar";
-import CapsuleTabs from "../framework/CapsuleTabs";
+import CanvasResizer from "../framework/CanvasResizer";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import { AutoMath } from "../framework/AutoMath";
+import KdeWindowShell from "../framework/KdeWindowShell";
+import KdeCard from "../framework/KdeCard";
+import KdeTabs from "../framework/KdeTabs";
+import KdeReadout from "../framework/KdeReadout";
 import { useCanvas2D } from "../framework/useCanvas2D";
 import { useVectorDrag } from "../framework/useVectorDrag";
 
@@ -281,79 +285,110 @@ export default function BasisFittingDemo({ height }: { height?: string }) {
       .join(" ");
   };
 
+  const modeTag =
+    family === "poly"
+      ? `${polyDegree} 阶多项式基`
+      : family === "fourier"
+        ? "傅里叶基 (Fourier)"
+        : "径向基 (RBF)";
+
   return (
     <AutoMath>
       <ExpandableDemo id="basis-fitting" height={height}>
-        <div className="space-y-4">
-          {/* Controls Header */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <CapsuleTabs
-              options={[
-                { id: "poly", label: "多项式基 (Polynomial)" },
-                { id: "fourier", label: "傅里叶基 (Fourier)" },
-                { id: "rbf", label: "径向基 (RBF)" },
-              ]}
-              value={family}
-              onChange={(val) => setFamily(val as BasisFamily)}
-            />
-
-            {family === "poly" && (
-              <CapsuleTabs
-                label="多项式最高阶数："
-                options={[1, 2, 3, 4, 5].map((deg) => ({
-                  id: String(deg),
-                  label: `${deg} 阶`,
-                }))}
-                value={String(polyDegree)}
-                onChange={(val) => setPolyDegree(Number(val))}
-                size="xs"
+        <KdeWindowShell
+          title="广义线性模型与基函数拟合 (Basis Function Linear Regression)"
+          eyebrow="Linear Algebra · Function Space & Regression"
+          mark="f(x) = ∑ θⱼ φⱼ(x)"
+          modeTag={modeTag}
+          display={
+            <div
+              ref={containerRef}
+              className="relative h-[var(--demo-height,20rem)] w-full overflow-hidden rounded-xl border border-border bg-surface"
+            >
+              <CanvasToolbar onReset={resetBounds} />
+              <canvas
+                ref={canvasRef}
+                className="absolute inset-0 h-full w-full"
               />
-            )}
-          </div>
+              <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
+            </div>
+          }
+          controls={
+            <div className="space-y-3">
+              <KdeCard title="基函数族选择 (Basis Family)" variant="dense">
+                <div className="space-y-2">
+                  <KdeTabs
+                    options={[
+                      { id: "poly", label: "多项式基" },
+                      { id: "fourier", label: "傅里叶基" },
+                      { id: "rbf", label: "径向基 (RBF)" },
+                    ]}
+                    value={family}
+                    onChange={(val: string) => setFamily(val as BasisFamily)}
+                  />
 
-          {/* 2D Canvas */}
-          <div
-            ref={containerRef}
-            className="relative h-[var(--demo-height,24rem)] w-full overflow-hidden rounded-xl border border-border bg-surface"
-          >
-            <CanvasToolbar onReset={resetBounds} />
-            <canvas
-              ref={canvasRef}
-              className="absolute inset-0 h-full w-full"
-            />
-          </div>
+                  {family === "poly" && (
+                    <div className="pt-2 border-t border-border/40">
+                      <div className="text-[11px] text-muted mb-1 font-medium">
+                        多项式最高阶数：
+                      </div>
+                      <KdeTabs
+                        options={[1, 2, 3, 4, 5].map((deg) => ({
+                          id: String(deg),
+                          label: `${deg} 阶`,
+                        }))}
+                        value={String(polyDegree)}
+                        onChange={(val: string) => setPolyDegree(Number(val))}
+                        size="xs"
+                      />
+                    </div>
+                  )}
+                </div>
+              </KdeCard>
 
-          {/* Real-time Math & Analysis Cards */}
-          <div className="grid gap-3 rounded-lg border border-border bg-surface-hover/50 p-3.5 text-sm sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <p className="font-semibold text-foreground">
-                实时拟合函数解析式{" "}
-                <span className="text-xs font-normal text-muted">
-                  （对参数 {"$\\boldsymbol\\theta$"} 严格线性）
-                </span>
-              </p>
-              <div className="overflow-x-auto rounded bg-surface p-2 font-mono text-xs text-primary">
-                {`$f(x) = ${formatFormula()}$`}
+              <KdeCard title="实时拟合函数解析式 f(x)" variant="dense">
+                <div className="space-y-1.5">
+                  <div className="overflow-x-auto rounded bg-surface p-2 font-mono text-xs text-primary border border-border/40">
+                    {`$f(x) = ${formatFormula()}$`}
+                  </div>
+                  <div className="text-[11px] text-muted">
+                    对参数 {"$\\boldsymbol\\theta$"}{" "}
+                    严格线性，求解无需非线性迭代
+                  </div>
+                </div>
+              </KdeCard>
+
+              <div className="grid grid-cols-2 gap-1.5">
+                <KdeReadout
+                  label="残差平方和 RSS"
+                  value={fitResult.rss.toFixed(4)}
+                  variant="accent"
+                  dense
+                />
+                <KdeReadout
+                  label="参数维度 dim(θ)"
+                  value={`${fitResult.theta.length} 项`}
+                  dense
+                />
               </div>
-              <p className="text-xs text-muted">
-                残差平方和 RSS {`$\\sum e_i^2 = ${fitResult.rss.toFixed(4)}$`}
-              </p>
-            </div>
 
-            <div className="space-y-1.5 border-t border-border pt-2 text-xs text-muted sm:border-t-0 sm:border-l sm:pt-0 sm:pl-3">
-              <p className="font-semibold text-foreground">
-                💡 核心结论：非线性曲线 vs 线性参数
-              </p>
-              <p>
-                虽然屏幕上的拟合曲线呈现高度弯曲的非线性形态，但由于所有基函数{" "}
-                {"$\\phi_j(x)$"} 不含未知参数，模型对权重{" "}
-                {"$\\boldsymbol\\theta$"} 构成严格的线性方程组{" "}
-                {"$A\\boldsymbol\\theta \\approx \\mathbf{b}$"}。
-              </p>
-              <p>求解只需一次标准的正规方程或 QR 投影，无需任何非线性迭代！</p>
+              <KdeCard title="核心代数结论" variant="dense">
+                <div className="space-y-1 text-xs text-muted leading-relaxed">
+                  <p>
+                    虽然屏幕上的拟合曲线呈现高度弯曲的非线性形态，但由于所有基函数{" "}
+                    {"$\\phi_j(x)$"} 不含未知参数，模型对权重{" "}
+                    {"$\\boldsymbol\\theta$"} 构成严格的线性方程组{" "}
+                    {"$A\\boldsymbol\\theta \\approx \\mathbf{b}$"}。
+                  </p>
+                  <p className="text-foreground font-medium pt-0.5">
+                    💡 求解只需一次标准的正规方程或 QR
+                    投影，无需任何梯度下降或局部极小陷阱！
+                  </p>
+                </div>
+              </KdeCard>
             </div>
-          </div>
-        </div>
+          }
+        />
       </ExpandableDemo>
     </AutoMath>
   );

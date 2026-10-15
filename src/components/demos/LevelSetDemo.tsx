@@ -7,10 +7,14 @@ import {
   drawAdaptiveAxes,
   drawPolyline,
 } from "../../visualizations/core/2d/plot2d";
-import CapsuleTabs from "../framework/CapsuleTabs";
 import CanvasToolbar from "../framework/CanvasToolbar";
+import CanvasResizer from "../framework/CanvasResizer";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import { AutoMath } from "../framework/AutoMath";
+import KdeWindowShell from "../framework/KdeWindowShell";
+import KdeCard from "../framework/KdeCard";
+import KdeTabs from "../framework/KdeTabs";
+import KdeReadout from "../framework/KdeReadout";
 import ParamSlider from "../framework/ParamSlider";
 import { useCanvas2D } from "../framework/useCanvas2D";
 
@@ -70,44 +74,68 @@ export default function LevelSetDemo({ height }: { height?: string }) {
   return (
     <AutoMath>
       <ExpandableDemo id="level-set" height={height}>
-        <div className="space-y-3">
-          <div
-            ref={containerRef}
-            className="relative h-[var(--demo-height,20rem)] w-full overflow-hidden rounded-xl border border-border"
-          >
-            <CanvasToolbar onReset={resetBounds} />
-            <canvas
-              ref={canvasRef}
-              className="absolute inset-0 h-full w-full cursor-crosshair"
-            />
-          </div>
-          <div className="flex flex-wrap items-center gap-4 text-sm">
-            <CapsuleTabs
-              options={FIELD_OPTIONS}
-              value={fieldId}
-              onChange={handleFieldChange}
-            />
-            <ParamSlider
-              label="$c$"
-              min={field.cMin}
-              max={field.cMax}
-              step={0.01}
-              value={c}
-              onChange={setC}
-              widthClass="w-44"
-            />
-          </div>
-          <div className="grid gap-2 text-sm text-muted sm:grid-cols-2">
-            <p>{`$F(x,y) = ${field.tex}$`}</p>
-            <p>
-              {`$F(x,y) = ${c.toFixed(2)} \\Rightarrow ${field.levelTex(c)}$`}
-            </p>
-          </div>
-          <p className="text-xs text-muted">
-            拖动 c 滑块扫描一族等值线:实线为当前
-            F(x,y)=c,虚线为参考等值线;滚轮缩放,中键平移。
-          </p>
-        </div>
+        <KdeWindowShell
+          title="等值线族与隐函数几何"
+          eyebrow="CALCULUS 2D LAB"
+          mark="2D"
+          modeTag={fieldId === "circle" ? "同心圆族" : "同轴抛物线族"}
+          display={
+            <div
+              ref={containerRef}
+              className="relative h-[var(--demo-height,20rem)] w-full overflow-hidden"
+            >
+              <CanvasToolbar onReset={resetBounds} />
+              <canvas
+                ref={canvasRef}
+                className="absolute inset-0 h-full w-full cursor-crosshair"
+              />
+              <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
+            </div>
+          }
+          controls={
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <KdeTabs
+                  options={FIELD_OPTIONS}
+                  value={fieldId}
+                  onChange={handleFieldChange}
+                />
+                <ParamSlider
+                  label="$c$"
+                  min={field.cMin}
+                  max={field.cMax}
+                  step={0.01}
+                  value={c}
+                  onChange={setC}
+                />
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                <KdeCard title="场函数定义" variant="dense">
+                  <KdeReadout
+                    label="场方程 F(x, y)"
+                    value={`$${field.tex}$`}
+                    variant="formula"
+                    dense
+                  />
+                </KdeCard>
+                <KdeCard title="当前等值线方程" variant="dense">
+                  <KdeReadout
+                    label={`c = ${c.toFixed(2)}`}
+                    value={`$${field.levelTex(c)}$`}
+                    variant="accent"
+                    dense
+                  />
+                </KdeCard>
+              </div>
+
+              <p className="text-xs text-muted">
+                拖动 $c$ 滑块扫描一族等值线：实线为当前
+                $F(x,y)=c$，虚线为参考等值线；滚轮缩放，拖拽平移。
+              </p>
+            </div>
+          }
+        />
       </ExpandableDemo>
     </AutoMath>
   );

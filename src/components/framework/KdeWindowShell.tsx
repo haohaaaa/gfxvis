@@ -71,7 +71,7 @@ export default function KdeWindowShell({
   return (
     <AutoMath>
       <section
-        className={`kde-window-shell ${className}`}
+        className={`kde-breeze-ui kde-window-shell ${className}`}
         data-window-shell="kde"
         data-style={finalDataStyle}
         data-fixed-layout={finalDataFixedLayout}

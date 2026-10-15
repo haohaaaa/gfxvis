@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { AutoMath } from "../framework/AutoMath";
-import CapsuleTabs from "../framework/CapsuleTabs";
+import KdeTabs from "../framework/KdeTabs";
 
 export function KonigsbergBridgesDiagram() {
   const [hoveredLand, setHoveredLand] = useState<string | null>(null);
@@ -203,7 +203,7 @@ export function BipartiteColoringDiagram() {
               二分图二染色机制与奇环矛盾图解 (Bipartite 2-Coloring)
             </span>
           </div>
-          <CapsuleTabs
+          <KdeTabs
             options={BIPARTITE_TABS}
             value={hasConflict ? "odd_c3" : "even_c4"}
             onChange={(id) => setHasConflict(id === "odd_c3")}
@@ -604,7 +604,11 @@ export function FiedlerPartitionDiagram() {
 }
 
 export type GraphClassType =
-  "undirected_simple" | "directed" | "multigraph" | "pseudograph" | "weighted";
+  | "undirected_simple"
+  | "directed"
+  | "multigraph"
+  | "pseudograph"
+  | "weighted";
 
 const CLASS_TABS = [
   { id: "undirected_simple" as const, label: "无向简单图" },
@@ -730,7 +734,7 @@ export function GraphClassificationDiagram() {
               图分类代数与几何对比探针 (Graph Classification Inspector)
             </span>
           </div>
-          <CapsuleTabs
+          <KdeTabs
             options={CLASS_TABS}
             value={currentTab}
             onChange={(tab) => setCurrentTab(tab as GraphClassType)}

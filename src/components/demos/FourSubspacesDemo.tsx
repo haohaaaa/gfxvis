@@ -1,9 +1,13 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useCanvas2D } from "../framework/useCanvas2D";
 import CanvasToolbar from "../framework/CanvasToolbar";
+import CanvasResizer from "../framework/CanvasResizer";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import { AutoMath } from "../framework/AutoMath";
 import PresetSelector from "../framework/PresetSelector";
+import KdeWindowShell from "../framework/KdeWindowShell";
+import KdeCard from "../framework/KdeCard";
+import KdeReadout from "../framework/KdeReadout";
 import {
   drawAdaptiveAxes,
   drawDragGizmo,
@@ -15,7 +19,12 @@ import {
 import { useVectorDrag } from "../framework/useVectorDrag";
 
 type PresetType =
-  "ortho_21" | "oblique_x" | "oblique_diag" | "rank1" | "full" | "shear";
+  | "ortho_21"
+  | "oblique_x"
+  | "oblique_diag"
+  | "rank1"
+  | "full"
+  | "shear";
 
 interface MatrixPreset {
   name: string;
@@ -485,125 +494,142 @@ export const FourSubspacesDemo: React.FC<{ height?: string }> = ({
   return (
     <AutoMath>
       <ExpandableDemo id="four-subspaces" height={height}>
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {/* Left Canvas: Input Space */}
-            <div
-              ref={leftCanvas.containerRef}
-              className="relative h-[var(--demo-height,22rem)] w-full overflow-hidden rounded-xl border border-border bg-surface"
-            >
-              <CanvasToolbar onReset={leftCanvas.resetBounds} />
-              <canvas
-                ref={leftCanvas.canvasRef}
-                className="absolute inset-0 h-full w-full"
-              />
-              <div className="pointer-events-none absolute top-3 left-3 flex flex-col gap-1 select-none">
-                <span className="font-semibold text-xs text-foreground">
-                  输入空间 {"$\\mathbb{R}^2$"} (Input Space)
-                </span>
-                <span className="text-xs text-muted">
-                  {"$x = x_{\\text{row}} + x_{\\text{null}}$"}
-                </span>
-              </div>
-            </div>
-
-            {/* Right Canvas: Output Space */}
-            <div
-              ref={rightCanvas.containerRef}
-              className="relative h-[var(--demo-height,22rem)] w-full overflow-hidden rounded-xl border border-border bg-surface"
-            >
-              <CanvasToolbar onReset={rightCanvas.resetBounds} />
-              <canvas
-                ref={rightCanvas.canvasRef}
-                className="absolute inset-0 h-full w-full"
-              />
-              <div className="pointer-events-none absolute top-3 left-3 flex flex-col gap-1 select-none">
-                <span className="font-semibold text-xs text-foreground">
-                  输出空间 {"$\\mathbb{R}^2$"} (Output Space)
-                </span>
-                <span className="text-xs text-muted">
-                  {"$b = Ax = A x_{\\text{row}}$"}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Preset Controls */}
-          <PresetSelector
-            label="预设矩阵 A:"
-            options={PRESETS}
-            value={preset}
-            onChange={setPreset}
-          />
-
-          {/* Description & Matrix Formula Panel */}
-          <div className="grid gap-3 rounded-lg border border-border bg-surface-hover/50 p-3.5 text-sm sm:grid-cols-2">
-            <div>
-              <div className="mb-1 flex items-center justify-between gap-2">
-                <p className="font-semibold text-foreground">
-                  当前变换矩阵 $A$
-                </p>
-                {isIdempotent && isSymmetric && (
-                  <span className="rounded bg-blue-500/10 px-1.5 py-0.5 text-[11px] font-semibold text-blue-600 dark:text-blue-400">
-                    正交投影 (P²=P, Pᵀ=P)
+        <KdeWindowShell
+          title="四大基本子空间与正交分解"
+          eyebrow="Linear Algebra · Fundamental Theorem"
+          mark="Row(A) ⊥ Null(A)"
+          modeTag={
+            isIdempotent && isSymmetric
+              ? "正交投影算子"
+              : isIdempotent
+                ? "斜向投影算子"
+                : isRank1
+                  ? "秩亏退化变换"
+                  : "满秩同构变换"
+          }
+          display={
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+              {/* Left Canvas: Input Space */}
+              <div
+                ref={leftCanvas.containerRef}
+                className="relative h-[var(--demo-height,20rem)] w-full overflow-hidden rounded-md border border-slate-800 bg-slate-950"
+              >
+                <CanvasToolbar onReset={leftCanvas.resetBounds} />
+                <canvas
+                  ref={leftCanvas.canvasRef}
+                  className="absolute inset-0 h-full w-full"
+                />
+                <div className="pointer-events-none absolute top-3 left-3 flex flex-col gap-0.5 select-none rounded bg-slate-900/80 p-1.5 text-xs border border-slate-700/60 backdrop-blur-sm">
+                  <span className="font-semibold text-slate-200">
+                    {"输入空间 $\\mathbb{R}^2$"}
                   </span>
-                )}
-                {isIdempotent && !isSymmetric && (
-                  <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
-                    斜投影 (P²=P, Pᵀ≠P)
+                  <span className="text-[11px] text-muted-foreground font-mono">
+                    {"$x = x_{\\text{row}} + x_{\\text{null}}$"}
                   </span>
-                )}
-                {!isIdempotent && (
-                  <span className="rounded bg-muted/15 px-1.5 py-0.5 text-[11px] font-semibold text-muted">
-                    非幂等变换 (P²≠P)
-                  </span>
-                )}
-              </div>
-
-              <div className="text-xs text-muted leading-relaxed">
-                <div className="my-1.5 text-ink">
-                  {`$A = \\begin{pmatrix} ${a11.toFixed(1)} & ${a12.toFixed(1)} \\\\ ${a21.toFixed(1)} & ${a22.toFixed(1)} \\end{pmatrix}$`}
                 </div>
-                <p className="mt-1 font-medium text-foreground">
-                  矩阵的秩 {`$\\operatorname{rank}(A) = ${rank}$`} (
-                  {isRank1 ? "秩亏退化" : "满秩可逆"})
-                </p>
-                <p className="mt-1 text-muted text-[11px]">
-                  {activePreset.desc}
-                </p>
+                <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
+              </div>
+
+              {/* Right Canvas: Output Space */}
+              <div
+                ref={rightCanvas.containerRef}
+                className="relative h-[var(--demo-height,20rem)] w-full overflow-hidden rounded-md border border-slate-800 bg-slate-950"
+              >
+                <CanvasToolbar onReset={rightCanvas.resetBounds} />
+                <canvas
+                  ref={rightCanvas.canvasRef}
+                  className="absolute inset-0 h-full w-full"
+                />
+                <div className="pointer-events-none absolute top-3 left-3 flex flex-col gap-0.5 select-none rounded bg-slate-900/80 p-1.5 text-xs border border-slate-700/60 backdrop-blur-sm">
+                  <span className="font-semibold text-slate-200">
+                    {"输出空间 $\\mathbb{R}^2$"}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground font-mono">
+                    {"$b = Ax = A x_{\\text{row}}$"}
+                  </span>
+                </div>
+                <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
               </div>
             </div>
+          }
+          controls={
+            <div className="space-y-3">
+              <KdeCard title="预设矩阵 A" variant="dense">
+                <PresetSelector
+                  label="预设矩阵 A:"
+                  options={PRESETS}
+                  value={preset}
+                  onChange={setPreset}
+                />
+              </KdeCard>
 
-            <div>
-              <p className="mb-1 font-semibold text-foreground">
-                四大子空间维度关系
+              <KdeCard title="矩阵代数结构与四大子空间维度" variant="dense">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5 text-xs">
+                    <div className="font-mono text-sm text-foreground">
+                      {`$A = \\begin{pmatrix} ${a11.toFixed(1)} & ${a12.toFixed(1)} \\\\ ${a21.toFixed(1)} & ${a22.toFixed(1)} \\end{pmatrix}$`}
+                    </div>
+                    <div className="text-muted-foreground">
+                      {`秩 $\\operatorname{rank}(A) = ${rank}$ (${isRank1 ? "秩亏退化" : "满秩可逆"})`}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-normal">
+                      {activePreset.desc}
+                    </p>
+                  </div>
+
+                  <div className="space-y-1 text-xs">
+                    <div className="text-blue-400 font-medium">
+                      {`行空间 $\\operatorname{Row}(A)$: 维数 $r = ${rank}$`}
+                    </div>
+                    <div className="text-rose-400 font-medium">
+                      {`零空间 $\\operatorname{Null}(A)$: 维数 $n - r = ${2 - rank}$ ${isRank1 ? "(垂直于 Row)" : ""}`}
+                    </div>
+                    <div className="text-purple-400 font-medium">
+                      {`列空间 $\\operatorname{Col}(A)$: 维数 $r = ${rank}$`}
+                    </div>
+                    <div className="text-emerald-400 font-medium">
+                      {`左零空间 $\\operatorname{Null}(A^\\top)$: 维数 $m - r = ${2 - rank}$ ${isRank1 ? "(垂直于 Col)" : ""}`}
+                    </div>
+                  </div>
+                </div>
+              </KdeCard>
+
+              <div className="grid grid-cols-2 gap-1.5">
+                <KdeReadout
+                  label="输入向量 x"
+                  value={`(${xVec.x.toFixed(1)}, ${xVec.y.toFixed(1)})`}
+                  dense
+                />
+                <KdeReadout
+                  label="输出向量 b = Ax"
+                  value={`(${bVec.x.toFixed(1)}, ${bVec.y.toFixed(1)})`}
+                  variant="accent"
+                  dense
+                />
+                <div className="col-span-2">
+                  <KdeReadout
+                    label="投影性质"
+                    value={
+                      isIdempotent && isSymmetric
+                        ? "正交投影 (P²=P, Pᵀ=P)"
+                        : isIdempotent
+                          ? "斜投影 (P²=P, Pᵀ≠P)"
+                          : "非投影 (P²≠P)"
+                    }
+                    variant={isIdempotent ? "success" : "default"}
+                    dense
+                  />
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                {
+                  "提示：拖动左侧中心橙色圆点进行 2D 自由移动；拖动蓝色箭头沿 $\\operatorname{Row}(A)$ 行空间定向滑动；拖动红色箭头沿 $\\operatorname{Null}(A)$ 零空间定向滑动（观察右侧输出向量 $b = Ax$ 保持完全静止不变！）。"
+                }
               </p>
-              <div className="space-y-1 text-xs text-muted leading-relaxed">
-                <p className="text-blue-600 dark:text-blue-400 font-medium">
-                  行空间 {"$\\operatorname{Row}(A)$"}: 维度 {`$r = ${rank}$`}
-                </p>
-                <p className="text-red-600 dark:text-red-400 font-medium">
-                  零空间 {"$\\operatorname{Null}(A)$"}: 维度{" "}
-                  {`$n - r = ${2 - rank}$`} {isRank1 ? "(垂直于 Row)" : ""}
-                </p>
-                <p className="text-purple-600 dark:text-purple-400 font-medium">
-                  列空间 {"$\\operatorname{Col}(A)$"}: 维度 {`$r = ${rank}$`}
-                </p>
-                <p className="text-emerald-600 dark:text-emerald-400 font-medium">
-                  左零空间 {"$\\operatorname{Null}(A^\\top)$"}: 维度{" "}
-                  {`$m - r = ${2 - rank}$`} {isRank1 ? "(垂直于 Col)" : ""}
-                </p>
-              </div>
             </div>
-          </div>
-
-          <p className="text-xs text-muted">
-            提示：拖动中心橙色圆点进行 2D 自由移动；拖动蓝色箭头沿{" "}
-            {"$\\operatorname{Row}(A)$"} 行空间定向滑动；拖动红色箭头沿{" "}
-            {"$\\operatorname{Null}(A)$"} 零空间定向滑动（观察右侧输出向量 $b =
-            Ax$ 保持完全静止不变！）。两个视口均支持滚轮缩放与中键/右键平移。
-          </p>
-        </div>
+          }
+        />
       </ExpandableDemo>
     </AutoMath>
   );

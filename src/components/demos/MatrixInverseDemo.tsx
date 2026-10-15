@@ -1,10 +1,14 @@
 import React, { useState, useRef, useEffect } from "react";
 import ExpandableDemo from "../framework/ExpandableDemo";
-import CapsuleTabs from "../framework/CapsuleTabs";
+import CanvasToolbar from "../framework/CanvasToolbar";
+import CanvasResizer from "../framework/CanvasResizer";
 import PresetSelector from "../framework/PresetSelector";
 import ParamSlider from "../framework/ParamSlider";
 import { AutoMath } from "../framework/AutoMath";
-import CanvasToolbar from "../framework/CanvasToolbar";
+import KdeWindowShell from "../framework/KdeWindowShell";
+import KdeCard from "../framework/KdeCard";
+import KdeReadout from "../framework/KdeReadout";
+import KdeTabs from "../framework/KdeTabs";
 import { useCanvas2D } from "../framework/useCanvas2D";
 import {
   drawDragHandle,
@@ -110,7 +114,13 @@ function drawPixelPoint(
 // -------------------------------------------------------------
 // Sub-view 1: 2D Transformation & Inverse Undo
 // -------------------------------------------------------------
-function ViewTransform({ showAxes }: { showAxes: boolean }) {
+function ViewTransform({
+  showAxes,
+  modeTabs,
+}: {
+  showAxes: boolean;
+  modeTabs: React.ReactNode;
+}) {
   const [presetKey, setPresetKey] = useState<PresetKey>("rot45");
   const [progress, setProgress] = useState<number>(1.0);
   const [vVec, setVVec] = useState<{ x: number; y: number }>({
@@ -427,166 +437,161 @@ function ViewTransform({ showAxes }: { showAxes: boolean }) {
   };
 
   return (
-    <AutoMath>
-      <div className="space-y-4">
-        {/* Preset Buttons */}
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-          <PresetSelector<PresetKey>
-            label="矩阵 A 预设:"
-            options={PRESETS}
-            value={presetKey}
-            onChange={(key) => {
-              setPresetKey(key);
-              setProgress(1.0);
-            }}
-          />
-
-          {/* Quick Undo / Redo Actions */}
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => setProgress(0.0)}
-              className="rounded border border-border px-2.5 py-1 hover:bg-surface-hover transition-colors"
-            >
-              初始网格 I
-            </button>
-            <button
-              onClick={() => setProgress(1.0)}
-              className="rounded border border-border px-2.5 py-1 hover:bg-surface-hover transition-colors"
-            >
-              应用正变换 A
-            </button>
-            <button
-              disabled={isSingular}
-              onClick={() => setProgress(2.0)}
-              className={`rounded border border-border px-2.5 py-1 transition-colors ${
-                isSingular
-                  ? "opacity-40 cursor-not-allowed"
-                  : "bg-primary/10 text-primary border-primary/30 hover:bg-primary/20"
-              }`}
-            >
-              一键 A⁻¹ 撤销还原
-            </button>
-          </div>
-        </div>
-
-        {/* Progress Timeline Slider */}
-        <div className="rounded-lg border border-border bg-surface-hover/30 p-3">
-          <ParamSlider
-            label={
-              <span className="font-medium text-foreground">
-                变换时间轴进度 (0 初始 → 1 正变换 A → 2 逆变换 A⁻¹ 还原)：
-              </span>
-            }
-            value={progress}
-            min={0.0}
-            max={2.0}
-            step={0.05}
-            onChange={setProgress}
-            display={
-              progress <= 0.05
-                ? "0.00 (初始 I)"
-                : progress >= 0.95 && progress <= 1.05
-                  ? "1.00 (正变换 A)"
-                  : progress >= 1.95
-                    ? "2.00 (逆还原 A⁻¹)"
-                    : progress < 1.0
-                      ? `t = ${progress.toFixed(2)} (I → A)`
-                      : `t = ${progress.toFixed(2)} (A → A⁻¹ 还原)`
-            }
-          />
-        </div>
-
-        {/* 2D Canvas View */}
+    <KdeWindowShell
+      title="2D 空间变换与 A⁻¹ 撤销还原"
+      eyebrow="Linear Algebra · Matrix Inverse"
+      mark="A⁻¹ A = I"
+      modeTag={isSingular ? "奇异不可逆矩阵 (det=0)" : "满秩可逆同构变换"}
+      display={
         <div
           ref={containerRef}
-          className="relative h-[var(--demo-height,22rem)] w-full overflow-hidden rounded-xl border border-border"
+          className="relative h-[var(--demo-height,20rem)] w-full overflow-hidden rounded-md border border-slate-800 bg-slate-950"
         >
           <CanvasToolbar onReset={() => setProgress(1.0)} />
           <canvas
             ref={canvasRef}
             className="absolute inset-0 h-full w-full cursor-crosshair"
           />
+          <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
         </div>
+      }
+      controls={
+        <div className="space-y-3">
+          {modeTabs}
+          <KdeCard title="矩阵 A 预设与快捷动作" variant="dense">
+            <div className="space-y-2">
+              <PresetSelector<PresetKey>
+                label="矩阵 A 预设:"
+                options={PRESETS}
+                value={presetKey}
+                onChange={(key) => {
+                  setPresetKey(key);
+                  setProgress(1.0);
+                }}
+              />
+              <div className="flex items-center gap-1.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setProgress(0.0)}
+                  className="rounded border border-slate-700 bg-slate-800/80 px-2.5 py-1 text-xs text-slate-200 hover:bg-slate-700 transition-colors"
+                >
+                  初始网格 I
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProgress(1.0)}
+                  className="rounded border border-slate-700 bg-slate-800/80 px-2.5 py-1 text-xs text-slate-200 hover:bg-slate-700 transition-colors"
+                >
+                  应用正变换 A
+                </button>
+                <button
+                  type="button"
+                  disabled={isSingular}
+                  onClick={() => setProgress(2.0)}
+                  className={`rounded border px-2.5 py-1 text-xs transition-colors ${
+                    isSingular
+                      ? "opacity-40 cursor-not-allowed border-slate-700 bg-slate-800 text-slate-500"
+                      : "bg-primary/20 text-primary border-primary/40 hover:bg-primary/30"
+                  }`}
+                >
+                  一键 A⁻¹ 撤销还原
+                </button>
+              </div>
+            </div>
+          </KdeCard>
 
-        {/* Coordinate & Matrix Breakdown Panel */}
-        <div className="grid gap-3 rounded-lg border border-border bg-surface-hover/50 p-3.5 text-sm sm:grid-cols-2">
-          <div className="space-y-2">
-            <p className="font-semibold text-foreground">
-              矩阵 A 与 逆矩阵 A⁻¹
-            </p>
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="text-muted">正变换 A：</span>
-                {`$A = \\begin{pmatrix} ${fmt(A[0][0])} & ${fmt(A[0][1])} \\\\ ${fmt(A[1][0])} & ${fmt(A[1][1])} \\end{pmatrix}$`}
-                <span className="font-mono text-muted ml-2">
-                  {`$\\det(A) = ${fmt(detA)}$`}
+          <KdeCard
+            title="变换时间轴进度 (0 初始 → 1 正变换 A → 2 逆变换 A⁻¹ 还原)"
+            variant="dense"
+          >
+            <ParamSlider
+              label="时间轴进度 $t$"
+              labelMode="adaptive"
+              widthClass="w-full"
+              value={progress}
+              min={0.0}
+              max={2.0}
+              step={0.05}
+              onChange={setProgress}
+              display={
+                progress <= 0.05
+                  ? "0.00 (初始 I)"
+                  : progress >= 0.95 && progress <= 1.05
+                    ? "1.00 (正变换 A)"
+                    : progress >= 1.95
+                      ? "2.00 (逆还原 A⁻¹)"
+                      : progress < 1.0
+                        ? `t = ${progress.toFixed(2)} (I → A)`
+                        : `t = ${progress.toFixed(2)} (A → A⁻¹ 还原)`
+              }
+            />
+          </KdeCard>
+
+          <KdeCard title="矩阵数值与代数验证" variant="dense">
+            <div className="space-y-1.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">正变换 A：</span>
+                <span className="font-mono">
+                  {`[${fmt(A[0][0])} ${fmt(A[0][1])}; ${fmt(A[1][0])} ${fmt(A[1][1])}]`}
+                </span>
+                <span className="font-mono text-muted-foreground">
+                  det(A) = {fmt(detA)}
                 </span>
               </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-muted">逆变换 A⁻¹：</span>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">逆变换 A⁻¹：</span>
                 {isSingular ? (
-                  <span className="font-semibold text-red-500">
-                    不存在（矩阵奇异不可逆，信息已塌缩丢失）
+                  <span className="font-semibold text-rose-400">
+                    不存在（奇异降维）
                   </span>
                 ) : (
-                  <span>
-                    {`$A^{-1} = \\begin{pmatrix} ${fmt(invA![0][0])} & ${fmt(invA![0][1])} \\\\ ${fmt(invA![1][0])} & ${fmt(invA![1][1])} \\end{pmatrix}$`}
+                  <span className="font-mono text-primary">
+                    {`[${fmt(invA![0][0])} ${fmt(invA![0][1])}; ${fmt(invA![1][0])} ${fmt(invA![1][1])}]`}
                   </span>
                 )}
               </div>
-
-              <p className="text-[11px] text-muted pt-1 border-t border-border/50">
+              <p className="text-[11px] text-muted-foreground pt-1 border-t border-slate-700/50">
                 {activePreset.desc}
               </p>
             </div>
-          </div>
+          </KdeCard>
 
-          <div className="space-y-2">
-            <p className="font-semibold text-foreground">
-              向量坐标实时跟踪与恒等验证
-            </p>
-            <div className="space-y-1.5 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="text-muted">原始向量 v：</span>
-                <span className="font-mono">
-                  {`$v = (${fmt(vVec.x)},\\, ${fmt(vVec.y)})^\\top$`}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-muted">当前映射位置 v'：</span>
-                <span className="font-mono text-amber-600 dark:text-amber-400 font-semibold">
-                  {`$v' = (${fmt(curV.x)},\\, ${fmt(curV.y)})^\\top$`}
-                </span>
-              </div>
-              <div className="text-[11px] text-muted pt-1 border-t border-border/50 leading-normal">
-                {progress >= 1.95 && !isSingular ? (
-                  <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                    ✓ 完美还原：A⁻¹(Av) = I v = ({fmt(vVec.x)}, {fmt(vVec.y)})ᵀ
-                  </span>
-                ) : isSingular ? (
-                  <span className="text-red-500">
-                    ✕ 塌缩不可逆：降维后多个原向量映射到同一点，无法单射还原。
-                  </span>
-                ) : (
-                  <span>
-                    提示：拖动时间轴或点击“一键 A⁻¹
-                    撤销还原”观察网格与向量回到原位。
-                  </span>
-                )}
-              </div>
-            </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            <KdeReadout
+              label="原始向量 v"
+              value={`(${fmt(vVec.x)}, ${fmt(vVec.y)})`}
+              dense
+            />
+            <KdeReadout
+              label="映射位置 v'"
+              value={`(${fmt(curV.x)}, ${fmt(curV.y)})`}
+              variant="accent"
+              dense
+            />
+            <KdeReadout label="行列式 det(A)" value={fmt(detA)} dense />
+            <KdeReadout
+              label="可逆状态"
+              value={isSingular ? "奇异 (不可逆)" : "满秩 (可逆同构)"}
+              variant={isSingular ? "danger" : "success"}
+              dense
+            />
           </div>
         </div>
-      </div>
-    </AutoMath>
+      }
+    />
   );
 }
 
 // -------------------------------------------------------------
 // Sub-view 2: Graphics Normal Transformation vs Tangent
 // -------------------------------------------------------------
-function ViewNormalTransformation({ showAxes }: { showAxes: boolean }) {
+function ViewNormalTransformation({
+  showAxes,
+  modeTabs,
+}: {
+  showAxes: boolean;
+  modeTabs: React.ReactNode;
+}) {
   const [scaleX, setScaleX] = useState<number>(2.0);
   const [scaleY, setScaleY] = useState<number>(0.8);
   const [angleDeg, setAngleDeg] = useState<number>(45);
@@ -761,40 +766,15 @@ function ViewNormalTransformation({ showAxes }: { showAxes: boolean }) {
   }, [scaleX, scaleY, angleDeg, showAxes, redraw]);
 
   return (
-    <AutoMath>
-      <div className="space-y-4">
-        {/* Controls */}
-        <div className="grid gap-3 sm:grid-cols-3">
-          <ParamSlider
-            label="X 轴缩放因子 s_x"
-            value={scaleX}
-            min={0.5}
-            max={3.0}
-            step={0.1}
-            onChange={setScaleX}
-          />
-          <ParamSlider
-            label="Y 轴缩放因子 s_y"
-            value={scaleY}
-            min={0.5}
-            max={3.0}
-            step={0.1}
-            onChange={setScaleY}
-          />
-          <ParamSlider
-            label="曲面采样点角度 θ"
-            value={angleDeg}
-            min={0}
-            max={360}
-            step={5}
-            onChange={setAngleDeg}
-          />
-        </div>
-
-        {/* Canvas */}
+    <KdeWindowShell
+      title="图形学法线变换：直接 M vs 逆转置 (M⁻¹)ᵀ"
+      eyebrow="Computer Graphics · Normal Transformation"
+      mark="(M⁻¹)ᵀ n ⊥ M t"
+      modeTag="Normal Transformation"
+      display={
         <div
           ref={containerRef}
-          className="relative h-[var(--demo-height,22rem)] w-full overflow-hidden rounded-xl border border-border"
+          className="relative h-[var(--demo-height,20rem)] w-full overflow-hidden rounded-md border border-slate-800 bg-slate-950"
         >
           <CanvasToolbar
             onReset={() => {
@@ -804,52 +784,99 @@ function ViewNormalTransformation({ showAxes }: { showAxes: boolean }) {
             }}
           />
           <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
+          <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
         </div>
-
-        {/* Math Comparison Cards */}
-        <div className="grid gap-3 rounded-lg border border-border bg-surface-hover/50 p-3.5 text-sm sm:grid-cols-2">
-          <div className="space-y-2">
-            <p className="font-semibold text-foreground">
-              为什么不能用模型矩阵 M 直接变换法线？
-            </p>
-            <div className="space-y-1.5 text-xs">
-              <div className="flex items-center justify-between text-red-600 dark:text-red-400 font-medium">
-                <span>直接变换点积 t' · (M n)：</span>
-                <span className="font-mono">
-                  {dotNaive.toFixed(3)} ≠ 0 (失真)
-                </span>
-              </div>
-              <p className="text-muted leading-relaxed">
-                在非均匀缩放下，切线方向被拉伸 $s_x$ 倍，直接乘以 $M$
-                会使法线同样沿长轴拉伸，导致法线偏离垂直方向，光照着色彻底错误！
-              </p>
+      }
+      controls={
+        <div className="space-y-3">
+          {modeTabs}
+          <KdeCard title="非均匀缩放与曲面切点角度" variant="dense">
+            <div className="grid gap-2 sm:grid-cols-3">
+              <ParamSlider
+                label="X 缩放 $s_x$"
+                labelMode="adaptive"
+                widthClass="w-full"
+                value={scaleX}
+                min={0.5}
+                max={3.0}
+                step={0.1}
+                onChange={setScaleX}
+              />
+              <ParamSlider
+                label="Y 缩放 $s_y$"
+                labelMode="adaptive"
+                widthClass="w-full"
+                value={scaleY}
+                min={0.5}
+                max={3.0}
+                step={0.1}
+                onChange={setScaleY}
+              />
+              <ParamSlider
+                label="切点角 $\theta$"
+                labelMode="adaptive"
+                widthClass="w-full"
+                value={angleDeg}
+                min={0}
+                max={360}
+                step={5}
+                onChange={setAngleDeg}
+              />
             </div>
-          </div>
+          </KdeCard>
 
-          <div className="space-y-2">
-            <p className="font-semibold text-foreground">
-              法线矩阵的正解：逆转置矩阵 (M⁻¹)ᵀ
-            </p>
-            <div className="space-y-1.5 text-xs">
-              <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400 font-medium">
-                <span>逆转置点积 t' · ((M⁻¹)ᵀ n)：</span>
-                <span className="font-mono">
-                  {dotCorrect.toFixed(3)} = 0 (严格垂直)
-                </span>
+          <KdeCard title="直接 M 变换 vs 逆转置 (M⁻¹)ᵀ 对比" variant="dense">
+            <div className="grid gap-2.5 sm:grid-cols-2 text-xs">
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-rose-400 font-medium">
+                  <span>直接变换点积 $t' \cdot (Mn)$：</span>
+                  <span className="font-mono">{dotNaive.toFixed(3)} ≠ 0</span>
+                </div>
+                <p className="text-muted-foreground text-[11px] leading-relaxed">
+                  在非均匀缩放下，切线方向被拉伸 $s_x$ 倍，直接乘以 $M$
+                  会使法线同样沿长轴拉伸，导致法线偏离垂直方向，光照着色彻底错误！
+                </p>
               </div>
-              <div className="p-2 rounded bg-surface border border-border font-mono text-[11px] overflow-x-auto">
-                {
-                  "$\\mathbf{t}'^\\top \\mathbf{n}' = (M\\mathbf{t})^\\top ((M^{-1})^\\top \\mathbf{n}) = \\mathbf{t}^\\top (M^\\top M^{-\\top}) \\mathbf{n} = \\mathbf{t}^\\top \\mathbf{n} = 0$"
-                }
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-emerald-400 font-medium">
+                  <span>逆转置点积 $t' \cdot ((M^{-1})^\top n)$：</span>
+                  <span className="font-mono">{dotCorrect.toFixed(3)} = 0</span>
+                </div>
+                <div className="p-1.5 rounded bg-slate-900 border border-slate-700 font-mono text-[10px] overflow-x-auto">
+                  {
+                    "$\\mathbf{t}'^\\top \\mathbf{n}' = (M\\mathbf{t})^\\top ((M^{-1})^\\top \\mathbf{n}) = \\mathbf{t}^\\top \\mathbf{n} = 0$"
+                  }
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  中间的 $M^\top (M^\top)^{-1} = I$ 刚好消去，恒等保证正交性。
+                </p>
               </div>
-              <p className="text-[11px] text-muted">
-                中间的 $M^\top (M^\top)^{-1} = I$ 刚好消去，恒等保证正交性。
-              </p>
             </div>
+          </KdeCard>
+
+          <div className="space-y-1.5">
+            <KdeReadout
+              label="正确法线正交性"
+              value={`t' · n' = ${dotCorrect.toFixed(3)} (严格正交)`}
+              variant="accent"
+              dense
+            />
+            <KdeReadout
+              label="错误法线失真"
+              value={`t' · (Mn) = ${dotNaive.toFixed(3)} (失真偏斜)`}
+              variant="danger"
+              dense
+            />
+            <KdeReadout
+              label="缩放因子 (sx, sy)"
+              value={`(${scaleX.toFixed(1)}, ${scaleY.toFixed(1)})`}
+              dense
+            />
           </div>
         </div>
-      </div>
-    </AutoMath>
+      }
+    />
   );
 }
 
@@ -857,33 +884,22 @@ export default function MatrixInverseDemo({ height }: { height?: string }) {
   const [demoMode, setDemoMode] = useState<DemoMode>("transform");
   const showAxes = true;
 
+  const modeTabs = (
+    <KdeTabs
+      options={DEMO_MODES}
+      value={demoMode}
+      onChange={(val: string) => setDemoMode(val as DemoMode)}
+    />
+  );
+
   return (
     <AutoMath>
       <ExpandableDemo id="matrix-inverse" height={height}>
-        <div className="space-y-4">
-          {/* Header Controls */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <CapsuleTabs
-              options={DEMO_MODES}
-              value={demoMode}
-              onChange={(val) => setDemoMode(val as DemoMode)}
-            />
-          </div>
-
-          {/* Views */}
-          {demoMode === "transform" ? (
-            <ViewTransform showAxes={showAxes} />
-          ) : (
-            <ViewNormalTransformation showAxes={showAxes} />
-          )}
-
-          {/* Interaction Hint */}
-          <p className="text-xs text-muted">
-            {demoMode === "transform"
-              ? "提示：拖动时间轴滑块或点击“一键 A⁻¹ 撤销还原”，观察空间网格与向量如何被逆矩阵原路拉回；切换到奇异矩阵观察塌缩失效。"
-              : "提示：调节非均匀缩放因子 s_x 与 s_y，观察红色错误法线（直接 M 变换）如何严重偏斜，而绿色正确法线（(M⁻¹)ᵀ 变换）始终严格垂直于切线。"}
-          </p>
-        </div>
+        {demoMode === "transform" ? (
+          <ViewTransform showAxes={showAxes} modeTabs={modeTabs} />
+        ) : (
+          <ViewNormalTransformation showAxes={showAxes} modeTabs={modeTabs} />
+        )}
       </ExpandableDemo>
     </AutoMath>
   );

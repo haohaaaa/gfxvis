@@ -1,11 +1,15 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useCanvas2D } from "../framework/useCanvas2D";
 import CanvasToolbar from "../framework/CanvasToolbar";
+import CanvasResizer from "../framework/CanvasResizer";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import { AutoMath } from "../framework/AutoMath";
-import CapsuleTabs from "../framework/CapsuleTabs";
 import ParamSlider from "../framework/ParamSlider";
 import PresetSelector from "../framework/PresetSelector";
+import KdeWindowShell from "../framework/KdeWindowShell";
+import KdeCard from "../framework/KdeCard";
+import KdeReadout from "../framework/KdeReadout";
+import KdeTabs from "../framework/KdeTabs";
 import {
   drawAdaptiveAxes,
   type Bounds2,
@@ -405,122 +409,141 @@ export default function EigenDemo({ height }: { height?: string }) {
   return (
     <AutoMath>
       <ExpandableDemo id="eigenvalues-and-eigenvectors" height={height}>
-        <div className="space-y-4">
-          {/* Mode Tabs */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <CapsuleTabs
-              options={MODES}
-              value={mode}
-              onChange={(val) => {
-                setMode(val as EigenMode);
-                redraw();
-              }}
-            />
-          </div>
-
-          {/* 2D Canvas Viewport */}
-          <div
-            ref={containerRef}
-            className="relative h-[var(--demo-height,22rem)] w-full overflow-hidden rounded-xl border border-border"
-          >
-            <CanvasToolbar onReset={resetBounds} />
-            <canvas
-              ref={canvasRef}
-              className="absolute inset-0 h-full w-full cursor-crosshair"
-            />
-          </div>
-
-          {/* Controls Row */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <PresetSelector
-              label="预设矩阵:"
-              options={PRESETS}
-              value={preset}
-              onChange={(p) => {
-                handlePresetChange(p);
-                redraw();
-              }}
-            />
-
-            {mode === "probe" && (
-              <ParamSlider
-                label="探测角度 θ"
-                min={0}
-                max={Math.PI * 2}
-                step={0.02}
-                value={probeAngle}
-                onChange={(val) => {
-                  setProbeAngle(val);
+        <KdeWindowShell
+          title="特征值、特征向量与谱定理"
+          eyebrow="Linear Algebra · Eigenvalues & Eigenvectors"
+          mark="Ax = λx"
+          modeTag={
+            mode === "probe"
+              ? "特征方向探测器"
+              : mode === "spectral-ellipse"
+                ? "谱定理主轴椭圆"
+                : "特征基底对角化"
+          }
+          display={
+            <div
+              ref={containerRef}
+              className="relative h-[var(--demo-height,20rem)] w-full overflow-hidden rounded-md border border-slate-800 bg-slate-950"
+            >
+              <CanvasToolbar onReset={resetBounds} />
+              <canvas
+                ref={canvasRef}
+                className="absolute inset-0 h-full w-full cursor-crosshair"
+              />
+              <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
+            </div>
+          }
+          controls={
+            <div className="space-y-3">
+              <KdeTabs
+                options={MODES}
+                value={mode}
+                onChange={(val: string) => {
+                  setMode(val as EigenMode);
                   redraw();
                 }}
-                widthClass="w-40"
-                display={`${((probeAngle * 180) / Math.PI).toFixed(0)}°`}
               />
-            )}
-          </div>
 
-          {/* Analytical Eigen-Spectrum Info Box */}
-          <div className="grid gap-3 rounded-lg border border-border bg-surface-hover/50 p-3.5 text-sm sm:grid-cols-3">
-            {/* Column 1: Matrix */}
-            <div>
-              <p className="mb-1 font-semibold text-foreground">当前矩阵 $A$</p>
-              <div className="text-xs text-muted leading-relaxed">
-                <div className="my-1.5 text-ink">
-                  {`$A = \\begin{pmatrix} ${a11.toFixed(2)} & ${a12.toFixed(2)} \\\\ ${a21.toFixed(2)} & ${a22.toFixed(2)} \\end{pmatrix}$`}
+              <KdeCard title="预设矩阵与探测参数" variant="dense">
+                <div className="space-y-2.5">
+                  <PresetSelector
+                    label="预设矩阵:"
+                    options={PRESETS}
+                    value={preset}
+                    onChange={(p) => {
+                      handlePresetChange(p);
+                      redraw();
+                    }}
+                  />
+
+                  {mode === "probe" && (
+                    <ParamSlider
+                      label="探测角 $\theta$"
+                      labelMode="adaptive"
+                      widthClass="w-full"
+                      min={0}
+                      max={Math.PI * 2}
+                      step={0.02}
+                      value={probeAngle}
+                      onChange={(val) => {
+                        setProbeAngle(val);
+                        redraw();
+                      }}
+                      display={`${((probeAngle * 180) / Math.PI).toFixed(0)}°`}
+                    />
+                  )}
                 </div>
-                <p className="mt-1 text-ink">
-                  {`$\\operatorname{tr}(A) = ${(a11 + a22).toFixed(2)}$`}
-                </p>
-                <p className="text-ink">
-                  {`$\\det(A) = ${(a11 * a22 - a12 * a21).toFixed(2)}$`}
-                </p>
-              </div>
-            </div>
+              </KdeCard>
 
-            {/* Column 2: Eigenvalues & Characteristic Polynomial */}
-            <div>
-              <p className="mb-1 font-semibold text-foreground">
-                特征方程与特征值
-              </p>
-              <div className="text-xs text-muted leading-relaxed">
-                <p className="font-mono">
-                  λ² - {eigen.tr.toFixed(2)}λ + {eigen.det.toFixed(2)} = 0
-                </p>
-                {eigen.hasReal ? (
-                  <div className="mt-1 space-y-0.5 font-mono">
-                    <p className="text-blue-500 font-semibold">
-                      λ₁ = {eigen.lambda1.toFixed(3)}
-                    </p>
-                    <p className="text-amber-500 font-semibold">
-                      λ₂ = {eigen.lambda2.toFixed(3)}
+              <KdeCard title="代数特征方程与几何洞察" variant="dense">
+                <div className="grid gap-3 sm:grid-cols-2 text-xs">
+                  <div className="space-y-1">
+                    <div className="font-mono text-sm text-foreground">
+                      {`$A = \\begin{pmatrix} ${a11.toFixed(2)} & ${a12.toFixed(2)} \\\\ ${a21.toFixed(2)} & ${a22.toFixed(2)} \\end{pmatrix}$`}
+                    </div>
+                    <div className="text-muted-foreground font-mono">
+                      {`$\\operatorname{tr}(A) = ${(a11 + a22).toFixed(2)},\\quad \\det(A) = ${(a11 * a22 - a12 * a21).toFixed(2)}$`}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground pt-1 border-t border-slate-700/50">
+                      {`特征多项式: $\\lambda^2 - ${eigen.tr.toFixed(2)}\\lambda + ${eigen.det.toFixed(2)} = 0$`}
                     </p>
                   </div>
-                ) : (
-                  <p className="mt-1 text-rose-500 font-medium">
-                    共轭复特征值: {eigen.lambda1.toFixed(2)} ±{" "}
-                    {eigen.imag.toFixed(2)}i (无实特征方向)
-                  </p>
-                )}
-              </div>
-            </div>
 
-            {/* Column 3: Geometric Insight */}
-            <div>
-              <p className="mb-1 font-semibold text-foreground">几何洞察</p>
-              <p className="text-xs text-muted leading-relaxed">
-                {eigen.hasReal
-                  ? "虚线为特征子空间直线。当向量位于该直线上时，矩阵变换仅发生纯粹的标量伸缩（长度乘 λ），方向绝不发生任何偏转！"
-                  : "旋转变换不存在任何实不变直线，所有非零向量都在变换中被扭转偏向。"}
+                  <div className="space-y-1 text-muted-foreground leading-normal">
+                    {eigen.hasReal ? (
+                      <p>
+                        虚线为特征子空间直线。当向量位于该直线上时，矩阵变换仅发生纯粹的标量伸缩（长度乘
+                        $\lambda$），方向绝不发生任何偏转！
+                      </p>
+                    ) : (
+                      <p className="text-rose-400">
+                        旋转变换不存在任何实不变直线，所有非零向量都在变换中被扭转偏向。
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </KdeCard>
+
+              <div className="grid grid-cols-2 gap-1.5">
+                <KdeReadout
+                  label="λ₁ 特征值"
+                  value={
+                    eigen.hasReal
+                      ? eigen.lambda1.toFixed(3)
+                      : `${eigen.lambda1.toFixed(2)} + ${eigen.imag.toFixed(2)}i`
+                  }
+                  variant="accent"
+                  dense
+                />
+                <KdeReadout
+                  label="λ₂ 特征值"
+                  value={
+                    eigen.hasReal
+                      ? eigen.lambda2.toFixed(3)
+                      : `${eigen.lambda2.toFixed(2)} - ${eigen.imag.toFixed(2)}i`
+                  }
+                  dense
+                />
+                <KdeReadout
+                  label="迹 tr(A)"
+                  value={(a11 + a22).toFixed(2)}
+                  dense
+                />
+                <KdeReadout
+                  label="行列式 det(A)"
+                  value={(a11 * a22 - a12 * a21).toFixed(2)}
+                  dense
+                />
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                提示：在“特征方向探测器”模式下拖动滑块旋转紫色向量 x，当 x
+                与变换向量 Ax
+                共线时（高亮为绿色），即成功探测到特征向量；在“谱定理与主轴椭圆”模式下可直观看到单位圆被拉伸为主轴椭圆的过程。
               </p>
             </div>
-          </div>
-
-          <p className="text-xs text-muted">
-            提示：在“特征方向探测器”模式下拖动滑块旋转紫色向量 x，当 x
-            与变换向量 Ax
-            共线时（高亮为绿色），即成功探测到特征向量；在“谱定理与主轴椭圆”模式下可直观看到单位圆被拉伸为主轴椭圆的过程。
-          </p>
-        </div>
+          }
+        />
       </ExpandableDemo>
     </AutoMath>
   );

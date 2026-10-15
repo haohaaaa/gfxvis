@@ -1,11 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import ExpandableDemo from "../framework/ExpandableDemo";
-import CapsuleTabs from "../framework/CapsuleTabs";
 import { AutoMath } from "../framework/AutoMath";
+import KdeWindowShell from "../framework/KdeWindowShell";
+import KdeCard from "../framework/KdeCard";
+import KdeTabs from "../framework/KdeTabs";
+import KdeReadout from "../framework/KdeReadout";
+import KdeButton from "../framework/KdeButton";
+import CanvasResizer from "../framework/CanvasResizer";
 import ParamSlider from "../framework/ParamSlider";
 
 type CountingMode =
-  "permutation" | "combination" | "repeat-permutation" | "repeat-combination";
+  | "permutation"
+  | "combination"
+  | "repeat-permutation"
+  | "repeat-combination";
 
 const MAX_ENUMERATED = 120;
 const SYMBOLS = "ABCDEFGH".split("");
@@ -178,180 +186,229 @@ export default function CombinatoricsCountingDemo() {
   return (
     <AutoMath>
       <ExpandableDemo id="combinatorics-counting">
-        <div className="rounded-lg border border-border p-4">
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-4 text-sm">
-              <CapsuleTabs
+        <KdeWindowShell
+          title="组合计数模型 · 排列组合与重集选择"
+          eyebrow="DISCRETE LAB"
+          mark="Σ"
+          modeTag={MODE_OPTIONS.find((m) => m.id === mode)?.label ?? "排列组合"}
+          display={
+            <div className="relative min-h-[18rem] p-4 space-y-4">
+              {/* 手动构造区 */}
+              <div className="rounded-lg border border-[var(--kde-border)] bg-[var(--kde-panel)] p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-[var(--kde-ink)]">
+                    自己构造一个结果
+                  </span>
+                  <KdeButton
+                    variant="flat"
+                    size="xs"
+                    onClick={() => setPicked([])}
+                  >
+                    重置选择
+                  </KdeButton>
+                </div>
+                <p className="mt-1 text-xs text-[var(--kde-muted)]">
+                  {isCombinationMode
+                    ? "点击元素进行选择，再次点击可取消。"
+                    : "按顺序点击元素，构造各个位置。"}
+                </p>
+                <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  {SYMBOLS.slice(0, n).map((symbol, index) => {
+                    const isPicked = picked.includes(index);
+                    const disabled =
+                      !isRepeatMode && !isCombinationMode && isPicked;
+                    return (
+                      <KdeButton
+                        key={symbol}
+                        size="xs"
+                        variant={isPicked ? "primary" : "default"}
+                        aria-pressed={isPicked}
+                        aria-label={`选择元素 ${symbol}`}
+                        disabled={disabled}
+                        onClick={() => handlePick(index)}
+                        className="font-mono"
+                      >
+                        {symbol}
+                      </KdeButton>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                  <span className="text-[var(--kde-muted)]">生成位置：</span>
+                  {Array.from({ length: r }, (_, index) => {
+                    const value = picked[index];
+                    return (
+                      <button
+                        type="button"
+                        className="min-w-7 border-b border-[var(--kde-border)] px-1.5 py-0.5 text-center font-mono text-[var(--kde-accent)] hover:border-[var(--kde-accent)]"
+                        key={index}
+                        aria-label={
+                          value === undefined
+                            ? `第 ${index + 1} 个位置为空`
+                            : `移除第 ${index + 1} 个位置`
+                        }
+                        onClick={() => {
+                          if (value === undefined) return;
+                          setPicked((current) =>
+                            current.filter(
+                              (_, itemIndex) => itemIndex !== index,
+                            ),
+                          );
+                        }}
+                      >
+                        {value === undefined ? "·" : SYMBOLS[value]}
+                      </button>
+                    );
+                  })}
+                  <span className="ml-2 font-mono font-semibold text-[var(--kde-ink)]">
+                    {manualResult || "∅"}
+                  </span>
+                </div>
+              </div>
+
+              {/* 小规模枚举区 */}
+              <div className="rounded-lg border border-[var(--kde-border)] bg-[var(--kde-panel)] p-3">
+                <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2">
+                  <span className="text-xs font-semibold text-[var(--kde-ink)]">
+                    小规模枚举空间
+                  </span>
+                  <span className="text-[11px] text-[var(--kde-muted)]">
+                    {isInvalid
+                      ? "当前参数无定义"
+                      : `显示 ${items?.length ?? 0} / ${total} 项`}
+                  </span>
+                </div>
+                {isTooLarge ? (
+                  <p className="text-xs text-[var(--kde-muted)]">
+                    结果超过 {MAX_ENUMERATED}{" "}
+                    项，为保持流畅暂不展开；公式计数仍然有效。
+                  </p>
+                ) : (
+                  <div
+                    className="grid grid-cols-4 gap-x-2 gap-y-1 text-xs sm:grid-cols-6 max-h-48 overflow-y-auto"
+                    role="group"
+                    aria-label="枚举结果"
+                  >
+                    {items?.map((item, index) => (
+                      <button
+                        type="button"
+                        className={`text-left font-mono transition-colors hover:text-[var(--kde-accent)] ${
+                          selected === item
+                            ? "text-[var(--kde-accent)] font-semibold underline underline-offset-2"
+                            : "text-[var(--kde-muted)]"
+                        }`}
+                        key={`${item}-${index}`}
+                        aria-label={`选择结果 ${item || "空集"}`}
+                        aria-pressed={selected === item}
+                        onClick={() => setSelectedItem(item)}
+                      >
+                        {item || "∅"}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {!isInvalid && selected !== undefined && (
+                  <p
+                    className="mt-2 text-[11px] text-[var(--kde-muted)]"
+                    aria-live="polite"
+                  >
+                    当前选定项{" "}
+                    <span className="font-mono font-semibold text-[var(--kde-accent)]">
+                      {selected || "∅"}
+                    </span>
+                    ；
+                    {mode === "combination" || mode === "repeat-combination"
+                      ? "组合模型：元素集合无序，交换顺序不产生新结果。"
+                      : "排列模型：元素位置有序，交换顺序产生不同排列。"}
+                  </p>
+                )}
+              </div>
+              <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
+            </div>
+          }
+          controls={
+            <div className="space-y-3">
+              <KdeTabs
                 options={MODE_OPTIONS}
                 value={mode}
                 onChange={(id) => setMode(id as CountingMode)}
-                size="xs"
-                label="模式："
-                className="flex-wrap"
               />
-              <ParamSlider
-                label={<span>总体元素数 $n$</span>}
-                value={n}
-                min={1}
-                max={8}
-                step={1}
-                display={String(n)}
-                digits={0}
-                onChange={setN}
-              />
-              <ParamSlider
-                label={<span>选取数量 $r$</span>}
-                value={r}
-                min={0}
-                max={8}
-                step={1}
-                display={String(r)}
-                digits={0}
-                onChange={setR}
-              />
-            </div>
 
-            <div className="grid gap-2 text-sm text-muted sm:grid-cols-2">
-              <p>
-                <span className="mr-2">公式：</span>
-                {`$${formula(mode)}$`}
-              </p>
-              <p aria-live="polite">
-                <span className="mr-2">结果：</span>
-                <span className="font-mono text-ink">
-                  {isInvalid ? "无定义" : total}
-                </span>
-              </p>
-              <p className="sm:col-span-2 text-xs">
-                {detail.order}；{detail.repeat}。{detail.hint}
+              <div className="grid gap-2 sm:grid-cols-2">
+                <ParamSlider
+                  label="总体元素数 $n$"
+                  value={n}
+                  min={1}
+                  max={8}
+                  step={1}
+                  display={String(n)}
+                  digits={0}
+                  onChange={setN}
+                />
+                <ParamSlider
+                  label="选取数量 $r$"
+                  value={r}
+                  min={0}
+                  max={8}
+                  step={1}
+                  display={String(r)}
+                  digits={0}
+                  onChange={setR}
+                />
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                <KdeCard title="计数定理与计算结果" variant="dense">
+                  <div className="space-y-1">
+                    <KdeReadout
+                      label="计数公式"
+                      value={`$${formula(mode)}$`}
+                      variant="formula"
+                      dense
+                    />
+                    <KdeReadout
+                      label="总计数"
+                      value={isInvalid ? "无定义 (r > n)" : String(total)}
+                      variant={isInvalid ? "danger" : "accent"}
+                      dense
+                    />
+                  </div>
+                </KdeCard>
+
+                <KdeCard title="模型特征说明" variant="dense">
+                  <div className="space-y-1 text-xs">
+                    <p className="text-[var(--kde-ink)]">
+                      <strong>顺序性：</strong>
+                      <span className="text-[var(--kde-muted)]">
+                        {detail.order}
+                      </span>
+                    </p>
+                    <p className="text-[var(--kde-ink)]">
+                      <strong>重复性：</strong>
+                      <span className="text-[var(--kde-muted)]">
+                        {detail.repeat}
+                      </span>
+                    </p>
+                    <p className="text-[11px] text-[var(--kde-muted)] pt-0.5 border-t border-[var(--kde-border)]">
+                      {detail.hint}
+                    </p>
+                  </div>
+                </KdeCard>
+              </div>
+
+              <p
+                className={
+                  isInvalid ? "text-xs text-rose-500" : "text-xs text-muted"
+                }
+                aria-live="polite"
+              >
+                {isInvalid
+                  ? "无重复模式要求 r ≤ n，请减小 r 或切换到可重复模式。"
+                  : description(mode)}
               </p>
             </div>
-
-            <p
-              className={isInvalid ? "text-destructive" : "text-xs text-muted"}
-              aria-live="polite"
-            >
-              {isInvalid
-                ? "无重复模式要求 r ≤ n，请减小 r 或切换到可重复模式。"
-                : description(mode)}
-            </p>
-
-            <div className="border-t border-border pt-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm font-medium">自己构造一个结果</p>
-                <button
-                  type="button"
-                  className="text-xs text-muted underline underline-offset-4 hover:text-accent"
-                  onClick={() => setPicked([])}
-                >
-                  重置选择
-                </button>
-              </div>
-              <p className="mt-1 text-xs text-muted">
-                {isCombinationMode
-                  ? "点击元素进行选择，再次点击可取消。"
-                  : "按顺序点击元素，构造各个位置。"}
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {SYMBOLS.slice(0, n).map((symbol, index) => {
-                  const isPicked = picked.includes(index);
-                  const disabled =
-                    !isRepeatMode && !isCombinationMode && isPicked;
-                  return (
-                    <button
-                      type="button"
-                      className="btn btn-ghost font-mono"
-                      key={symbol}
-                      aria-pressed={isPicked}
-                      aria-label={`选择元素 ${symbol}`}
-                      disabled={disabled}
-                      onClick={() => handlePick(index)}
-                    >
-                      {symbol}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-                <span className="text-muted">位置：</span>
-                {Array.from({ length: r }, (_, index) => {
-                  const value = picked[index];
-                  return (
-                    <button
-                      type="button"
-                      className="min-w-8 border-b border-border px-2 py-1 text-center font-mono text-accent hover:border-accent"
-                      key={index}
-                      aria-label={
-                        value === undefined
-                          ? `第 ${index + 1} 个位置为空`
-                          : `移除第 ${index + 1} 个位置`
-                      }
-                      onClick={() => {
-                        if (value === undefined) return;
-                        setPicked((current) =>
-                          current.filter((_, itemIndex) => itemIndex !== index),
-                        );
-                      }}
-                    >
-                      {value === undefined ? "·" : SYMBOLS[value]}
-                    </button>
-                  );
-                })}
-                <span className="ml-1 font-mono text-ink">
-                  {manualResult || "∅"}
-                </span>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="text-sm font-medium">小规模枚举</p>
-                <span className="text-small text-muted">
-                  {isInvalid
-                    ? "当前参数不可用"
-                    : `显示 ${items?.length ?? 0} / ${total} 项`}
-                </span>
-              </div>
-              {isTooLarge ? (
-                <p className="text-muted">
-                  结果超过 {MAX_ENUMERATED}{" "}
-                  项，为保持交互流畅暂不展开；公式计数仍然有效。
-                </p>
-              ) : (
-                <div
-                  className="grid grid-cols-4 gap-x-3 gap-y-1.5 text-sm sm:grid-cols-6"
-                  role="group"
-                  aria-label="枚举结果"
-                >
-                  {items?.map((item, index) => (
-                    <button
-                      type="button"
-                      className={`text-left font-mono text-muted transition-colors hover:text-accent ${selected === item ? "text-accent underline decoration-accent underline-offset-4" : ""}`}
-                      key={`${item}-${index}`}
-                      aria-label={`选择结果 ${item || "空集"}`}
-                      aria-pressed={selected === item}
-                      onClick={() => setSelectedItem(item)}
-                    >
-                      {item || "∅"}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {!isInvalid && selected !== undefined && (
-                <p className="mt-2 text-xs text-muted" aria-live="polite">
-                  当前选中{" "}
-                  <span className="font-mono text-accent">
-                    {selected || "∅"}
-                  </span>
-                  ；
-                  {mode === "combination" || mode === "repeat-combination"
-                    ? "交换顺序不会产生新结果。"
-                    : "交换顺序会产生新的结果。"}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
+          }
+        />
       </ExpandableDemo>
     </AutoMath>
   );

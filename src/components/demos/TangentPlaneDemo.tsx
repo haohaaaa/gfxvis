@@ -6,9 +6,13 @@ import {
 } from "../../visualizations/scenes/calculus/bivariate-surface";
 import { attachGizmo3D } from "../../visualizations/core/3d/gizmo3d";
 import CanvasToolbar from "../framework/CanvasToolbar";
-import Checkbox from "../framework/Checkbox";
+import CanvasResizer from "../framework/CanvasResizer";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import { AutoMath } from "../framework/AutoMath";
+import KdeWindowShell from "../framework/KdeWindowShell";
+import KdeCard from "../framework/KdeCard";
+import KdeCheckbox from "../framework/KdeCheckbox";
+import KdeReadout from "../framework/KdeReadout";
 import { useViewer3D } from "../framework/useViewer3D";
 
 export default function TangentPlaneDemo({ height }: { height?: string }) {
@@ -19,7 +23,7 @@ export default function TangentPlaneDemo({ height }: { height?: string }) {
   const pointRef = useRef(point);
   pointRef.current = point;
 
-  const { containerRef } = useViewer3D(
+  const { containerRef, viewerRef } = useViewer3D(
     () => createSurfaceScene(),
     ({ api, viewer }) => {
       api.setPoint(pointRef.current.x, pointRef.current.y);
@@ -61,36 +65,62 @@ export default function TangentPlaneDemo({ height }: { height?: string }) {
   return (
     <AutoMath>
       <ExpandableDemo id="tangent-plane" height={height}>
-        <div className="space-y-3">
-          <div
-            ref={containerRef}
-            className="relative h-[var(--demo-height,28rem)] w-full overflow-hidden rounded-xl border border-border"
-          >
-            <CanvasToolbar />
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="grid gap-2 text-sm text-muted sm:grid-cols-3">
-              <p>{`$f(${x.toFixed(2)}, ${y.toFixed(2)}) = ${z.toFixed(3)}$`}</p>
-              <p>
-                {`$\\frac{\\partial f}{\\partial x} = ${fx.toFixed(3)}, \\quad \\frac{\\partial f}{\\partial y} = ${fy.toFixed(3)}$`}
-              </p>
-              <p>
-                法向量 {`$n = (${(-fx).toFixed(2)}, ${(-fy).toFixed(2)}, 1)$`}
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <Checkbox
-                label="曲面透明"
-                checked={surfaceTransparent}
-                onChange={setSurfaceTransparent}
+        <KdeWindowShell
+          title="二元函数切平面与全微分局部逼近"
+          eyebrow="微积分 · 多元全微分"
+          mark="z = f(x,y)"
+          modeTag="切平面与梯度法向量"
+          display={
+            <div
+              ref={containerRef}
+              className="relative h-[var(--demo-height,28rem)] w-full overflow-hidden rounded border border-border/70 bg-surface"
+            >
+              <CanvasToolbar
+                onReset={() => viewerRef.current?.controls.reset()}
               />
+              <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
             </div>
-          </div>
-          <p className="text-xs text-muted">
-            左键/中键旋转 · 滚轮缩放 ·
-            右键平移;在曲面上拖拽移动切点;曲面默认半透明便于观察法线与切平面。
-          </p>
-        </div>
+          }
+          controls={
+            <div className="space-y-3">
+              <KdeCard title="曲面显示设置" variant="dense">
+                <div className="space-y-3">
+                  <KdeCheckbox
+                    label="曲面半透明渲染"
+                    checked={surfaceTransparent}
+                    onChange={setSurfaceTransparent}
+                    size="xs"
+                  />
+                  <p className="text-[11px] text-muted leading-relaxed">
+                    交互方式：左键旋转 · 滚轮缩放 · 右键平移；使用 3D
+                    轴向手柄在曲面上自由拖拽移动切点，观察切平面与法向量的实时变化。
+                  </p>
+                </div>
+              </KdeCard>
+
+              <KdeCard title="全微分切平面与法向量" variant="dense">
+                <div className="space-y-2">
+                  <KdeReadout
+                    label="切点坐标 (x, y, z)"
+                    value={`(${x.toFixed(2)},\\, ${y.toFixed(2)},\\, ${z.toFixed(3)})`}
+                    variant="accent"
+                    dense
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <KdeReadout label="偏导数 fx" value={fx.toFixed(3)} dense />
+                    <KdeReadout label="偏导数 fy" value={fy.toFixed(3)} dense />
+                  </div>
+                  <KdeReadout
+                    label="切平面外法向 n = (-fx, -fy, 1)"
+                    value={`(${(-fx).toFixed(2)},\\, ${(-fy).toFixed(2)},\\, 1.00)`}
+                    variant="success"
+                    dense
+                  />
+                </div>
+              </KdeCard>
+            </div>
+          }
+        />
       </ExpandableDemo>
     </AutoMath>
   );

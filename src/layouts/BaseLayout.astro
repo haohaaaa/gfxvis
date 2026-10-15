@@ -25,16 +25,18 @@ const {
 <!doctype html>
 <html lang="zh-CN">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="generator" content={Astro.generator} />
-    <meta name="description" content={description} />
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content={Astro.generator}>
+    <meta name="description" content={description}>
     <title>{title}</title>
     <script src="../scripts/theme.ts"></script>
   </head>
   <body>
     <Header />
-    <div class="mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl flex-col px-4 sm:px-6 pt-12 sm:pt-14">
+    <div
+      class="mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl flex-col px-4 sm:px-6 pt-12 sm:pt-14"
+    >
       <div class="flex flex-1 flex-col gap-8 py-8 md:flex-row">
         <main class="min-w-0 flex-1">
           <slot />
@@ -59,6 +61,7 @@ const {
         title="回到顶部"
       >
         <svg
+          aria-hidden="true"
           xmlns="http://www.w3.org/2000/svg"
           width="18"
           height="18"
@@ -83,6 +86,7 @@ const {
         title="进入专注模式 (隐藏顶栏)"
       >
         <svg
+          aria-hidden="true"
           class="icon-focus-enter"
           xmlns="http://www.w3.org/2000/svg"
           width="18"
@@ -98,6 +102,7 @@ const {
           <path d="M3 12h3M18 12h3M12 3v3M12 18v3"></path>
         </svg>
         <svg
+          aria-hidden="true"
           class="icon-focus-exit hidden"
           xmlns="http://www.w3.org/2000/svg"
           width="18"
@@ -109,7 +114,9 @@ const {
           stroke-linecap="round"
           stroke-linejoin="round"
         >
-          <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>
+          <path
+            d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"
+          ></path>
         </svg>
       </button>
 
@@ -123,6 +130,7 @@ const {
         title="只保留可交互组件"
       >
         <svg
+          aria-hidden="true"
           class="icon-interactive-enter"
           xmlns="http://www.w3.org/2000/svg"
           width="18"
@@ -140,6 +148,7 @@ const {
           <path d="M14 17h7M17.5 14v7" />
         </svg>
         <svg
+          aria-hidden="true"
           class="icon-interactive-exit hidden"
           xmlns="http://www.w3.org/2000/svg"
           width="18"
@@ -164,7 +173,9 @@ const {
       role="status"
       aria-live="polite"
     >
-      <span class="flex h-5 w-5 items-center justify-center rounded-full bg-accent/15 text-accent text-xs font-bold">
+      <span
+        class="flex h-5 w-5 items-center justify-center rounded-full bg-accent/15 text-accent text-xs font-bold"
+      >
         ◎
       </span>
       <span id="focus-toast-text">已开启专注模式</span>

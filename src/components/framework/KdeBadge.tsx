@@ -1,7 +1,12 @@
 import type { ReactNode } from "react";
 
 export type KdeBadgeVariant =
-  "default" | "primary" | "success" | "warning" | "danger" | "neutral";
+  | "default"
+  | "primary"
+  | "success"
+  | "warning"
+  | "danger"
+  | "neutral";
 
 export interface KdeBadgeProps {
   children: ReactNode;

@@ -50,9 +50,9 @@ test.describe("Bézier 到 B-Spline 文章", () => {
     await expect(page).toHaveTitle(/从 Bézier 到 B-Spline/);
 
     const shells = page.locator('[data-window-shell="kde"]');
-    await expect(shells).toHaveCount(13);
+    await expect(shells).toHaveCount(14);
 
-    for (let index = 0; index < 13; index += 1) {
+    for (let index = 0; index < 14; index += 1) {
       const shell = shells.nth(index);
       await shell.scrollIntoViewIfNeeded();
       await expect(shell).toBeVisible();

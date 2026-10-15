@@ -20,10 +20,14 @@ import {
   sampleVectorGrid,
   type FieldPresetId,
 } from "../../visualizations/scenes/calculus/vector-field-2d";
-import CapsuleTabs from "../framework/CapsuleTabs";
 import CanvasToolbar from "../framework/CanvasToolbar";
+import CanvasResizer from "../framework/CanvasResizer";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import { AutoMath } from "../framework/AutoMath";
+import KdeWindowShell from "../framework/KdeWindowShell";
+import KdeCard from "../framework/KdeCard";
+import KdeTabs from "../framework/KdeTabs";
+import KdeReadout from "../framework/KdeReadout";
 import { useCanvas2D } from "../framework/useCanvas2D";
 import { useVectorDrag } from "../framework/useVectorDrag";
 
@@ -158,43 +162,67 @@ export default function VectorFieldDemo({ height }: { height?: string }) {
   return (
     <AutoMath>
       <ExpandableDemo id="vector-field" height={height}>
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <CapsuleTabs
-              options={VECTOR_PRESETS}
-              value={presetId}
-              onChange={(id: FieldPresetId) => setPresetId(id)}
-              label="场:"
-            />
-          </div>
-          <div
-            ref={containerRef}
-            className="relative h-[var(--demo-height,20rem)] w-full overflow-hidden rounded-xl border border-border"
-          >
-            <CanvasToolbar onReset={resetBounds} />
-            <canvas
-              ref={canvasRef}
-              className="absolute inset-0 h-full w-full cursor-crosshair"
-            />
-          </div>
-          <div className="grid gap-2 text-sm text-muted sm:grid-cols-3">
-            <p>
-              {`$\\nabla\\cdot \\mathbf{F} \\approx ${divNumeric.toFixed(3)}$`}
-              <span className="ml-1">(解析 {preset.div.toFixed(1)})</span>
-            </p>
-            <p>
-              {`$\\nabla\\times \\mathbf{F} \\approx ${curlNumeric.toFixed(3)}$`}
-              <span className="ml-1">(解析 {preset.curl.toFixed(1)})</span>
-            </p>
-            <p>
-              探针{" "}
-              {`$\\mathbf{F}(${probe.x.toFixed(2)}, ${probe.y.toFixed(2)}) = (${probePx.toFixed(2)}, ${probePy.toFixed(2)})$`}
-            </p>
-          </div>
-          <p className="text-xs text-muted">
-            移动鼠标或拖动探针查看该点邻域的散度与旋度；粗蓝箭头为探针处的向量；网格箭头颜色代表模长；滚轮缩放，中键平移。
-          </p>
-        </div>
+        <KdeWindowShell
+          title="二维向量场 · 散度与旋度探测"
+          eyebrow="CALCULUS 2D LAB"
+          mark="2D"
+          modeTag={preset.label}
+          display={
+            <div
+              ref={containerRef}
+              className="relative h-[var(--demo-height,20rem)] w-full overflow-hidden"
+            >
+              <CanvasToolbar onReset={resetBounds} />
+              <canvas
+                ref={canvasRef}
+                className="absolute inset-0 h-full w-full cursor-crosshair"
+              />
+              <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
+            </div>
+          }
+          controls={
+            <div className="space-y-3">
+              <KdeTabs
+                options={VECTOR_PRESETS}
+                value={presetId}
+                onChange={(id: FieldPresetId) => setPresetId(id)}
+              />
+
+              <div className="grid gap-2 sm:grid-cols-3">
+                <KdeCard title="探针处向量" variant="dense">
+                  <KdeReadout
+                    label={`F(${probe.x.toFixed(2)}, ${probe.y.toFixed(2)})`}
+                    value={`(${probePx.toFixed(2)}, ${probePy.toFixed(2)})`}
+                    variant="formula"
+                    dense
+                  />
+                </KdeCard>
+                <KdeCard title="局部散度 (通量源汇)" variant="dense">
+                  <KdeReadout
+                    label="\nabla\cdot \mathbf{F}"
+                    value={`${divNumeric.toFixed(3)} (解析 ${preset.div.toFixed(1)})`}
+                    variant={Math.abs(divNumeric) > 0.05 ? "accent" : "default"}
+                    dense
+                  />
+                </KdeCard>
+                <KdeCard title="局部旋度 (涡旋环量)" variant="dense">
+                  <KdeReadout
+                    label="\nabla\times \mathbf{F}"
+                    value={`${curlNumeric.toFixed(3)} (解析 ${preset.curl.toFixed(1)})`}
+                    variant={
+                      Math.abs(curlNumeric) > 0.05 ? "warning" : "default"
+                    }
+                    dense
+                  />
+                </KdeCard>
+              </div>
+
+              <p className="text-xs text-muted">
+                移动鼠标或拖动探针查看该点邻域的散度与旋度；粗蓝箭头为探针处的向量；网格箭头颜色代表模长；滚轮缩放，拖拽平移。
+              </p>
+            </div>
+          }
+        />
       </ExpandableDemo>
     </AutoMath>
   );

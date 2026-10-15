@@ -2,7 +2,11 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import * as THREE from "three";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import CanvasToolbar from "../framework/CanvasToolbar";
-import CapsuleTabs from "../framework/CapsuleTabs";
+import CanvasResizer from "../framework/CanvasResizer";
+import KdeWindowShell from "../framework/KdeWindowShell";
+import KdeCard from "../framework/KdeCard";
+import KdeTabs from "../framework/KdeTabs";
+import KdeReadout from "../framework/KdeReadout";
 import PresetSelector, { type PresetOption } from "../framework/PresetSelector";
 import ParamSlider from "../framework/ParamSlider";
 import { AutoMath } from "../framework/AutoMath";
@@ -477,66 +481,33 @@ export default function QuaternionRotationDemo({
     }
   }, [activeTab, currentMat, axis, slerpMat, lerpMat]);
 
+  const resetCamera = () => {
+    if (cameraRef.current && controlsRef.current) {
+      const [cWx, cWy, cWz] = mathToWorld(4.5, -5.5, 3.8);
+      cameraRef.current.position.set(cWx, cWy, cWz);
+      const [tWx, tWy, tWz] = mathToWorld(0, 0, 0);
+      controlsRef.current.target.set(tWx, tWy, tWz);
+      controlsRef.current.update();
+    }
+  };
+
   return (
     <AutoMath>
       <ExpandableDemo id="quaternion-rotation-3d-demo" height={height}>
-        <div className="space-y-4">
-          {/* Mode Tabs */}
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/80 pb-3">
-            <CapsuleTabs
-              options={MODE_TABS}
-              value={activeTab}
-              onChange={(tab) => setActiveTab(tab as TabType)}
-            />
-
-            {activeTab === "inspect" && (
-              <button
-                onClick={() => setIsNegated(!isNegated)}
-                className={`rounded-md border px-3 py-1.5 text-xs font-semibold transition-all ${
-                  isNegated
-                    ? "border-purple-500/80 bg-purple-500/15 text-purple-400 font-bold"
-                    : "border-border bg-surface text-muted hover:text-foreground"
-                }`}
-              >
-                {isNegated
-                  ? "当前为对跖四元数 -q (姿态完全一致)"
-                  : "切换至对跖四元数 -q (Double Cover 验证)"}
-              </button>
-            )}
-          </div>
-
-          {/* Preset Selector in Inspect Mode */}
-          {activeTab === "inspect" && (
-            <PresetSelector
-              label="经典三维旋转预设姿态:"
-              options={PRESETS}
-              value={presetKey}
-              onChange={handlePreset}
-            />
-          )}
-
-          {/* 3D WebGL Canvas Viewport */}
-          <div className="relative flex flex-col rounded-xl border border-border bg-surface overflow-hidden">
-            <div className="flex items-center justify-between border-b border-border/80 bg-surface-hover/80 px-3 py-2 text-xs font-semibold text-foreground">
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block h-2 w-2 rounded-full bg-accent animate-pulse" />
-                {activeTab === "inspect"
-                  ? "3D 刚体姿态与四元数作用视口"
-                  : "插值对比视口：左侧 SLERP (翡翠绿保形) vs 右侧 Matrix LERP (橙色体积塌缩)"}
-              </span>
-              <span className="text-[11px] text-muted font-normal">
-                左键旋转 / 右键平移 / 滚轮缩放
-              </span>
-            </div>
-
-            <div
-              ref={containerRef}
-              className="relative h-[20rem] md:h-[26rem] w-full"
-            >
-              <CanvasToolbar />
+        <KdeWindowShell
+          title="四元数与三维旋转 (Quaternions & 3D Rotations)"
+          eyebrow="Linear Algebra · SO(3) & Quaternions"
+          mark="q = cos(θ/2) + u sin(θ/2)"
+          modeTag={
+            activeTab === "inspect" ? "多表象实时解构" : "SLERP vs LERP 插值"
+          }
+          display={
+            <div className="relative h-[var(--demo-height,28rem)] w-full overflow-hidden rounded-xl border border-border bg-slate-950">
+              <div ref={containerRef} className="w-full h-full" />
+              <CanvasToolbar onReset={resetCamera} />
 
               {/* In-canvas Legend */}
-              <div className="pointer-events-none absolute bottom-2 left-2 z-10 flex flex-col gap-1 rounded bg-surface/90 p-2 text-[11px] text-muted backdrop-blur-xs border border-border/60">
+              <div className="pointer-events-none absolute bottom-4 left-3 z-10 flex flex-col gap-1 rounded bg-slate-900/90 p-2 text-[11px] text-muted backdrop-blur-xs border border-border/60">
                 {activeTab === "inspect" ? (
                   <>
                     <div className="flex items-center gap-2">
@@ -565,268 +536,213 @@ export default function QuaternionRotationDemo({
                   </div>
                 )}
               </div>
+              <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
             </div>
-          </div>
-
-          {/* Tab 1: Inspect Multi-Representation Breakdown */}
-          {activeTab === "inspect" && (
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-              {/* Sliders Control Panel */}
-              <div className="lg:col-span-5 space-y-3 rounded-xl border border-border bg-surface p-4 text-xs">
-                <div className="flex items-center justify-between border-b border-border/50 pb-2">
-                  <span className="font-semibold text-foreground">
-                    旋转轴向量 {"$\\mathbf{u} = (u_x, u_y, u_z)$"}
-                  </span>
-                  <span className="font-mono text-[11px] text-muted">
-                    单位化模长 = {length(axis).toFixed(2)}
-                  </span>
-                </div>
-                <ParamSlider
-                  label="轴向 X"
-                  value={axis.x}
-                  min={-1}
-                  max={1}
-                  step={0.05}
-                  onChange={(v) => {
-                    setAxis({ ...axis, x: v });
-                    setPresetKey("custom");
-                  }}
+          }
+          controls={
+            <div className="space-y-3">
+              <KdeCard title="工作台模式" variant="dense">
+                <KdeTabs
+                  options={MODE_TABS}
+                  value={activeTab}
+                  onChange={(tab: string) => setActiveTab(tab as TabType)}
                 />
-                <ParamSlider
-                  label="轴向 Y"
-                  value={axis.y}
-                  min={-1}
-                  max={1}
-                  step={0.05}
-                  onChange={(v) => {
-                    setAxis({ ...axis, y: v });
-                    setPresetKey("custom");
-                  }}
-                />
-                <ParamSlider
-                  label="轴向 Z"
-                  value={axis.z}
-                  min={-1}
-                  max={1}
-                  step={0.05}
-                  onChange={(v) => {
-                    setAxis({ ...axis, z: v });
-                    setPresetKey("custom");
-                  }}
-                />
+              </KdeCard>
 
-                <div className="pt-2 border-t border-border/50">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-semibold text-foreground">
-                      旋转角度 {"$\\theta$"} (度)
-                    </span>
-                    <span className="font-mono text-xs font-bold text-accent">
-                      {angleDeg}°
-                    </span>
-                  </div>
-                  <ParamSlider
-                    label="旋转角 θ"
-                    value={angleDeg}
-                    min={-180}
-                    max={180}
-                    step={1}
-                    onChange={(v) => {
-                      setAngleDeg(v);
-                      setPresetKey("custom");
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Live KaTeX Multi-Representation Cards */}
-              <div className="lg:col-span-7 flex flex-col justify-between space-y-3 rounded-xl border border-border bg-surface p-4 text-xs">
-                <div>
-                  <p className="font-semibold text-foreground mb-2">
-                    三维旋转四大等价数学表象实时联动
-                  </p>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 font-mono text-[11px]">
-                    {/* 1. Quaternion */}
-                    <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-2.5 space-y-1">
-                      <div className="flex items-center justify-between text-emerald-500 font-bold">
-                        <span>1. 单位四元数 q</span>
-                        <span className="rounded bg-emerald-500/20 px-1 py-0.5 text-[10px]">
-                          ‖q‖ ={" "}
-                          {Math.hypot(
-                            currentQuat.w,
-                            currentQuat.x,
-                            currentQuat.y,
-                            currentQuat.z,
-                          ).toFixed(2)}
-                        </span>
-                      </div>
-                      <div className="text-foreground">
-                        {`$q = [${fmt(currentQuat.w)},\\, ${fmt(currentQuat.x)},\\, ${fmt(currentQuat.y)},\\, ${fmt(currentQuat.z)}]$`}
-                      </div>
-                      <div className="text-[10px] text-muted">
-                        w = cos(θ/2), (x,y,z) = u·sin(θ/2)
-                      </div>
-                    </div>
-
-                    {/* 2. Axis-Angle */}
-                    <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5 space-y-1">
-                      <div className="flex items-center justify-between text-amber-500 font-bold">
-                        <span>2. 轴角表示 (u, θ)</span>
-                        <span className="rounded bg-amber-500/20 px-1 py-0.5 text-[10px]">
-                          DoF = 3
-                        </span>
-                      </div>
-                      <div className="text-foreground">
-                        {`$\\mathbf{u} = (${fmt(normalize(axis).x)},\\, ${fmt(normalize(axis).y)},\\, ${fmt(normalize(axis).z)})^\\top$`}
-                      </div>
-                      <div className="text-[10px] text-muted">
-                        θ = {angleDeg.toFixed(1)}° (半角 θ/2 ={" "}
-                        {(angleDeg / 2).toFixed(1)}°)
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 3. 3x3 Rotation Matrix */}
-                  <div className="mt-2.5 rounded-lg border border-blue-500/30 bg-blue-500/5 p-2.5 space-y-1.5 font-mono text-[11px]">
-                    <div className="flex items-center justify-between text-blue-500 font-bold">
-                      <span>3. 等价 3×3 旋转矩阵 R(q) ∈ SO(3)</span>
-                      <span className="text-[10px] text-muted">
-                        det(R) = {determinant3x3(currentMat).toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="flex justify-center overflow-x-auto py-1">
-                      {`$R = \\begin{pmatrix} ${fmt(currentMat[0][0])} & ${fmt(currentMat[1][0])} & ${fmt(currentMat[2][0])} \\\\ ${fmt(currentMat[0][1])} & ${fmt(currentMat[1][1])} & ${fmt(currentMat[2][1])} \\\\ ${fmt(currentMat[0][2])} & ${fmt(currentMat[1][2])} & ${fmt(currentMat[2][2])} \\end{pmatrix}$`}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Double Cover Indicator */}
-                <div className="rounded-lg bg-surface-hover/80 px-3 py-2 text-[11px] text-muted border border-border/50">
-                  <span className="font-semibold text-foreground">
-                    💡 双重覆盖（Double Cover: 2:1）：
-                  </span>
-                  四元数 <code className="font-mono text-accent">q</code> 与{" "}
-                  <code className="font-mono text-accent">-q</code>{" "}
-                  经过三明治乘积 $p' = q p q^* = (-q) p (-q)^*$ 后，产生的 3×3
-                  旋转矩阵与物理空间旋转完全一致！
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Tab 2: SLERP vs Matrix LERP Interpolation Timeline */}
-          {activeTab === "interpolate" && (
-            <div className="space-y-4 rounded-xl border border-border bg-surface p-4 text-xs">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 pb-3">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setIsPlaying(!isPlaying)}
-                    className="rounded-md bg-accent px-3 py-1.5 font-semibold text-accent-foreground shadow-xs transition-colors hover:bg-accent/90"
-                  >
-                    {isPlaying ? "⏸ 暂停动画" : "▶ 自动播放插值"}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setIsPlaying(false);
-                      setTInterp(0.5);
-                    }}
-                    className="rounded-md border border-border bg-surface px-2.5 py-1.5 text-muted hover:text-foreground"
-                  >
-                    重置到中点 (t = 0.5)
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-2 font-mono text-xs">
-                  <span className="text-muted">时间参数:</span>
-                  <span className="font-bold text-accent">
-                    t = {tInterp.toFixed(2)}
-                  </span>
-                </div>
-              </div>
-
-              <ParamSlider
-                label="插值进度 t ∈ [0, 1]"
-                value={tInterp}
-                min={0}
-                max={1}
-                step={0.01}
-                onChange={(v) => {
-                  setIsPlaying(false);
-                  setTInterp(v);
-                }}
-              />
-
-              {/* Numerical Comparison Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-                {/* SLERP Card */}
-                <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-3.5 space-y-2">
-                  <div className="flex items-center justify-between font-bold text-emerald-500">
-                    <span>四元数球面插值 (SLERP)</span>
-                    <span className="rounded bg-emerald-500/20 px-2 py-0.5 font-mono text-[11px]">
-                      保形保范数
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-muted leading-relaxed">
-                    沿四元数超球面 {"$\\mathbb{S}^3$"} 上的测地线（大圆弧）进行
-                    <strong>恒定角速度</strong>
-                    旋转，物体尺寸完全不发生任何形变。
-                  </p>
-                  <div className="rounded bg-background/80 p-2 font-mono text-[11px] border border-border/50">
-                    <div className="flex justify-between">
-                      <span className="text-muted">
-                        插值四元数范数 ‖q(t)‖：
-                      </span>
-                      <span className="font-bold text-emerald-500">
-                        1.000 (严格保持)
-                      </span>
-                    </div>
-                    <div className="flex justify-between mt-1">
-                      <span className="text-muted">
-                        等价矩阵行列式 det(R)：
-                      </span>
-                      <span className="font-bold text-emerald-500">
-                        {determinant3x3(slerpMat).toFixed(3)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Matrix LERP Card */}
-                <div className="rounded-xl border border-orange-500/40 bg-orange-500/5 p-3.5 space-y-2">
-                  <div className="flex items-center justify-between font-bold text-orange-500">
-                    <span>矩阵直接线性混合 (Matrix LERP)</span>
-                    <span className="rounded bg-orange-500/20 px-2 py-0.5 font-mono text-[11px]">
-                      体积压缩坍塌
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-muted leading-relaxed">
-                    直接对矩阵各分量取线性加权平均 $(1-t)R_1 + t R_2$ 会
-                    <strong>彻底破坏正交归一性</strong>
-                    ，导致刚体在过渡期间被严重压扁。
-                  </p>
-                  <div className="rounded bg-background/80 p-2 font-mono text-[11px] border border-border/50">
-                    <div className="flex justify-between">
-                      <span className="text-muted">
-                        混合矩阵行列式 det(M)：
-                      </span>
-                      <span
-                        className={`font-bold ${lerpDet < 0.9 ? "text-red-500" : "text-orange-500"}`}
+              {activeTab === "inspect" && (
+                <>
+                  <KdeCard title="预设姿态与对跖四元数" variant="dense">
+                    <div className="space-y-2">
+                      <PresetSelector
+                        label="经典三维旋转预设姿态:"
+                        options={PRESETS}
+                        value={presetKey}
+                        onChange={handlePreset}
+                      />
+                      <button
+                        onClick={() => setIsNegated(!isNegated)}
+                        className={`w-full rounded-md border py-1.5 px-3 text-xs font-semibold transition-all ${
+                          isNegated
+                            ? "border-purple-500/80 bg-purple-500/15 text-purple-400 font-bold"
+                            : "border-border bg-surface text-muted hover:text-foreground"
+                        }`}
                       >
-                        {lerpDet.toFixed(3)} {lerpDet < 0.9 && "(体积缩减!)"}
-                      </span>
+                        {isNegated
+                          ? "✓ 当前为对跖四元数 -q (Double Cover: 旋转完全一致)"
+                          : "切换至对跖四元数 -q (验证双重覆盖 2:1)"}
+                      </button>
                     </div>
-                    <div className="flex justify-between mt-1">
-                      <span className="text-muted">基向量正交性：</span>
-                      <span className="font-bold text-red-500">
-                        已丢失 (发生剪切畸变)
-                      </span>
+                  </KdeCard>
+
+                  <KdeCard title="旋转轴与旋转角参数" variant="dense">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs text-muted mb-1 font-mono">
+                        <span>旋转轴 u (模长 = {length(axis).toFixed(2)})</span>
+                        <span className="text-accent font-bold">
+                          θ = {angleDeg}°
+                        </span>
+                      </div>
+                      <ParamSlider
+                        label="轴向 X"
+                        value={axis.x}
+                        min={-1}
+                        max={1}
+                        step={0.05}
+                        onChange={(v) => {
+                          setAxis({ ...axis, x: v });
+                          setPresetKey("custom");
+                        }}
+                        widthClass="w-full"
+                      />
+                      <ParamSlider
+                        label="轴向 Y"
+                        value={axis.y}
+                        min={-1}
+                        max={1}
+                        step={0.05}
+                        onChange={(v) => {
+                          setAxis({ ...axis, y: v });
+                          setPresetKey("custom");
+                        }}
+                        widthClass="w-full"
+                      />
+                      <ParamSlider
+                        label="轴向 Z"
+                        value={axis.z}
+                        min={-1}
+                        max={1}
+                        step={0.05}
+                        onChange={(v) => {
+                          setAxis({ ...axis, z: v });
+                          setPresetKey("custom");
+                        }}
+                        widthClass="w-full"
+                      />
+                      <ParamSlider
+                        label="旋转角 θ (°)"
+                        value={angleDeg}
+                        min={-180}
+                        max={180}
+                        step={1}
+                        onChange={(v) => {
+                          setAngleDeg(v);
+                          setPresetKey("custom");
+                        }}
+                        widthClass="w-full"
+                      />
                     </div>
+                  </KdeCard>
+
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <KdeReadout
+                      label="单位四元数 q"
+                      value={`[${fmt(currentQuat.w)}, ${fmt(currentQuat.x)}, ${fmt(currentQuat.y)}, ${fmt(currentQuat.z)}]`}
+                      variant="accent"
+                      dense
+                    />
+                    <KdeReadout
+                      label="轴角表示 (u, θ)"
+                      value={`u=(${fmt(normalize(axis).x)}, ${fmt(normalize(axis).y)}, ${fmt(normalize(axis).z)}), θ=${angleDeg}°`}
+                      dense
+                    />
                   </div>
-                </div>
-              </div>
+
+                  <KdeCard
+                    title="等价 3×3 旋转矩阵 R(q) ∈ SO(3)"
+                    variant="dense"
+                  >
+                    <div className="space-y-1.5">
+                      <div className="flex justify-center overflow-x-auto py-1 font-mono text-xs">
+                        {`$R = \\begin{pmatrix} ${fmt(currentMat[0][0])} & ${fmt(currentMat[1][0])} & ${fmt(currentMat[2][0])} \\\\ ${fmt(currentMat[0][1])} & ${fmt(currentMat[1][1])} & ${fmt(currentMat[2][1])} \\\\ ${fmt(currentMat[0][2])} & ${fmt(currentMat[1][2])} & ${fmt(currentMat[2][2])} \\end{pmatrix}$`}
+                      </div>
+                      <div className="text-[11px] text-muted text-center">
+                        det(R) = {determinant3x3(currentMat).toFixed(3)}{" "}
+                        (严格正交且保形，无万向节死锁)
+                      </div>
+                    </div>
+                  </KdeCard>
+                </>
+              )}
+
+              {activeTab === "interpolate" && (
+                <>
+                  <KdeCard title="插值时间轴控制器" variant="dense">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <button
+                          onClick={() => setIsPlaying(!isPlaying)}
+                          className="rounded-md bg-accent px-3 py-1.5 font-semibold text-accent-foreground text-xs shadow-xs hover:bg-accent/90"
+                        >
+                          {isPlaying ? "⏸ 暂停动画" : "▶ 自动播放插值"}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsPlaying(false);
+                            setTInterp(0.5);
+                          }}
+                          className="rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs text-muted hover:text-foreground"
+                        >
+                          中点 (t = 0.5)
+                        </button>
+                        <span className="font-mono text-xs font-bold text-accent">
+                          t = {tInterp.toFixed(2)}
+                        </span>
+                      </div>
+
+                      <ParamSlider
+                        label="时间参数 t ∈ [0, 1]"
+                        value={tInterp}
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        onChange={(v) => {
+                          setIsPlaying(false);
+                          setTInterp(v);
+                        }}
+                        widthClass="w-full"
+                      />
+                    </div>
+                  </KdeCard>
+
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <KdeReadout
+                      label="SLERP 行列式 det"
+                      value={determinant3x3(slerpMat).toFixed(3)}
+                      variant="success"
+                      dense
+                    />
+                    <KdeReadout
+                      label="Matrix LERP 行列式"
+                      value={lerpDet.toFixed(3)}
+                      variant={lerpDet < 0.9 ? "danger" : "warning"}
+                      dense
+                    />
+                  </div>
+
+                  <KdeCard title="插值保形几何原理对比" variant="dense">
+                    <div className="space-y-2 text-xs text-muted">
+                      <div>
+                        <span className="font-semibold text-emerald-500">
+                          SLERP（球面线性插值）：
+                        </span>
+                        {
+                          "沿四元数超球面 $\\mathbb{S}^3$ 上的测地线恒角速旋转，‖q(t)‖ ≡ 1，无任何形变与塌缩。"
+                        }
+                      </div>
+                      <div>
+                        <span className="font-semibold text-amber-500">
+                          Matrix LERP（矩阵直接混色）：
+                        </span>
+                        加权平均破坏正交性，中间态行列式显著缩水（det &lt;
+                        1），导致刚体塌缩挤压。
+                      </div>
+                    </div>
+                  </KdeCard>
+                </>
+              )}
             </div>
-          )}
-        </div>
+          }
+        />
       </ExpandableDemo>
     </AutoMath>
   );

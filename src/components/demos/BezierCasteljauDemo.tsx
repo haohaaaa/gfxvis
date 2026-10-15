@@ -255,7 +255,6 @@ export default function BezierCasteljauDemo() {
           modeTag="BEZIER"
           testId="bezier-casteljau-demo"
           className="bezier-spline-workspace"
-
           tabs={
             <div className="bezier-demo__topbar">
               <div className="bezier-demo__degree-control">

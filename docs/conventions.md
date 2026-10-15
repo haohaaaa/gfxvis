@@ -22,7 +22,7 @@
 
 - 记号:标量场 φ(x, y);向量场 F = (P, Q);函数 f 及其偏导 f_x、f_y;微分算子用 ∇(grad / div / curl)。
 - 目录与文件:领域场景放 `src/visualizations/scenes/<topic>/<scene-name>.ts`;框架基础设施组件/Hook 放 `src/components/framework/<PascalCase>.tsx`;React island Demos 放 `src/components/demos/<PascalCase>.tsx`;共享工具按职责放在 `src/visualizations/core/2d/`、`core/3d/` 与 `core/common/`;预设场 id 用 kebab-case。
-- 框架与共享层:Three 工具集中在 `core/3d/three-utils.ts`(灯光 / 网格 / 标记 / 曲面材质与透明度 / `disposeObject` / `buildColoredGrid`),2D 绘制辅助在 `core/2d/plot2d.ts`(`drawAxes` / `drawPolyline` / `drawPoint` / `drawSegment` / `drawArrow`),数值与网格采样在 `core/common/math.ts`(`sampleGrid` / `forEachCube`);React 侧复用 `components/framework/` 下的 `useCanvas2D` / `useViewer3D` / `useVectorDrag` hooks 与 `ExpandableDemo` / `KdeWindowShell` / `PresetSelector` / `CapsuleTabs` / `ParamSlider` / `Checkbox` / `AutoMath` 组件;预设场 `FIELDS2D` 定义在 `scenes/calculus/scalar-field-2d.ts`(圆族 / 抛物线族自带可选 `levelCurve`)。
+- 框架与共享层:Three 工具集中在 `core/3d/three-utils.ts`(灯光 / 网格 / 标记 / 曲面材质与透明度 / `disposeObject` / `buildColoredGrid`),2D 绘制辅助在 `core/2d/plot2d.ts`(`drawAxes` / `drawPolyline` / `drawPoint` / `drawSegment` / `drawArrow`),数值与网格采样在 `core/common/math.ts`(`sampleGrid` / `forEachCube`);React 侧复用 `components/framework/` 下的 `useCanvas2D` / `useViewer3D` / `useVectorDrag` hooks 与 `ExpandableDemo` / `KdeWindowShell` / `PresetSelector` / `KdeTabs` / `KdeCheckbox` / `KdeCard` / `KdeReadout` / `ParamSlider` / `AutoMath` 组件;预设场 `FIELDS2D` 定义在 `scenes/calculus/scalar-field-2d.ts`(圆族 / 抛物线族自带可选 `levelCurve`)。
   - **交互区域布局与视窗外壳**: 跨演示的区域结构统一使用 `components/framework/KdeWindowShell.tsx`（KDE Breeze 桌面视窗外壳）或 `components/framework/InteractiveLayout.tsx` 的 `top` / `main` / `navigation` / `secondary` / `side` / `bottom` / `footer` 槽位与 `side-right` / `bottom-split` / `three-column` / `dense-dock` / `dual-view` / `side-left` 预设。`side` 默认是紧凑控制架，只有显式选择 `dense-dock` 时才占据整行；空槽不应留下占位空白。画布工具栏仍必须留在 `main` 画布容器内。
   - **多画布视口组**: 同一具名区域需要承载多个可交互视口时，使用 `components/framework/InteractiveViewportGroup.tsx` 的 `items` / `columns` / `mobileColumns` 接口。`InteractiveLayout` 负责区域关系，`InteractiveViewportGroup` 负责区域内部的网格或堆叠；每个 item 必须保留自己的 CanvasToolbar、CanvasResizer 和交互状态，视口组不负责数学状态同步。
   - **AutoMath 自动 LaTeX 渲染**: 交互 Island 顶层统一使用 `<AutoMath>`（`KdeWindowShell` 已内建包裹），组件内部所有 JSX 节点、自定义属性（如 `ParamSlider label="$x$"`）及字符串均可直接写 `$ ... $` / `$$ ... $$`，自动完成 KaTeX 解析并自带全局渲染缓存。
@@ -52,12 +52,14 @@
     - 画布容器高度绑定 `h-[var(--demo-height,20rem)]`（3D/机箱为 `28rem`）；
     - **视口高度控制与自适应**: 画布底部横条（`CanvasResizer`）支持**双击恢复自适应高度**与**按住上下拖拽进入手动固定高度**（自适应态为半透明虚线条，手动态为主题色强调实线并悬停展示 px 数值与重置提示）；
     - **展开全屏按钮**: 统一置于外层组件卡片/视窗标题栏右上角（如 `KdeWindowShell` 头部或 `ExpandableDemo` 外层），与画布内部视口控制解耦。
-  - **选项卡与预设选择控件规范（CapsuleTabs & PresetSelector）**:
+  - **选项卡与复选框规范（KdeTabs & KdeCheckbox）**:
     - **严禁裸写切换按钮**: 严禁在组件内部使用裸 `<button>` 配合手写背景色（如 `bg-accent text-accent-foreground` 等）自制多选一切换控件，深浅主题下极易发生文字发虚、对比度失衡或视觉割裂；
-    - **CapsuleTabs 尺寸与层级规范**:
-      - **一级模态 / 核心算法 / 顶层视图切换**: 统一使用 `<CapsuleTabs>`（默认 `size="sm"`）；
-      - **二级参数 / 操作细项 / 局部状态切换**: 统一使用 `<CapsuleTabs size="xs">`；
-      - 容器内建 `flex-wrap gap-1.5` 防护，确保移动端与窄屏下自适应平滑换行；
+    - **严禁使用已废除的旧组件**: 旧 `CapsuleTabs` 与旧 `Checkbox` 已彻底删除并禁用。任何新增或维护代码严禁重新引入；
+    - **KdeTabs 尺寸与层级规范**:
+      - **一级模态 / 核心算法 / 顶层视图切换**: 统一使用 `<KdeTabs>`（默认 `size="sm"`）；
+      - **二级参数 / 操作细项 / 局部状态切换**: 统一使用 `<KdeTabs size="xs">`；
+      - 必须使用 `{ options: Array<{ label, value }>, value, onChange }` 标准 props 契约，内建 `flex-wrap gap-1.5` 与 KDE Breeze 微阴影胶囊样式；
+    - **KdeCheckbox 复选框规范**: 布尔开关一律使用 `<KdeCheckbox checked={...} onChange={...} label="..." />`，符合 KDE Plasma Breeze 视觉风格；
     - **PresetSelector 场景数据预设**: 针对几何、矩阵、函数或场等数据列表项预设，统一使用 `<PresetSelector>`（已内建高对比度胶囊药丸交互与标签排版）。
 - 3D 曲面默认半透明(opacity≈0.55、depthWrite=false)并带开关,保证箭头/标记可见;切换时同步 transparent/opacity/depthWrite。
 - 主题:2D 用 `watchTheme` 触发重绘;3D 监听 `html` 的 class 变化,重设 `setClearColor` 并重渲;颜色从 CSS 变量读取(`readThemeColors`),禁止硬编码。

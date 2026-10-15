@@ -16,11 +16,15 @@ import {
   type ProjectionModeId,
   type ProjectionTargetId,
 } from "../../visualizations/scenes/linear-algebra/projection2d";
-import CapsuleTabs from "../framework/CapsuleTabs";
 import CanvasToolbar from "../framework/CanvasToolbar";
+import CanvasResizer from "../framework/CanvasResizer";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import { AutoMath } from "../framework/AutoMath";
 import ParamSlider from "../framework/ParamSlider";
+import KdeWindowShell from "../framework/KdeWindowShell";
+import KdeCard from "../framework/KdeCard";
+import KdeTabs from "../framework/KdeTabs";
+import KdeReadout from "../framework/KdeReadout";
 import { clamp } from "@math";
 import { useCanvas2D } from "../framework/useCanvas2D";
 import { useVectorDrag } from "../framework/useVectorDrag";
@@ -304,65 +308,128 @@ export default function ProjectionDemo({ height }: { height?: string }) {
   return (
     <AutoMath>
       <ExpandableDemo id="projection-2d" height={height}>
-        <div className="space-y-3">
-          <div
-            ref={containerRef}
-            className="relative h-[var(--demo-height,20rem)] w-full overflow-hidden rounded-xl border border-border"
-          >
-            <CanvasToolbar onReset={resetBounds} />
-            <canvas
-              ref={canvasRef}
-              className="absolute inset-0 h-full w-full"
-            />
-          </div>
-          <div className="flex flex-wrap items-center gap-4 text-sm">
-            <CapsuleTabs
-              options={TARGET_OPTIONS}
-              value={targetId}
-              onChange={(id: ProjectionTargetId) => setTargetId(id)}
-              label="投到:"
-            />
-            <CapsuleTabs
-              options={MODE_OPTIONS}
-              value={modeId}
-              onChange={(id: ProjectionModeId) => setModeId(id)}
-            />
-            <ParamSlider
-              label="$x$"
-              min={PROBE_CLAMP.xMin}
-              max={PROBE_CLAMP.xMax}
-              step={0.05}
-              value={probe.x}
-              onChange={(v: number) => setProbe((s) => ({ ...s, x: v }))}
-              widthClass="w-32"
-            />
-            <ParamSlider
-              label="$y$"
-              min={PROBE_CLAMP.yMin}
-              max={PROBE_CLAMP.yMax}
-              step={0.05}
-              value={probe.y}
-              onChange={(v: number) => setProbe((s) => ({ ...s, y: v }))}
-              widthClass="w-32"
-            />
-          </div>
-          <div className="grid gap-2 text-sm text-muted sm:grid-cols-2">
-            <p>{`$x = (${probe.x.toFixed(2)}, ${probe.y.toFixed(2)})$`}</p>
-            <p>{`$P = ${mode.tex}$`}</p>
-            <p>
-              {`$Px = ${mode.texPx} = (${px.toFixed(2)}, ${py.toFixed(2)})$`}
-            </p>
-            <p>
-              {`$(I-P)x = ${mode.texResidual} = (${rx.toFixed(2)}, ${ry.toFixed(2)})$`}
-            </p>
-            <p>{`$P^2x = Px = (${px.toFixed(2)}, ${py.toFixed(2)})$`}</p>
-          </div>
-          <p className="text-xs text-muted">
-            提示：拖动端点黑心圆点进行 2D 自由移动；拖动蓝色箭头沿子空间 $L$
-            滑动；拖动灰色箭头沿残差法向 {"$L^\\perp$"} 滑动（落点 $Px${" "}
-            保持恒定不变！）。支持滚轮缩放与中键/右键平移。
-          </p>
-        </div>
+        <KdeWindowShell
+          title="投影算子与空间正交分解 (Projection Operator)"
+          eyebrow="Linear Algebra · Idempotent Operators"
+          mark="P² = P"
+          modeTag={
+            modeId === "orthogonal"
+              ? "正交投影 (Orthogonal)"
+              : "斜投影 (Oblique)"
+          }
+          display={
+            <div
+              ref={containerRef}
+              className="relative h-[var(--demo-height,20rem)] w-full overflow-hidden rounded-xl border border-border bg-slate-950"
+            >
+              <CanvasToolbar onReset={resetBounds} />
+              <canvas
+                ref={canvasRef}
+                className="absolute inset-0 h-full w-full"
+              />
+              <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
+            </div>
+          }
+          controls={
+            <div className="space-y-3">
+              <KdeCard title="投影模式与目标子空间" variant="dense">
+                <div className="space-y-2">
+                  <div>
+                    <div className="text-[11px] text-muted mb-1 font-medium">
+                      投影目标子空间 L：
+                    </div>
+                    <KdeTabs
+                      options={TARGET_OPTIONS}
+                      value={targetId}
+                      onChange={(id: string) =>
+                        setTargetId(id as ProjectionTargetId)
+                      }
+                      size="xs"
+                    />
+                  </div>
+                  <div className="pt-2 border-t border-border/40">
+                    <div className="text-[11px] text-muted mb-1 font-medium">
+                      投影类型：
+                    </div>
+                    <KdeTabs
+                      options={MODE_OPTIONS}
+                      value={modeId}
+                      onChange={(id: string) =>
+                        setModeId(id as ProjectionModeId)
+                      }
+                      size="xs"
+                    />
+                  </div>
+                </div>
+              </KdeCard>
+
+              <KdeCard title="探测向量坐标 (x, y)" variant="dense">
+                <div className="space-y-2">
+                  <ParamSlider
+                    label="$x$"
+                    min={PROBE_CLAMP.xMin}
+                    max={PROBE_CLAMP.xMax}
+                    step={0.05}
+                    value={probe.x}
+                    onChange={(v: number) => setProbe((s) => ({ ...s, x: v }))}
+                    widthClass="w-full"
+                  />
+                  <ParamSlider
+                    label="$y$"
+                    min={PROBE_CLAMP.yMin}
+                    max={PROBE_CLAMP.yMax}
+                    step={0.05}
+                    value={probe.y}
+                    onChange={(v: number) => setProbe((s) => ({ ...s, y: v }))}
+                    widthClass="w-full"
+                  />
+                </div>
+              </KdeCard>
+
+              <div className="grid grid-cols-2 gap-1.5">
+                <KdeReadout
+                  label="原向量 x"
+                  value={`(${probe.x.toFixed(2)}, ${probe.y.toFixed(2)})`}
+                  dense
+                />
+                <KdeReadout
+                  label="投影向量 Px"
+                  value={`(${px.toFixed(2)}, ${py.toFixed(2)})`}
+                  variant="accent"
+                  dense
+                />
+                <KdeReadout
+                  label="残差向量 (I-P)x"
+                  value={`(${rx.toFixed(2)}, ${ry.toFixed(2)})`}
+                  dense
+                />
+                <KdeReadout
+                  label="幂等性质 P²x = Px"
+                  value="P² = P 成立"
+                  variant="success"
+                  dense
+                />
+              </div>
+
+              <KdeCard title="投影矩阵与代数表达式" variant="dense">
+                <div className="space-y-1.5 text-xs">
+                  <div className="font-mono text-primary bg-surface p-2 rounded border border-border/40 overflow-x-auto">
+                    {`$P = ${mode.tex}$`}
+                  </div>
+                  <div className="text-[11px] text-muted font-mono">
+                    {`$Px = ${mode.texPx}$`}
+                  </div>
+                </div>
+              </KdeCard>
+
+              <p className="text-xs text-muted leading-relaxed">
+                {
+                  "提示：拖动端点黑心圆点进行 2D 自由移动；拖动蓝色箭头沿子空间 $L$ 滑动；拖动灰色箭头沿残差法向 $L^\\perp$ 滑动（落点 $Px$ 保持恒定不变！）。"
+                }
+              </p>
+            </div>
+          }
+        />
       </ExpandableDemo>
     </AutoMath>
   );
