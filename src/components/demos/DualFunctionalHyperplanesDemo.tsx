@@ -1,20 +1,13 @@
-import { useState, useRef, useEffect } from "react";
-import { useCanvas2D } from "../framework/useCanvas2D";
-import CanvasToolbar from "../framework/CanvasToolbar";
-import CanvasResizer from "../framework/CanvasResizer";
+import { useState } from "react";
+import CanvasViewport from "../framework/CanvasViewport";
 import ExpandableDemo from "../framework/ExpandableDemo";
-import { AutoMath } from "../framework/AutoMath";
 import ParamSlider from "../framework/ParamSlider";
 import PresetSelector, { type PresetOption } from "../framework/PresetSelector";
 import KdeWindowShell from "../framework/KdeWindowShell";
 import KdeCard from "../framework/KdeCard";
 import KdeReadout from "../framework/KdeReadout";
 import KdeCheckbox from "../framework/KdeCheckbox";
-import {
-  drawDragHandle,
-  drawAdaptiveAxes,
-  type Bounds2,
-} from "../../visualizations/core/2d/plot2d";
+import type { Bounds2 } from "../../visualizations/core/2d/plot2d";
 
 const BOUNDS: Bounds2 = { xMin: -3.5, xMax: 3.5, yMin: -3.5, yMax: 3.5 };
 
@@ -22,12 +15,13 @@ const PRESETS: PresetOption[] = [
   {
     value: "standard",
     label: "标准倾斜测量",
-    description: "泛函 f(x,y) = x + 0.5y，测量向量 v = (2.0, 1.0)",
+    description:
+      "泛函 $f(x,y) = x + 0.5y$，测量向量 $\\mathbf{v} = (2.0, 1.0)$",
   },
   {
     value: "nullspace",
-    label: "零核正交测量 (f(v) = 0)",
-    description: "向量位于 ker(f) 上，穿透层数为 0",
+    label: "零核正交测量 ($f(\\mathbf{v}) = 0$)",
+    description: "向量位于 $\\ker(f)$ 上，穿透层数为 0",
   },
   {
     value: "dense",
@@ -36,59 +30,10 @@ const PRESETS: PresetOption[] = [
   },
   {
     value: "coord_extract",
-    label: "坐标提取对偶基 e*¹",
-    description: "f(x,y) = x，等值线垂直于 x 轴，严格提取 x 坐标",
+    label: "坐标提取对偶基 $\\mathbf{e}^{*1}$",
+    description: "$f(x,y) = x$，等值线垂直于 $x$ 轴，严格提取 $x$ 坐标",
   },
 ];
-
-function drawPixelSegment(
-  ctx: CanvasRenderingContext2D,
-  x0: number,
-  y0: number,
-  x1: number,
-  y1: number,
-  color: string,
-  width = 2,
-  dash: number[] = [],
-) {
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = width;
-  ctx.setLineDash(dash);
-  ctx.beginPath();
-  ctx.moveTo(x0, y0);
-  ctx.lineTo(x1, y1);
-  ctx.stroke();
-  ctx.restore();
-}
-
-function drawArrowHead(
-  ctx: CanvasRenderingContext2D,
-  fromX: number,
-  fromY: number,
-  toX: number,
-  toY: number,
-  color: string,
-  headLen = 10,
-  headAngle = Math.PI / 6,
-) {
-  const angle = Math.atan2(toY - fromY, toX - fromX);
-  ctx.save();
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.moveTo(toX, toY);
-  ctx.lineTo(
-    toX - headLen * Math.cos(angle - headAngle),
-    toY - headLen * Math.sin(angle - headAngle),
-  );
-  ctx.lineTo(
-    toX - headLen * Math.cos(angle + headAngle),
-    toY - headLen * Math.sin(angle + headAngle),
-  );
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-}
 
 export default function DualFunctionalHyperplanesDemo({
   height,
@@ -105,21 +50,6 @@ export default function DualFunctionalHyperplanesDemo({
   const fVal = a * v.x + b * v.y;
   const gradLen = Math.hypot(a, b);
   const lineSpacing = gradLen > 1e-4 ? 1 / gradLen : 0;
-
-  const stateRef = useRef({
-    a,
-    b,
-    v,
-    showRiesz,
-    showIntersections,
-  });
-
-  useEffect(() => {
-    stateRef.current = { a, b, v, showRiesz, showIntersections };
-  }, [a, b, v, showRiesz, showIntersections]);
-
-  const isDraggingRef = useRef(false);
-  const isHoveredRef = useRef(false);
 
   const handlePreset = (val: string) => {
     setPresetKey(val);
@@ -142,398 +72,274 @@ export default function DualFunctionalHyperplanesDemo({
     }
   };
 
-  const { containerRef, canvasRef, redraw, resetBounds } = useCanvas2D({
-    initialBounds: BOUNDS,
-    onHover(e, plot) {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      const px = e.clientX - rect.left;
-      const py = e.clientY - rect.top;
-
-      const sx = plot.toScreenX(stateRef.current.v.x);
-      const sy = plot.toScreenY(stateRef.current.v.y);
-      const dist = Math.hypot(px - sx, py - sy);
-
-      if (dist <= 24) {
-        isHoveredRef.current = true;
-        canvas.style.cursor = isDraggingRef.current ? "grabbing" : "grab";
-      } else {
-        isHoveredRef.current = false;
-        if (!isDraggingRef.current) canvas.style.cursor = "";
-      }
-    },
-    onLeftDown(e, plot) {
-      const canvas = canvasRef.current;
-      if (!canvas) return false;
-      const rect = canvas.getBoundingClientRect();
-      const px = e.clientX - rect.left;
-      const py = e.clientY - rect.top;
-
-      const sx = plot.toScreenX(stateRef.current.v.x);
-      const sy = plot.toScreenY(stateRef.current.v.y);
-      const dist = Math.hypot(px - sx, py - sy);
-
-      if (dist <= 24) {
-        isDraggingRef.current = true;
-        isHoveredRef.current = true;
-        canvas.style.cursor = "grabbing";
-        return true;
-      }
-      return false;
-    },
-    onLeftMove(e, plot) {
-      if (!isDraggingRef.current) return;
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      const px = e.clientX - rect.left;
-      const py = e.clientY - rect.top;
-
-      const wx = plot.toWorldX(px);
-      const wy = plot.toWorldY(py);
-
-      const clampedX = Math.max(-3.0, Math.min(3.0, wx));
-      const clampedY = Math.max(-3.0, Math.min(3.0, wy));
-
-      setV({
-        x: Math.round(clampedX * 10) / 10,
-        y: Math.round(clampedY * 10) / 10,
-      });
-      setPresetKey("custom");
-    },
-    onLeftUp() {
-      isDraggingRef.current = false;
-      const canvas = canvasRef.current;
-      if (canvas) {
-        canvas.style.cursor = isHoveredRef.current ? "grab" : "";
-      }
-    },
-    draw(ctx, plot, theme) {
-      const { width, height } = plot;
-      ctx.clearRect(0, 0, width, height);
-
-      const st = stateRef.current;
-      drawAdaptiveAxes(ctx, plot, theme, "x", "y");
-
-      // 1. Draw Hyperplanes (Equispaced parallel lines ax + by = c)
-      const gradSq = st.a * st.a + st.b * st.b;
-      if (gradSq > 1e-5) {
-        // Range of c to cover the canvas
-        const corners = [
-          { x: plot.toWorldX(0), y: plot.toWorldY(0) },
-          { x: plot.toWorldX(width), y: plot.toWorldY(0) },
-          { x: plot.toWorldX(0), y: plot.toWorldY(height) },
-          { x: plot.toWorldX(width), y: plot.toWorldY(height) },
-        ];
-        const cVals = corners.map((p) => st.a * p.x + st.b * p.y);
-        const minC = Math.floor(Math.min(...cVals)) - 1;
-        const maxC = Math.ceil(Math.max(...cVals)) + 1;
-
-        // Line direction orthogonal to normal (a, b) -> (-b, a)
-        const dx = -st.b;
-        const dy = st.a;
-        const span = 15;
-
-        for (let cInt = minC; cInt <= maxC; cInt++) {
-          // A point on line ax + by = cInt: p0 = (cInt * a / gradSq, cInt * b / gradSq)
-          const p0x = (cInt * st.a) / gradSq;
-          const p0y = (cInt * st.b) / gradSq;
-
-          const pStart = { x: p0x - dx * span, y: p0y - dy * span };
-          const pEnd = { x: p0x + dx * span, y: p0y + dy * span };
-
-          const s0x = plot.toScreenX(pStart.x);
-          const s0y = plot.toScreenY(pStart.y);
-          const s1x = plot.toScreenX(pEnd.x);
-          const s1y = plot.toScreenY(pEnd.y);
-
-          const isKernel = cInt === 0;
-          ctx.save();
-          if (isKernel) {
-            ctx.strokeStyle = "#059669"; // Emerald for ker(f)
-            ctx.lineWidth = 2.4;
-            ctx.setLineDash([]);
-          } else {
-            ctx.strokeStyle =
-              cInt % 2 === 0
-                ? "rgba(59, 130, 246, 0.45)"
-                : "rgba(59, 130, 246, 0.25)";
-            ctx.lineWidth = cInt % 2 === 0 ? 1.4 : 1.0;
-            ctx.setLineDash(cInt % 2 === 0 ? [5, 4] : [3, 3]);
-          }
-
-          ctx.beginPath();
-          ctx.moveTo(s0x, s0y);
-          ctx.lineTo(s1x, s1y);
-          ctx.stroke();
-
-          // Label level value c
-          const labelSx = plot.toScreenX(p0x);
-          const labelSy = plot.toScreenY(p0y);
-          if (
-            labelSx >= 10 &&
-            labelSx <= width - 10 &&
-            labelSy >= 10 &&
-            labelSy <= height - 10
-          ) {
-            ctx.font = isKernel
-              ? "bold 11px system-ui, sans-serif"
-              : "10px system-ui, sans-serif";
-            ctx.fillStyle = isKernel ? "#059669" : "#3b82f6";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(
-              isKernel ? "f=0 (ker f)" : `f=${cInt}`,
-              labelSx + (Math.abs(st.b) > Math.abs(st.a) ? 18 : 0),
-              labelSy - (Math.abs(st.a) >= Math.abs(st.b) ? 14 : 6),
-            );
-          }
-          ctx.restore();
-        }
-      }
-
-      const pOrigin = { x: plot.toScreenX(0), y: plot.toScreenY(0) };
-      const pV = { x: plot.toScreenX(st.v.x), y: plot.toScreenY(st.v.y) };
-
-      // 2. Draw Piercing Intersection Points
-      if (st.showIntersections && gradSq > 1e-5) {
-        const val = st.a * st.v.x + st.b * st.v.y;
-        const startK = val >= 0 ? 1 : -1;
-        const endK = val >= 0 ? Math.floor(val) : Math.ceil(val);
-
-        if (Math.abs(val) >= 1) {
-          const stepK = val >= 0 ? 1 : -1;
-          for (let k = startK; val >= 0 ? k <= endK : k >= endK; k += stepK) {
-            const t = k / val;
-            const ix = t * st.v.x;
-            const iy = t * st.v.y;
-            const isx = plot.toScreenX(ix);
-            const isy = plot.toScreenY(iy);
-
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(isx, isy, 4.5, 0, Math.PI * 2);
-            ctx.fillStyle = "#ef4444";
-            ctx.fill();
-            ctx.strokeStyle = "#ffffff";
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-
-            ctx.font = "bold 10px system-ui, sans-serif";
-            ctx.fillStyle = "#ef4444";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "bottom";
-            ctx.fillText(`#${Math.abs(k)}`, isx, isy - 6);
-            ctx.restore();
-          }
-        }
-      }
-
-      // 3. Optional: Draw Riesz Representation Normal Vector v_f = (a, b)
-      if (st.showRiesz && gradSq > 1e-5) {
-        const rLen = Math.hypot(st.a, st.b);
-        const normScale = 1.4;
-        const rx = (st.a / rLen) * normScale;
-        const ry = (st.b / rLen) * normScale;
-        const pRiesz = {
-          x: plot.toScreenX(rx),
-          y: plot.toScreenY(ry),
-        };
-
-        drawPixelSegment(
-          ctx,
-          pOrigin.x,
-          pOrigin.y,
-          pRiesz.x,
-          pRiesz.y,
-          "#8b5cf6", // purple-500
-          2.2,
-          [4, 3],
-        );
-        drawArrowHead(
-          ctx,
-          pOrigin.x,
-          pOrigin.y,
-          pRiesz.x,
-          pRiesz.y,
-          "#8b5cf6",
-          8,
-        );
-
-        ctx.save();
-        ctx.font = "bold 11px system-ui, sans-serif";
-        ctx.fillStyle = "#8b5cf6";
-        ctx.fillText("v_f (Riesz 对偶箭头 ⊥ ker)", pRiesz.x + 8, pRiesz.y - 6);
-        ctx.restore();
-      }
-
-      // 4. Draw Vector v (Amber / Orange) with Arrowhead and Drag Handle
-      drawPixelSegment(ctx, pOrigin.x, pOrigin.y, pV.x, pV.y, "#f59e0b", 3.2);
-      drawArrowHead(ctx, pOrigin.x, pOrigin.y, pV.x, pV.y, "#f59e0b", 12);
-
-      drawDragHandle(ctx, pV.x, pV.y, {
-        color: "#f59e0b",
-        isHovered: isHoveredRef.current,
-        isDragging: isDraggingRef.current,
-        radius: 7,
-      });
-
-      ctx.save();
-      ctx.font = "bold 13px system-ui, sans-serif";
-      ctx.fillStyle = "#f59e0b";
-      ctx.fillText(
-        `v = (${st.v.x.toFixed(1)}, ${st.v.y.toFixed(1)})`,
-        pV.x + 10,
-        pV.y - 10,
-      );
-      ctx.restore();
-    },
-  });
-
-  useEffect(() => {
-    redraw();
-  }, [a, b, v, showRiesz, showIntersections, redraw]);
-
   return (
-    <AutoMath>
-      <ExpandableDemo id="dual-functional-hyperplanes" height={height}>
-        <KdeWindowShell
-          title="对偶泛函与超平面等高线流形"
-          eyebrow="Linear Algebra · Dual Space & Functional"
-          mark="f(v) = <v_f, v>"
-          modeTag="Hyperplane Piercing"
-          display={
-            <div
-              ref={containerRef}
-              className="relative h-[var(--demo-height,20rem)] w-full overflow-hidden rounded-md border border-slate-800 bg-slate-950"
-            >
-              <CanvasToolbar onReset={resetBounds} />
-              <canvas
-                ref={canvasRef}
-                className="absolute inset-0 h-full w-full cursor-crosshair"
-              />
+    <ExpandableDemo id="dual-functional-hyperplanes" height={height}>
+      <KdeWindowShell
+        title="对偶泛函与超平面等高线流形"
+        eyebrow="Linear Algebra · Dual Space & Functional"
+        mark="$f(\mathbf{v}) = \langle \mathbf{v}_f, \mathbf{v}\rangle$"
+        modeTag="Hyperplane Piercing"
+        display={
+          <CanvasViewport
+            initialBounds={BOUNDS}
+            equalScale
+            className="h-[var(--demo-height,20rem)]"
+            onReset={() => handlePreset("standard")}
+            onDraw={(ctx, plot, theme, scene) => {
+              scene.addAxes("x", "y");
 
-              {/* In-canvas Legend */}
-              <div className="pointer-events-none absolute bottom-4 left-3 z-10 flex flex-col gap-1 rounded bg-slate-900/90 p-2 text-[11px] text-slate-300 backdrop-blur-sm border border-slate-700/60">
-                <div className="flex items-center gap-2">
-                  <span className="text-amber-400 font-bold">● 向量 v</span>
-                  <span className="text-emerald-400 font-bold">
-                    ― ker(f) 零核超平面
-                  </span>
-                  <span className="text-blue-400 font-bold">
-                    ┄ f(x)=c 等值线族
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 pt-0.5 border-t border-slate-700/40 text-[10px]">
-                  <span className="text-rose-400 font-medium">
-                    ● 穿透计数点
-                  </span>
-                  {showRiesz && (
-                    <span className="text-purple-400 font-medium">
-                      ┄ v_f (Riesz 表现向量)
-                    </span>
-                  )}
-                </div>
-              </div>
+              const gradSq = a * a + b * b;
+              const width = plot.width;
+              const height = plot.height;
 
-              <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
-            </div>
-          }
-          controls={
-            <div className="space-y-3">
-              <KdeCard title="预设场景与泛函系数探针" variant="dense">
-                <div className="space-y-2.5">
-                  <PresetSelector
-                    label="预设测量场景:"
-                    options={PRESETS}
-                    value={presetKey}
-                    onChange={handlePreset}
-                  />
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    <ParamSlider
-                      label="系数 a (x 分量)"
-                      labelMode="adaptive"
-                      widthClass="w-full"
-                      value={a}
-                      min={-2.5}
-                      max={2.5}
-                      step={0.1}
-                      onChange={(val) => {
-                        setA(val);
-                        setPresetKey("custom");
-                      }}
-                    />
-                    <ParamSlider
-                      label="系数 b (y 分量)"
-                      labelMode="adaptive"
-                      widthClass="w-full"
-                      value={b}
-                      min={-2.5}
-                      max={2.5}
-                      step={0.1}
-                      onChange={(val) => {
-                        setB(val);
-                        setPresetKey("custom");
-                      }}
-                    />
-                  </div>
+              // 1. Draw Equispaced Hyperplanes
+              if (gradSq > 1e-5) {
+                scene.raw((ctx, plot) => {
+                  const corners = [
+                    { x: plot.toWorldX(0), y: plot.toWorldY(0) },
+                    { x: plot.toWorldX(width), y: plot.toWorldY(0) },
+                    { x: plot.toWorldX(0), y: plot.toWorldY(height) },
+                    { x: plot.toWorldX(width), y: plot.toWorldY(height) },
+                  ];
+                  const cVals = corners.map((p) => a * p.x + b * p.y);
+                  const minC = Math.floor(Math.min(...cVals)) - 1;
+                  const maxC = Math.ceil(Math.max(...cVals)) + 1;
 
-                  <div className="flex flex-wrap items-center gap-4 pt-1 border-t border-slate-700/50">
-                    <KdeCheckbox
-                      label="显示穿透交点"
-                      checked={showIntersections}
-                      onChange={setShowIntersections}
-                    />
-                    <KdeCheckbox
-                      label="显示 Riesz 对偶向量 v_f"
-                      checked={showRiesz}
-                      onChange={setShowRiesz}
-                    />
-                  </div>
-                </div>
-              </KdeCard>
+                  const dx = -b;
+                  const dy = a;
+                  const span = 15;
 
-              <div className="grid grid-cols-2 gap-1.5">
-                <KdeReadout
-                  label="泛函求值 f(v)"
-                  value={fVal.toFixed(2)}
-                  variant="accent"
-                  dense
-                />
-                <KdeReadout
-                  label="几何穿透层数"
-                  value={
-                    Math.abs(fVal) < 1e-4
-                      ? "0 (位于零核)"
-                      : `${Math.abs(fVal).toFixed(2)} 层`
+                  for (let cInt = minC; cInt <= maxC; cInt++) {
+                    const p0x = (cInt * a) / gradSq;
+                    const p0y = (cInt * b) / gradSq;
+
+                    const s0x = plot.toScreenX(p0x - dx * span);
+                    const s0y = plot.toScreenY(p0y - dy * span);
+                    const s1x = plot.toScreenX(p0x + dx * span);
+                    const s1y = plot.toScreenY(p0y + dy * span);
+
+                    const isKernel = cInt === 0;
+                    ctx.save();
+                    if (isKernel) {
+                      ctx.strokeStyle = "#059669";
+                      ctx.lineWidth = 2.4;
+                      ctx.setLineDash([]);
+                    } else {
+                      ctx.strokeStyle =
+                        cInt % 2 === 0
+                          ? "rgba(59, 130, 246, 0.45)"
+                          : "rgba(59, 130, 246, 0.25)";
+                      ctx.lineWidth = cInt % 2 === 0 ? 1.4 : 1.0;
+                      ctx.setLineDash(cInt % 2 === 0 ? [5, 4] : [3, 3]);
+                    }
+
+                    ctx.beginPath();
+                    ctx.moveTo(s0x, s0y);
+                    ctx.lineTo(s1x, s1y);
+                    ctx.stroke();
+
+                    // Label level value c
+                    const labelSx = plot.toScreenX(p0x);
+                    const labelSy = plot.toScreenY(p0y);
+                    if (
+                      labelSx >= 10 &&
+                      labelSx <= width - 10 &&
+                      labelSy >= 10 &&
+                      labelSy <= height - 10
+                    ) {
+                      ctx.font = isKernel
+                        ? "bold 11px system-ui, sans-serif"
+                        : "10px system-ui, sans-serif";
+                      ctx.fillStyle = isKernel ? "#059669" : "#3b82f6";
+                      ctx.textAlign = "center";
+                      ctx.textBaseline = "middle";
+                      ctx.fillText(
+                        isKernel ? "f=0 (ker f)" : `f=${cInt}`,
+                        labelSx + (Math.abs(b) > Math.abs(a) ? 18 : 0),
+                        labelSy - (Math.abs(a) >= Math.abs(b) ? 14 : 6),
+                      );
+                    }
+                    ctx.restore();
                   }
-                  dense
-                />
-                <KdeReadout
-                  label="等高线间距 d"
-                  value={lineSpacing.toFixed(2)}
-                  dense
-                />
-                <KdeReadout
-                  label="零核状态"
-                  value={Math.abs(fVal) < 1e-3 ? "v ∈ ker(f)" : "v ∉ ker(f)"}
-                  variant={Math.abs(fVal) < 1e-3 ? "success" : "default"}
-                  dense
-                />
-              </div>
+                });
+              }
 
-              <div className="rounded-md border border-slate-700/60 bg-slate-900/40 p-2.5 text-xs text-muted-foreground">
-                {`$f(\\mathbf{v}) = (${a.toFixed(1)})(${v.x.toFixed(1)}) + (${b.toFixed(1)})(${v.y.toFixed(1)}) = ${fVal.toFixed(2)}$`}
-                <p className="mt-1 text-[11px]">
-                  等高线间距 $d = 1/\|\nabla f\| =$ {lineSpacing.toFixed(2)}
-                  。间距越密，泛函对同一向量测出的数值越大。
-                </p>
+              // 2. Piercing Intersections
+              if (showIntersections && gradSq > 1e-5) {
+                const val = a * v.x + b * v.y;
+                if (Math.abs(val) >= 1) {
+                  const startK = val >= 0 ? 1 : -1;
+                  const endK = val >= 0 ? Math.floor(val) : Math.ceil(val);
+                  const stepK = val >= 0 ? 1 : -1;
+
+                  for (
+                    let k = startK;
+                    val >= 0 ? k <= endK : k >= endK;
+                    k += stepK
+                  ) {
+                    const t = k / val;
+                    scene.addPoint({
+                      at: [t * v.x, t * v.y],
+                      color: "#ef4444",
+                      radius: 4,
+                      ring: true,
+                    });
+                  }
+                }
+              }
+
+              // 3. Riesz Representative Vector v_f = (a, b)
+              if (showRiesz) {
+                scene.addVector({
+                  to: [a, b],
+                  color: "#8b5cf6",
+                  width: 2.2,
+                  dash: [4, 3],
+                  label: "v_f (Riesz 对偶)",
+                });
+              }
+
+              // 4. Tested Vector v (Interactive Draggable)
+              scene.addVector({
+                to: [v.x, v.y],
+                color: "#f59e0b",
+                width: 3.0,
+                label: `v (${v.x.toFixed(1)}, ${v.y.toFixed(1)})`,
+                draggable: true,
+                handleRing: true,
+                onDrag: ([wx, wy]) => {
+                  const clampedX = Math.max(-3.0, Math.min(3.0, wx));
+                  const clampedY = Math.max(-3.0, Math.min(3.0, wy));
+                  setV({
+                    x: Math.round(clampedX * 10) / 10,
+                    y: Math.round(clampedY * 10) / 10,
+                  });
+                  setPresetKey("custom");
+                },
+              });
+
+              scene.render(ctx, plot, theme);
+            }}
+          >
+            {/* In-canvas Legend */}
+            <div className="pointer-events-none absolute bottom-4 left-3 z-10 flex flex-col gap-1 rounded bg-slate-900/90 p-2 text-[11px] text-slate-300 backdrop-blur-sm border border-slate-700/60">
+              <div className="flex items-center gap-2">
+                <span className="text-amber-400 font-bold">
+                  {"● 向量 $\\mathbf{v}$"}
+                </span>
+                <span className="text-emerald-400 font-bold">
+                  {"― $\\ker(f)$ 零核超平面"}
+                </span>
+                <span className="text-blue-400 font-bold">
+                  {"┄ $f(x)=c$ 等值线族"}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 pt-0.5 border-t border-slate-700/40 text-[10px]">
+                <span className="text-rose-400 font-medium">● 穿透计数点</span>
+                {showRiesz && (
+                  <span className="text-purple-400 font-medium">
+                    {"┄ $\\mathbf{v}_f$ (Riesz 表现向量)"}
+                  </span>
+                )}
               </div>
             </div>
-          }
-        />
-      </ExpandableDemo>
-    </AutoMath>
+          </CanvasViewport>
+        }
+        controls={
+          <div className="space-y-3">
+            <KdeCard title="预设场景与泛函系数探针" variant="dense">
+              <div className="space-y-2.5">
+                <PresetSelector
+                  label="预设测量场景:"
+                  options={PRESETS}
+                  value={presetKey}
+                  onChange={handlePreset}
+                />
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                  <ParamSlider
+                    label="系数 $a$ ($x$ 分量)"
+                    labelMode="stacked"
+                    value={a}
+                    min={-2.5}
+                    max={2.5}
+                    step={0.1}
+                    onChange={(val) => {
+                      setA(val);
+                      setPresetKey("custom");
+                    }}
+                  />
+                  <ParamSlider
+                    label="系数 $b$ ($y$ 分量)"
+                    labelMode="stacked"
+                    value={b}
+                    min={-2.5}
+                    max={2.5}
+                    step={0.1}
+                    onChange={(val) => {
+                      setB(val);
+                      setPresetKey("custom");
+                    }}
+                  />
+                </div>
+
+                <div className="flex flex-wrap items-center gap-4 pt-1 border-t border-slate-700/50">
+                  <KdeCheckbox
+                    label="显示穿透交点"
+                    checked={showIntersections}
+                    onChange={setShowIntersections}
+                  />
+                  <KdeCheckbox
+                    label="显示 Riesz 对偶向量 $\mathbf{v}_f$"
+                    checked={showRiesz}
+                    onChange={setShowRiesz}
+                  />
+                </div>
+              </div>
+            </KdeCard>
+
+            <div className="grid grid-cols-2 gap-1.5">
+              <KdeReadout
+                label="泛函求值 $f(\mathbf{v})$"
+                value={fVal.toFixed(2)}
+                variant="accent"
+                dense
+              />
+              <KdeReadout
+                label="几何穿透层数"
+                value={
+                  Math.abs(fVal) < 1e-4
+                    ? "0 (位于零核)"
+                    : `${Math.abs(fVal).toFixed(2)} 层`
+                }
+                dense
+              />
+              <KdeReadout
+                label="等高线间距 $d$"
+                value={lineSpacing.toFixed(2)}
+                dense
+              />
+              <KdeReadout
+                label="零核状态"
+                value={
+                  Math.abs(fVal) < 1e-3
+                    ? "$\\mathbf{v} \\in \\ker(f)$"
+                    : "$\\mathbf{v} \\notin \\ker(f)$"
+                }
+                variant={Math.abs(fVal) < 1e-3 ? "success" : "default"}
+                dense
+              />
+            </div>
+
+            <div className="rounded-md border border-[var(--kde-border)] bg-[var(--kde-panel)]/50 p-2.5 text-xs text-muted-foreground">
+              {`$f(\\mathbf{v}) = (${a.toFixed(1)})(${v.x.toFixed(1)}) + (${b.toFixed(1)})(${v.y.toFixed(1)}) = ${fVal.toFixed(2)}$`}
+              <p className="mt-1 text-[11px]">
+                等高线间距 $d = 1/\|\nabla f\| =$ {lineSpacing.toFixed(2)}
+                。间距越密，泛函对同一向量测出的数值越大。
+              </p>
+            </div>
+          </div>
+        }
+      />
+    </ExpandableDemo>
   );
 }

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import AutoMath from "./AutoMath";
 
 export type KdeBadgeVariant =
   | "default"
@@ -45,7 +46,7 @@ export default function KdeBadge({
     <span
       className={`inline-flex items-center gap-1 whitespace-nowrap rounded-[var(--kde-control-radius,0.35rem)] border font-mono uppercase tracking-wider ${sizeClass} ${VARIANT_CLASSES[variant]} ${className}`}
     >
-      {children}
+      <AutoMath>{children}</AutoMath>
     </span>
   );
 }

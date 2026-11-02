@@ -3,6 +3,7 @@ import "./InteractionStyleLabDemo.css";
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type Dispatch,
   type ReactNode,
@@ -28,8 +29,6 @@ import {
 } from "../../visualizations/scenes/linear-algebra/projection2d";
 import { clamp } from "@math";
 import KdeTabs, { type KdeTabOption } from "../framework/KdeTabs";
-import CanvasToolbar from "../framework/CanvasToolbar";
-import CanvasResizer from "../framework/CanvasResizer";
 import KdeCheckbox from "../framework/KdeCheckbox";
 import KdeSwitch from "../framework/KdeSwitch";
 import KdeDivider from "../framework/KdeDivider";
@@ -37,7 +36,6 @@ import KdeProgressBar from "../framework/KdeProgressBar";
 import KdeButtonGroup from "../framework/KdeButtonGroup";
 import KdeMessageBar from "../framework/KdeMessageBar";
 import KdeButton from "../framework/KdeButton";
-import AutoMath from "../framework/AutoMath";
 import ExpandableDemo, { useExpandable } from "../framework/ExpandableDemo";
 import KdeWindowShell from "../framework/KdeWindowShell";
 import KdeCard from "../framework/KdeCard";
@@ -50,7 +48,9 @@ import InteractiveLayout, {
 import InteractiveViewportGroup from "../framework/InteractiveViewportGroup";
 import ParamSlider from "../framework/ParamSlider";
 import PresetSelector from "../framework/PresetSelector";
-import { useCanvas2D } from "../framework/useCanvas2D";
+import CanvasViewport, {
+  type CanvasViewportHandle,
+} from "../framework/CanvasViewport";
 import { useVectorDrag } from "../framework/useVectorDrag";
 
 type InteractionStyle = "kde" | "instrument";
@@ -288,106 +288,20 @@ function ProjectionCanvas({
     },
   });
 
-  const { containerRef, canvasRef, resetBounds } = useCanvas2D(
-    {
-      initialBounds: PROJECTION_BOUNDS,
-      margin: 24,
-      onLeftDown: dragHandlers.onLeftDown,
-      onLeftMove: dragHandlers.onLeftMove,
-      onLeftUp: dragHandlers.onLeftUp,
-      onHover: dragHandlers.onHover,
-      onPointerLeave: dragHandlers.onPointerLeave,
-      draw(ctx, plot, theme) {
-        const [px, py] = mode.project(probe.x, probe.y);
-        const visible = getVisibleBounds(plot);
-        const plotTheme = getPlotTheme(variant, theme);
-        drawAdaptiveAxes(ctx, plot, plotTheme);
+  const vpRef = useRef<CanvasViewportHandle | null>(null);
 
-        const activeTrack = dragHandlers.getActiveTrack();
-        if (activeTrack) drawDragGuideTrack(ctx, plot, activeTrack);
-
-        if (targetId === "x-axis") {
-          drawSegment(ctx, plot, visible.xMin, 0, visible.xMax, 0, {
-            color: plotTheme.border,
-            width: 3,
-          });
-        } else {
-          const minValue = Math.min(visible.xMin, visible.yMin);
-          const maxValue = Math.max(visible.xMax, visible.yMax);
-          drawSegment(ctx, plot, minValue, minValue, maxValue, maxValue, {
-            color: plotTheme.border,
-            width: 3,
-          });
-        }
-
-        const originX = plot.toScreenX(0);
-        const originY = plot.toScreenY(0);
-        const inputX = plot.toScreenX(probe.x);
-        const inputY = plot.toScreenY(probe.y);
-        const projectedX = plot.toScreenX(px);
-        const projectedY = plot.toScreenY(py);
-
-        if (showResidual) {
-          drawSegment(ctx, plot, px, py, probe.x, probe.y, {
-            color: plotTheme.muted,
-            width: 1.8,
-            dash: [5, 4],
-          });
-        }
-        if (showInputVector) {
-          drawArrow(
-            ctx,
-            originX,
-            originY,
-            inputX - originX,
-            inputY - originY,
-            plotTheme.ink,
-            10,
-            7,
-            2.4,
-          );
-        }
-        drawArrow(
-          ctx,
-          originX,
-          originY,
-          projectedX - originX,
-          projectedY - originY,
-          plotTheme.accent,
-          10,
-          7,
-          2.6,
-        );
-        drawPoint(ctx, plot, px, py, {
-          color: plotTheme.accent,
-          filled: false,
-          radius: 6,
-          width: 2,
-        });
-        if (showGizmo) {
-          drawDragGizmo(ctx, plot, probe.x, probe.y, {
-            color: plotTheme.ink,
-            isHoveredCenter: dragHandlers.isCenterHovered("probe"),
-            isDraggingCenter: dragHandlers.isCenterDragging("probe"),
-            hoveredArrowId: dragHandlers.getHoveredArrowId("probe"),
-            draggingArrowId: dragHandlers.getDraggingArrowId("probe"),
-            arrows: gizmoArrows,
-            opacity: dragHandlers.getOpacity("probe"),
-          });
-        }
-      },
-    },
-    [
-      mode,
-      probe,
-      targetId,
-      modeId,
-      variant,
-      showInputVector,
-      showResidual,
-      showGizmo,
-    ],
-  );
+  useEffect(() => {
+    vpRef.current?.redraw();
+  }, [
+    mode,
+    probe,
+    targetId,
+    modeId,
+    variant,
+    showInputVector,
+    showResidual,
+    showGizmo,
+  ]);
 
   return (
     <div
@@ -404,23 +318,101 @@ function ProjectionCanvas({
           </KdeBadge>
         </div>
       </div>
-      <div
-        ref={containerRef}
-        className="style-lab__canvas-frame style-lab__viewport-canvas relative h-[var(--demo-height,20rem)] min-h-[14rem] w-full overflow-hidden"
-      >
-        <CanvasToolbar
-          onReset={() => {
-            resetBounds();
-            onReset();
-          }}
-        />
-        <canvas
-          ref={canvasRef}
-          className="absolute inset-0 h-full w-full touch-none"
-          aria-label={`${label}，${target.label}，${mode.label}`}
-        />
-        <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
-      </div>
+      <CanvasViewport
+        ref={vpRef}
+        initialBounds={PROJECTION_BOUNDS}
+        margin={24}
+        heightClass="h-[var(--demo-height,20rem)] min-h-[14rem]"
+        className="style-lab__canvas-frame style-lab__viewport-canvas relative w-full overflow-hidden"
+        onLeftDown={dragHandlers.onLeftDown}
+        onLeftMove={dragHandlers.onLeftMove}
+        onLeftUp={dragHandlers.onLeftUp}
+        onHover={dragHandlers.onHover}
+        onPointerLeave={dragHandlers.onPointerLeave}
+        onReset={() => {
+          vpRef.current?.resetBounds();
+          onReset();
+        }}
+        onDraw={(ctx, plot, theme) => {
+          const [px, py] = mode.project(probe.x, probe.y);
+          const visible = getVisibleBounds(plot);
+          const plotTheme = getPlotTheme(variant, theme);
+          drawAdaptiveAxes(ctx, plot, plotTheme);
+
+          const activeTrack = dragHandlers.getActiveTrack();
+          if (activeTrack) drawDragGuideTrack(ctx, plot, activeTrack);
+
+          if (targetId === "x-axis") {
+            drawSegment(ctx, plot, visible.xMin, 0, visible.xMax, 0, {
+              color: plotTheme.border,
+              width: 3,
+            });
+          } else {
+            const minValue = Math.min(visible.xMin, visible.yMin);
+            const maxValue = Math.max(visible.xMax, visible.yMax);
+            drawSegment(ctx, plot, minValue, minValue, maxValue, maxValue, {
+              color: plotTheme.border,
+              width: 3,
+            });
+          }
+
+          const originX = plot.toScreenX(0);
+          const originY = plot.toScreenY(0);
+          const inputX = plot.toScreenX(probe.x);
+          const inputY = plot.toScreenY(probe.y);
+          const projectedX = plot.toScreenX(px);
+          const projectedY = plot.toScreenY(py);
+
+          if (showResidual) {
+            drawSegment(ctx, plot, px, py, probe.x, probe.y, {
+              color: plotTheme.muted,
+              width: 1.8,
+              dash: [5, 4],
+            });
+          }
+          if (showInputVector) {
+            drawArrow(
+              ctx,
+              originX,
+              originY,
+              inputX - originX,
+              inputY - originY,
+              plotTheme.ink,
+              10,
+              7,
+              2.4,
+            );
+          }
+          drawArrow(
+            ctx,
+            originX,
+            originY,
+            projectedX - originX,
+            projectedY - originY,
+            plotTheme.accent,
+            10,
+            7,
+            2.6,
+          );
+          drawPoint(ctx, plot, px, py, {
+            color: plotTheme.accent,
+            filled: false,
+            radius: 6,
+            width: 2,
+          });
+          if (showGizmo) {
+            drawDragGizmo(ctx, plot, probe.x, probe.y, {
+              color: plotTheme.ink,
+              isHoveredCenter: dragHandlers.isCenterHovered("probe"),
+              isDraggingCenter: dragHandlers.isCenterDragging("probe"),
+              hoveredArrowId: dragHandlers.getHoveredArrowId("probe"),
+              draggingArrowId: dragHandlers.getDraggingArrowId("probe"),
+              arrows: gizmoArrows,
+              opacity: dragHandlers.getOpacity("probe"),
+            });
+          }
+        }}
+      />
     </div>
   );
 }
@@ -498,203 +490,30 @@ export default function InteractionStyleLabDemo({
     },
   });
 
-  const { containerRef, canvasRef, redraw, resetBounds } = useCanvas2D(
-    {
-      initialBounds: PROJECTION_BOUNDS,
-      margin: 24,
-      onLeftDown: dragHandlers.onLeftDown,
-      onLeftMove: dragHandlers.onLeftMove,
-      onLeftUp: dragHandlers.onLeftUp,
-      onHover: dragHandlers.onHover,
-      onPointerLeave: dragHandlers.onPointerLeave,
-      draw(ctx, plot, theme) {
-        const currentTarget = PROJECTION_TARGETS[targetId];
-        const currentMode = currentTarget.modes[modeId];
-        const [px, py] = currentMode.project(probe.x, probe.y);
-        const visible = getVisibleBounds(plot);
-        const plotTheme = getPlotTheme(variant, theme);
-        drawAdaptiveAxes(ctx, plot, plotTheme);
+  const mainVpRef = useRef<CanvasViewportHandle | null>(null);
 
-        const activeTrack = dragHandlers.getActiveTrack();
-        if (activeTrack) drawDragGuideTrack(ctx, plot, activeTrack);
-
-        if (targetId === "x-axis") {
-          drawSegment(ctx, plot, visible.xMin, 0, visible.xMax, 0, {
-            color: plotTheme.border,
-            width: 3,
-          });
-        } else {
-          const minVal = Math.min(visible.xMin, visible.yMin);
-          const maxVal = Math.max(visible.xMax, visible.yMax);
-          drawSegment(ctx, plot, minVal, minVal, maxVal, maxVal, {
-            color: plotTheme.border,
-            width: 3,
-          });
-        }
-
-        const originX = plot.toScreenX(0);
-        const originY = plot.toScreenY(0);
-        const inputX = plot.toScreenX(probe.x);
-        const inputY = plot.toScreenY(probe.y);
-        const projectedX = plot.toScreenX(px);
-        const projectedY = plot.toScreenY(py);
-
-        if (showResidual) {
-          drawSegment(ctx, plot, px, py, probe.x, probe.y, {
-            color: plotTheme.muted,
-            width: 1.8,
-            dash: [5, 4],
-          });
-        }
-        if (showInputVector) {
-          drawArrow(
-            ctx,
-            originX,
-            originY,
-            inputX - originX,
-            inputY - originY,
-            plotTheme.ink,
-            10,
-            7,
-            2.4,
-          );
-        }
-        drawArrow(
-          ctx,
-          originX,
-          originY,
-          projectedX - originX,
-          projectedY - originY,
-          plotTheme.accent,
-          10,
-          7,
-          2.6,
-        );
-        drawPoint(ctx, plot, px, py, {
-          color: plotTheme.accent,
-          filled: false,
-          radius: 6,
-          width: 2,
-        });
-        if (showGizmo) {
-          drawDragGizmo(ctx, plot, probe.x, probe.y, {
-            color: plotTheme.ink,
-            isHoveredCenter: dragHandlers.isCenterHovered("probe"),
-            isDraggingCenter: dragHandlers.isCenterDragging("probe"),
-            hoveredArrowId: dragHandlers.getHoveredArrowId("probe"),
-            draggingArrowId: dragHandlers.getDraggingArrowId("probe"),
-            arrows: gizmoArrows,
-            opacity: dragHandlers.getOpacity("probe"),
-          });
-        }
-      },
-    },
-    [
-      probe,
-      targetId,
-      modeId,
-      variant,
-      showInputVector,
-      showResidual,
-      showGizmo,
-    ],
-    [layoutPreset, activeTab],
-  );
-
-  const secondaryCanvasState = useCanvas2D(
-    {
-      initialBounds: PROJECTION_BOUNDS,
-      margin: 24,
-      onLeftDown: dragHandlers.onLeftDown,
-      onLeftMove: dragHandlers.onLeftMove,
-      onLeftUp: dragHandlers.onLeftUp,
-      onHover: dragHandlers.onHover,
-      onPointerLeave: dragHandlers.onPointerLeave,
-      draw(ctx, plot, theme) {
-        const currentTarget = PROJECTION_TARGETS[targetId];
-        const currentMode = currentTarget.modes[modeId];
-        const [px, py] = currentMode.project(probe.x, probe.y);
-        const visible = getVisibleBounds(plot);
-        const plotTheme = getPlotTheme(variant, theme);
-        drawAdaptiveAxes(ctx, plot, plotTheme);
-        const minVal = Math.min(visible.xMin, visible.yMin);
-        const maxVal = Math.max(visible.xMax, visible.yMax);
-        if (targetId === "x-axis") {
-          drawSegment(ctx, plot, visible.xMin, 0, visible.xMax, 0, {
-            color: plotTheme.border,
-            width: 3,
-          });
-        } else {
-          drawSegment(ctx, plot, minVal, minVal, maxVal, maxVal, {
-            color: plotTheme.border,
-            width: 3,
-          });
-        }
-        const ox = plot.toScreenX(0);
-        const oy = plot.toScreenY(0);
-        const projectedX = plot.toScreenX(px);
-        const projectedY = plot.toScreenY(py);
-        const inputX = plot.toScreenX(probe.x);
-        const inputY = plot.toScreenY(probe.y);
-        drawArrow(
-          ctx,
-          ox,
-          oy,
-          projectedX - ox,
-          projectedY - oy,
-          plotTheme.accent,
-          10,
-          7,
-          2.8,
-        );
-        if (showResidual) {
-          drawSegment(ctx, plot, px, py, probe.x, probe.y, {
-            color: plotTheme.muted,
-            width: 2,
-            dash: [5, 4],
-          });
-        }
-        drawPoint(ctx, plot, px, py, {
-          color: plotTheme.accent,
-          filled: true,
-          radius: 7,
-        });
-        drawPoint(ctx, plot, probe.x, probe.y, {
-          color: plotTheme.ink,
-          filled: false,
-          radius: 7,
-          width: 2,
-        });
-        if (showInputVector) {
-          drawArrow(
-            ctx,
-            ox,
-            oy,
-            inputX - ox,
-            inputY - oy,
-            plotTheme.ink,
-            10,
-            7,
-            1.8,
-          );
-        }
-      },
-    },
-    [probe, targetId, modeId, variant, showInputVector, showResidual],
-    [layoutPreset, activeTab],
-  );
+  useEffect(() => {
+    mainVpRef.current?.redraw();
+  }, [
+    probe,
+    targetId,
+    modeId,
+    variant,
+    showInputVector,
+    showResidual,
+    showGizmo,
+    layoutPreset,
+    activeTab,
+  ]);
 
   useEffect(() => {
     if (activeTab === "geometry") {
       const frame = requestAnimationFrame(() => {
-        redraw();
-        if (layoutPreset === "dual-view") {
-          secondaryCanvasState.redraw();
-        }
+        mainVpRef.current?.redraw();
       });
       return () => cancelAnimationFrame(frame);
     }
-  }, [activeTab, layoutPreset, redraw, secondaryCanvasState.redraw]);
+  }, [activeTab, layoutPreset]);
 
   const targetControl = (
     <PresetSelector
@@ -855,29 +674,115 @@ export default function InteractionStyleLabDemo({
   );
 
   const canvas = (
-    <div
-      ref={containerRef}
-      className={`style-lab__canvas-frame relative h-[var(--demo-height,100%)] min-h-[20rem] w-full overflow-hidden ${
+    <CanvasViewport
+      ref={mainVpRef}
+      initialBounds={PROJECTION_BOUNDS}
+      margin={24}
+      heightClass="h-[var(--demo-height,100%)] min-h-[20rem]"
+      className={`style-lab__canvas-frame relative w-full overflow-hidden ${
         activeTab === "geometry" ? "" : "hidden"
       }`}
-    >
-      <CanvasToolbar onReset={resetBounds} />
-      <canvas
-        ref={canvasRef}
-        className="absolute inset-0 h-full w-full touch-none"
-        aria-label={`二维向量投影图，投影目标为 ${target.label}，模式为 ${mode.label}`}
-      />
-      <CanvasResizer className="absolute bottom-0 inset-x-0 z-20" />
-    </div>
+      onLeftDown={dragHandlers.onLeftDown}
+      onLeftMove={dragHandlers.onLeftMove}
+      onLeftUp={dragHandlers.onLeftUp}
+      onHover={dragHandlers.onHover}
+      onPointerLeave={dragHandlers.onPointerLeave}
+      onReset={() => mainVpRef.current?.resetBounds()}
+      onDraw={(ctx, plot, theme) => {
+        const currentTarget = PROJECTION_TARGETS[targetId];
+        const currentMode = currentTarget.modes[modeId];
+        const [px, py] = currentMode.project(probe.x, probe.y);
+        const visible = getVisibleBounds(plot);
+        const plotTheme = getPlotTheme(variant, theme);
+        drawAdaptiveAxes(ctx, plot, plotTheme);
+
+        const activeTrack = dragHandlers.getActiveTrack();
+        if (activeTrack) drawDragGuideTrack(ctx, plot, activeTrack);
+
+        if (targetId === "x-axis") {
+          drawSegment(ctx, plot, visible.xMin, 0, visible.xMax, 0, {
+            color: plotTheme.border,
+            width: 3,
+          });
+        } else {
+          const minVal = Math.min(visible.xMin, visible.yMin);
+          const maxVal = Math.max(visible.xMax, visible.yMax);
+          drawSegment(ctx, plot, minVal, minVal, maxVal, maxVal, {
+            color: plotTheme.border,
+            width: 3,
+          });
+        }
+
+        const originX = plot.toScreenX(0);
+        const originY = plot.toScreenY(0);
+        const inputX = plot.toScreenX(probe.x);
+        const inputY = plot.toScreenY(probe.y);
+        const projectedX = plot.toScreenX(px);
+        const projectedY = plot.toScreenY(py);
+
+        if (showResidual) {
+          drawSegment(ctx, plot, px, py, probe.x, probe.y, {
+            color: plotTheme.muted,
+            width: 1.8,
+            dash: [5, 4],
+          });
+        }
+        if (showInputVector) {
+          drawArrow(
+            ctx,
+            originX,
+            originY,
+            inputX - originX,
+            inputY - originY,
+            plotTheme.ink,
+            10,
+            7,
+            2.4,
+          );
+        }
+        drawArrow(
+          ctx,
+          originX,
+          originY,
+          projectedX - originX,
+          projectedY - originY,
+          plotTheme.accent,
+          10,
+          7,
+          2.6,
+        );
+        drawPoint(ctx, plot, px, py, {
+          color: plotTheme.accent,
+          filled: false,
+          radius: 6,
+          width: 2,
+        });
+        if (showGizmo) {
+          drawDragGizmo(ctx, plot, probe.x, probe.y, {
+            color: plotTheme.ink,
+            isHoveredCenter: dragHandlers.isCenterHovered("probe"),
+            isDraggingCenter: dragHandlers.isCenterDragging("probe"),
+            hoveredArrowId: dragHandlers.getHoveredArrowId("probe"),
+            draggingArrowId: dragHandlers.getDraggingArrowId("probe"),
+            arrows: gizmoArrows,
+            opacity: dragHandlers.getOpacity("probe"),
+          });
+        }
+      }}
+    />
   );
 
   const algebraView = (
     <div className="flex h-full min-h-[20rem] flex-col gap-3 overflow-y-auto bg-[var(--kde-canvas,#ffffff)] p-4 text-[var(--kde-ink,#232629)]">
       <div className="flex items-center justify-between border-b border-[var(--kde-border,#bec5cc)] pb-2">
         <div className="flex items-center gap-2">
-          <h4 className="text-xs sm:text-sm font-bold tracking-tight">
+          <span
+            className="text-xs sm:text-sm font-bold tracking-tight"
+            role="heading"
+            aria-level={4}
+          >
             投影算子代数结构与特征谱
-          </h4>
+          </span>
           <KdeBadge variant="primary">
             {targetId === "x-axis" ? "X-AXIS SUBSPACE" : "DIAGONAL Y=X"}
           </KdeBadge>
@@ -990,9 +895,13 @@ export default function InteractionStyleLabDemo({
     <div className="flex h-full min-h-[20rem] flex-col gap-3 overflow-y-auto bg-[var(--kde-canvas,#ffffff)] p-4 text-[var(--kde-ink,#232629)]">
       <div className="flex items-center justify-between border-b border-[var(--kde-border,#bec5cc)] pb-2">
         <div className="flex items-center gap-2">
-          <h4 className="text-xs sm:text-sm font-bold tracking-tight">
+          <span
+            className="text-xs sm:text-sm font-bold tracking-tight"
+            role="heading"
+            aria-level={4}
+          >
             正交补空间与残差直和分解
-          </h4>
+          </span>
           <KdeBadge variant="success">
             {"DIRECT SUM $\\mathbb{R}^2 = V \\oplus V^\\perp$"}
           </KdeBadge>
@@ -1408,45 +1317,43 @@ export default function InteractionStyleLabDemo({
 
   if (variant === "kde") {
     return (
-      <AutoMath>
-        <ExpandableDemo id={`interaction-style-${variant}-${layoutPreset}`}>
-          <KdeWindowShell
-            title={meta.windowTitle}
-            eyebrow={meta.eyebrow}
-            mark={meta.mark}
-            modeTag="WINDOWED"
-            layoutPreset={layoutPreset}
-            className="style-lab"
-            dataStyle={variant}
-            dataFixedLayout={layoutPreset}
-            data-style={variant}
-            data-fixed-layout={layoutPreset}
-            tabs={workspaceTabs}
-            navigation={
-              layoutPreset === "three-column" ? (
-                <div className="style-lab__layout-navigation">
-                  <span>EXPERIMENT</span>
-                  <strong>2D PROJECTION</strong>
-                  <span>INPUT → PROJECTED → RESIDUAL</span>
-                </div>
-              ) : undefined
-            }
-            display={workspaceDisplay}
-            displayClassName={
-              layoutPreset === "dense-dock" || layoutPreset === "dual-view"
-                ? "kde-window-shell__display--viewport-group"
-                : undefined
-            }
-            secondary={
-              layoutPreset === "dual-view" && activeTab === "geometry"
-                ? dualSecondaryGroup
-                : undefined
-            }
-            controls={controlPanel}
-            readouts={displayReadouts}
-          />
-        </ExpandableDemo>
-      </AutoMath>
+      <ExpandableDemo id={`interaction-style-${variant}-${layoutPreset}`}>
+        <KdeWindowShell
+          title={meta.windowTitle}
+          eyebrow={meta.eyebrow}
+          mark={meta.mark}
+          modeTag="WINDOWED"
+          layoutPreset={layoutPreset}
+          className="style-lab"
+          dataStyle={variant}
+          dataFixedLayout={layoutPreset}
+          data-style={variant}
+          data-fixed-layout={layoutPreset}
+          tabs={workspaceTabs}
+          navigation={
+            layoutPreset === "three-column" ? (
+              <div className="style-lab__layout-navigation">
+                <span>EXPERIMENT</span>
+                <strong>2D PROJECTION</strong>
+                <span>INPUT → PROJECTED → RESIDUAL</span>
+              </div>
+            ) : undefined
+          }
+          display={workspaceDisplay}
+          displayClassName={
+            layoutPreset === "dense-dock" || layoutPreset === "dual-view"
+              ? "kde-window-shell__display--viewport-group"
+              : undefined
+          }
+          secondary={
+            layoutPreset === "dual-view" && activeTab === "geometry"
+              ? dualSecondaryGroup
+              : undefined
+          }
+          controls={controlPanel}
+          readouts={displayReadouts}
+        />
+      </ExpandableDemo>
     );
   }
 
@@ -1461,18 +1368,16 @@ export default function InteractionStyleLabDemo({
   );
 
   return (
-    <AutoMath>
-      <ExpandableDemo id={`interaction-style-${variant}-${layoutPreset}`}>
-        <section
-          className="style-lab"
-          data-style={variant}
-          data-fixed-layout={layout ?? undefined}
-        >
-          <WindowBar variant={variant} meta={meta} />
-          {renderedLayout}
-        </section>
-      </ExpandableDemo>
-    </AutoMath>
+    <ExpandableDemo id={`interaction-style-${variant}-${layoutPreset}`}>
+      <section
+        className="style-lab"
+        data-style={variant}
+        data-fixed-layout={layout ?? undefined}
+      >
+        <WindowBar variant={variant} meta={meta} />
+        {renderedLayout}
+      </section>
+    </ExpandableDemo>
   );
 }
 

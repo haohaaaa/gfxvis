@@ -1,23 +1,18 @@
-import { useState, useRef, useEffect } from "react";
-import { useCanvas2D } from "../framework/useCanvas2D";
-import CanvasToolbar from "../framework/CanvasToolbar";
-import CanvasResizer from "../framework/CanvasResizer";
+import { useState, useMemo } from "react";
 import ExpandableDemo from "../framework/ExpandableDemo";
-import { AutoMath } from "../framework/AutoMath";
+import CanvasViewport from "../framework/CanvasViewport";
+import CanvasOverlay from "../framework/CanvasOverlay";
 import ParamSlider from "../framework/ParamSlider";
 import PresetSelector from "../framework/PresetSelector";
 import KdeWindowShell from "../framework/KdeWindowShell";
 import KdeCard from "../framework/KdeCard";
 import KdeReadout from "../framework/KdeReadout";
-import KdeTabs from "../framework/KdeTabs";
-import {
-  drawAdaptiveAxes,
-  type Bounds2,
-} from "../../visualizations/core/2d/plot2d";
+import KdeTabs, { type KdeTabOption } from "../framework/KdeTabs";
+import type { Bounds2 } from "../../visualizations/core/2d/plot2d";
 
 type EigenMode = "probe" | "spectral-ellipse" | "diagonalization";
 
-const MODES: Array<{ id: EigenMode; label: string }> = [
+const MODES: Array<KdeTabOption<EigenMode>> = [
   { id: "probe", label: "特征方向探测器 (A x = λ x)" },
   { id: "spectral-ellipse", label: "谱定理与主轴椭圆" },
   { id: "diagonalization", label: "特征基底对角化" },
@@ -75,14 +70,19 @@ const PRESETS: Record<string, MatrixPreset> = {
   },
 };
 
-// Calculate real 2x2 eigenvalues & eigenvectors
+const BOUNDS_2D: Bounds2 = {
+  xMin: -2.8,
+  xMax: 2.8,
+  yMin: -2.4,
+  yMax: 2.4,
+};
+
 function calculateEigen(a11: number, a12: number, a21: number, a22: number) {
   const tr = a11 + a22;
   const det = a11 * a22 - a12 * a21;
   const discriminant = tr * tr - 4 * det;
 
   if (discriminant < -1e-6) {
-    // Complex eigenvalues
     const real = tr / 2;
     const imag = Math.sqrt(-discriminant) / 2;
     return {
@@ -101,24 +101,20 @@ function calculateEigen(a11: number, a12: number, a21: number, a22: number) {
   const l1 = (tr + sqrtDisc) / 2;
   const l2 = (tr - sqrtDisc) / 2;
 
-  // Find eigenvectors for l1: (A - l1*I)v = 0
   const getVec = (lambda: number) => {
-    // (a11 - lambda)*x + a12*y = 0
-    // a21*x + (a22 - lambda)*y = 0
     if (Math.abs(a12) > 1e-5) {
       const vx = a12;
       const vy = lambda - a11;
       const len = Math.hypot(vx, vy);
       return len > 1e-6 ? { x: vx / len, y: vy / len } : { x: 1, y: 0 };
-    } else if (Math.abs(a21) > 1e-5) {
+    }
+    if (Math.abs(a21) > 1e-5) {
       const vx = lambda - a22;
       const vy = a21;
       const len = Math.hypot(vx, vy);
       return len > 1e-6 ? { x: vx / len, y: vy / len } : { x: 0, y: 1 };
-    } else {
-      // Diagonal
-      return lambda === a11 ? { x: 1, y: 0 } : { x: 0, y: 1 };
     }
+    return lambda === a11 ? { x: 1, y: 0 } : { x: 0, y: 1 };
   };
 
   return {
@@ -145,19 +141,6 @@ export default function EigenDemo({ height }: { height?: string }) {
   // Probe angle in radians
   const [probeAngle, setProbeAngle] = useState(0.5);
 
-  const stateRef = useRef({
-    mode,
-    a11,
-    a12,
-    a21,
-    a22,
-    probeAngle,
-  });
-
-  useEffect(() => {
-    stateRef.current = { mode, a11, a12, a21, a22, probeAngle };
-  }, [mode, a11, a12, a21, a22, probeAngle]);
-
   const handlePresetChange = (key: string) => {
     setPreset(key);
     const p = PRESETS[key];
@@ -169,382 +152,333 @@ export default function EigenDemo({ height }: { height?: string }) {
     }
   };
 
-  const initialBounds: Bounds2 = {
-    xMin: -2.8,
-    xMax: 2.8,
-    yMin: -2.4,
-    yMax: 2.4,
-  };
+  const eigen = useMemo(
+    () => calculateEigen(a11, a12, a21, a22),
+    [a11, a12, a21, a22],
+  );
 
-  const eigen = calculateEigen(a11, a12, a21, a22);
+  // Probe vector x and transformed Ax
+  const probeX = Math.cos(probeAngle);
+  const probeY = Math.sin(probeAngle);
+  const axX = a11 * probeX + a12 * probeY;
+  const axY = a21 * probeX + a22 * probeY;
 
-  const { containerRef, canvasRef, redraw, resetBounds } = useCanvas2D({
-    initialBounds,
-    equalScale: true,
-    draw: (ctx, plot, theme) => {
-      const { mode, a11, a12, a21, a22, probeAngle } = stateRef.current;
-
-      // 1. Draw Adaptive Grid & Axes
-      drawAdaptiveAxes(ctx, plot, theme);
-
-      const drawArrow = (
-        fromX: number,
-        fromY: number,
-        toX: number,
-        toY: number,
-        color: string,
-        label: string,
-        lineWidth = 2.5,
-      ) => {
-        const p0x = plot.toScreenX(fromX);
-        const p0y = plot.toScreenY(fromY);
-        const p1x = plot.toScreenX(toX);
-        const p1y = plot.toScreenY(toY);
-        const angle = Math.atan2(p1y - p0y, p1x - p0x);
-        const headLen = 9;
-
-        ctx.strokeStyle = color;
-        ctx.fillStyle = color;
-        ctx.lineWidth = lineWidth;
-
-        ctx.beginPath();
-        ctx.moveTo(p0x, p0y);
-        ctx.lineTo(p1x, p1y);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(p1x, p1y);
-        ctx.lineTo(
-          p1x - headLen * Math.cos(angle - Math.PI / 6),
-          p1y - headLen * Math.sin(angle - Math.PI / 6),
-        );
-        ctx.lineTo(
-          p1x - headLen * Math.cos(angle + Math.PI / 6),
-          p1y - headLen * Math.sin(angle + Math.PI / 6),
-        );
-        ctx.closePath();
-        ctx.fill();
-
-        if (label) {
-          ctx.font = "bold 12px sans-serif";
-          ctx.fillStyle = color;
-          const textX = p1x + 14 * Math.cos(angle + Math.PI / 4);
-          const textY = p1y + 14 * Math.sin(angle + Math.PI / 4);
-          ctx.fillText(label, textX, textY);
-        }
-      };
-
-      const eigenData = calculateEigen(a11, a12, a21, a22);
-
-      // Draw real eigen-axes if exist
-      if (eigenData.hasReal) {
-        ctx.lineWidth = 1.2;
-        ctx.setLineDash([4, 4]);
-
-        if (eigenData.v1) {
-          ctx.strokeStyle = "rgba(59, 130, 246, 0.4)";
-          const ep1x = plot.toScreenX(-eigenData.v1.x * 5);
-          const ep1y = plot.toScreenY(-eigenData.v1.y * 5);
-          const ep2x = plot.toScreenX(eigenData.v1.x * 5);
-          const ep2y = plot.toScreenY(eigenData.v1.y * 5);
-          ctx.beginPath();
-          ctx.moveTo(ep1x, ep1y);
-          ctx.lineTo(ep2x, ep2y);
-          ctx.stroke();
-        }
-
-        if (eigenData.v2) {
-          ctx.strokeStyle = "rgba(245, 158, 11, 0.4)";
-          const ep1x = plot.toScreenX(-eigenData.v2.x * 5);
-          const ep1y = plot.toScreenY(-eigenData.v2.y * 5);
-          const ep2x = plot.toScreenX(eigenData.v2.x * 5);
-          const ep2y = plot.toScreenY(eigenData.v2.y * 5);
-          ctx.beginPath();
-          ctx.moveTo(ep1x, ep1y);
-          ctx.lineTo(ep2x, ep2y);
-          ctx.stroke();
-        }
-        ctx.setLineDash([]);
-      }
-
-      if (mode === "probe") {
-        // MODE 1: Probe vector x & Ax
-        const px = Math.cos(probeAngle);
-        const py = Math.sin(probeAngle);
-
-        const ax = a11 * px + a12 * py;
-        const ay = a21 * px + a22 * py;
-
-        // Check cross product / collinearity
-        const cross = px * ay - py * ax;
-        const isCollinear = Math.abs(cross) < 0.08;
-
-        if (isCollinear) {
-          // Draw bright glowing circle around vector tip
-          const tipX = plot.toScreenX(ax);
-          const tipY = plot.toScreenY(ay);
-          ctx.fillStyle = "rgba(16, 185, 129, 0.3)";
-          ctx.beginPath();
-          ctx.arc(tipX, tipY, 16, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        // Draw probe vector x (Purple) and transformed Ax (Green/Red)
-        drawArrow(0, 0, px, py, "#8b5cf6", "x", 3);
-        drawArrow(
-          0,
-          0,
-          ax,
-          ay,
-          isCollinear ? "#10b981" : "#06b6d4",
-          isCollinear ? "A x = λ x (特征向量!)" : "A x",
-          3.2,
-        );
-      } else if (mode === "spectral-ellipse") {
-        // MODE 2: Unit circle -> Transformed Ellipse
-        const segments = 120;
-
-        // 1. Draw Unit circle
-        ctx.strokeStyle = theme.border;
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([3, 3]);
-        ctx.beginPath();
-        for (let i = 0; i <= segments; i++) {
-          const theta = (i / segments) * Math.PI * 2;
-          const sx = plot.toScreenX(Math.cos(theta));
-          const sy = plot.toScreenY(Math.sin(theta));
-          if (i === 0) ctx.moveTo(sx, sy);
-          else ctx.lineTo(sx, sy);
-        }
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // 2. Draw Transformed ellipse A(S^1)
-        ctx.strokeStyle = "#8b5cf6";
-        ctx.fillStyle = "rgba(139, 92, 246, 0.15)";
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        for (let i = 0; i <= segments; i++) {
-          const theta = (i / segments) * Math.PI * 2;
-          const ux = Math.cos(theta);
-          const uy = Math.sin(theta);
-          const ex = a11 * ux + a12 * uy;
-          const ey = a21 * ux + a22 * uy;
-          const sx = plot.toScreenX(ex);
-          const sy = plot.toScreenY(ey);
-          if (i === 0) ctx.moveTo(sx, sy);
-          else ctx.lineTo(sx, sy);
-        }
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-        // 3. Draw Principal Eigenvector Axes
-        if (eigenData.hasReal && eigenData.v1 && eigenData.v2) {
-          drawArrow(
-            0,
-            0,
-            eigenData.v1.x * eigenData.lambda1,
-            eigenData.v1.y * eigenData.lambda1,
-            "#3b82f6",
-            `λ₁ v₁ (${eigenData.lambda1.toFixed(2)})`,
-            3,
-          );
-          drawArrow(
-            0,
-            0,
-            eigenData.v2.x * eigenData.lambda2,
-            eigenData.v2.y * eigenData.lambda2,
-            "#f59e0b",
-            `λ₂ v₂ (${eigenData.lambda2.toFixed(2)})`,
-            3,
-          );
-        }
-      } else if (mode === "diagonalization") {
-        // MODE 3: Decoupled Eigenbasis Coordinate grid
-        if (eigenData.hasReal && eigenData.v1 && eigenData.v2) {
-          // Draw transformed eigenbasis
-          drawArrow(
-            0,
-            0,
-            eigenData.v1.x,
-            eigenData.v1.y,
-            "rgba(59, 130, 246, 0.5)",
-            "v₁",
-            2,
-          );
-          drawArrow(
-            0,
-            0,
-            eigenData.v2.x,
-            eigenData.v2.y,
-            "rgba(245, 158, 11, 0.5)",
-            "v₂",
-            2,
-          );
-
-          drawArrow(
-            0,
-            0,
-            eigenData.v1.x * eigenData.lambda1,
-            eigenData.v1.y * eigenData.lambda1,
-            "#3b82f6",
-            `A v₁ = ${eigenData.lambda1.toFixed(1)} v₁`,
-            3,
-          );
-          drawArrow(
-            0,
-            0,
-            eigenData.v2.x * eigenData.lambda2,
-            eigenData.v2.y * eigenData.lambda2,
-            "#f59e0b",
-            `A v₂ = ${eigenData.lambda2.toFixed(1)} v₂`,
-            3,
-          );
-        }
-      }
-    },
-  });
+  // Check alignment: cross product of x and Ax
+  const cross = Math.abs(probeX * axY - probeY * axX);
+  const isAligned = cross < 0.08;
+  const approxLambda =
+    Math.hypot(axX, axY) * (probeX * axX + probeY * axY >= 0 ? 1 : -1);
 
   return (
-    <AutoMath>
-      <ExpandableDemo id="eigenvalues-and-eigenvectors" height={height}>
-        <KdeWindowShell
-          title="特征值、特征向量与谱定理"
-          eyebrow="Linear Algebra · Eigenvalues & Eigenvectors"
-          mark="Ax = λx"
-          modeTag={
-            mode === "probe"
-              ? "特征方向探测器"
-              : mode === "spectral-ellipse"
-                ? "谱定理主轴椭圆"
-                : "特征基底对角化"
-          }
-          display={
-            <div
-              ref={containerRef}
-              className="relative h-[var(--demo-height,20rem)] w-full overflow-hidden rounded-md border border-slate-800 bg-slate-950"
-            >
-              <CanvasToolbar onReset={resetBounds} />
-              <canvas
-                ref={canvasRef}
-                className="absolute inset-0 h-full w-full cursor-crosshair"
+    <ExpandableDemo id="eigen-demo" height={height}>
+      <KdeWindowShell
+        title="特征值与特征向量几何全景"
+        eyebrow="Linear Algebra · Spectral Theory"
+        mark="A v = λ v"
+        modeTag={
+          !eigen.hasReal
+            ? "复特征值 (无实特征方向)"
+            : Math.abs(eigen.lambda1 - eigen.lambda2) < 1e-4
+              ? "重特征值退化"
+              : "非退化实特征基"
+        }
+        display={
+          <CanvasViewport
+            initialBounds={BOUNDS_2D}
+            className="h-[var(--demo-height,22rem)]"
+            onDraw={(ctx, plot, theme, scene) => {
+              scene.addAxes();
+
+              // Draw real eigen-axes if exist
+              if (eigen.hasReal) {
+                if (eigen.v1) {
+                  scene.addLine({
+                    p1: [-eigen.v1.x * 5, -eigen.v1.y * 5],
+                    p2: [eigen.v1.x * 5, eigen.v1.y * 5],
+                    stroke: "rgba(59, 130, 246, 0.4)",
+                    dash: [4, 4],
+                    width: 1.5,
+                    label: `E₁ (λ₁ = ${eigen.lambda1.toFixed(2)})`,
+                  });
+                }
+                if (eigen.v2) {
+                  scene.addLine({
+                    p1: [-eigen.v2.x * 5, -eigen.v2.y * 5],
+                    p2: [eigen.v2.x * 5, eigen.v2.y * 5],
+                    stroke: "rgba(16, 185, 129, 0.4)",
+                    dash: [4, 4],
+                    width: 1.5,
+                    label: `E₂ (λ₂ = ${eigen.lambda2.toFixed(2)})`,
+                  });
+                }
+              }
+
+              if (mode === "probe") {
+                // Unit circle guide
+                const circlePts: Array<[number, number]> = [];
+                for (let i = 0; i <= 64; i++) {
+                  const th = (i / 64) * Math.PI * 2;
+                  circlePts.push([Math.cos(th), Math.sin(th)]);
+                }
+                scene.addPolyline({
+                  points: circlePts,
+                  color: "rgba(148, 163, 184, 0.3)",
+                  dash: [3, 3],
+                  width: 1,
+                });
+
+                // Transformed vector Ax (Rose)
+                scene.addVector({
+                  to: [axX, axY],
+                  color: isAligned ? "#10b981" : "#f43f5e",
+                  width: 3.5,
+                  label: `A x (${axX.toFixed(2)}, ${axY.toFixed(2)})`,
+                });
+
+                // Probe vector x (Draggable handle)
+                scene.addVector({
+                  to: [probeX, probeY],
+                  color: "#3b82f6",
+                  width: 3.0,
+                  label: "测试向量 x",
+                  draggable: true,
+                  handleRadius: 6,
+                  handleRing: true,
+                  hitRadiusPx: 24,
+                  onDrag: (tip) => {
+                    const ang = Math.atan2(tip[1], tip[0]);
+                    setProbeAngle(ang < 0 ? ang + Math.PI * 2 : ang);
+                  },
+                });
+              } else if (mode === "spectral-ellipse") {
+                // Mapped Ellipse: A * (cos theta, sin theta)
+                const ellipsePts: Array<[number, number]> = [];
+                for (let i = 0; i <= 80; i++) {
+                  const th = (i / 80) * Math.PI * 2;
+                  const cx = Math.cos(th);
+                  const cy = Math.sin(th);
+                  ellipsePts.push([a11 * cx + a12 * cy, a21 * cx + a22 * cy]);
+                }
+                scene.addPolyline({
+                  points: ellipsePts,
+                  color: "#8b5cf6",
+                  width: 2.5,
+                });
+
+                // Eigen-vectors scaled by eigenvalues
+                if (eigen.hasReal && eigen.v1) {
+                  scene.addVector({
+                    to: [
+                      eigen.v1.x * eigen.lambda1,
+                      eigen.v1.y * eigen.lambda1,
+                    ],
+                    color: "#3b82f6",
+                    width: 3.0,
+                    label: `λ₁ v₁ (${(eigen.v1.x * eigen.lambda1).toFixed(2)}, ${(eigen.v1.y * eigen.lambda1).toFixed(2)})`,
+                  });
+                }
+                if (eigen.hasReal && eigen.v2) {
+                  scene.addVector({
+                    to: [
+                      eigen.v2.x * eigen.lambda2,
+                      eigen.v2.y * eigen.lambda2,
+                    ],
+                    color: "#10b981",
+                    width: 3.0,
+                    label: `λ₂ v₂ (${(eigen.v2.x * eigen.lambda2).toFixed(2)}, ${(eigen.v2.y * eigen.lambda2).toFixed(2)})`,
+                  });
+                }
+              } else {
+                // Diagonalization mode: show basis vectors
+                if (eigen.hasReal && eigen.v1 && eigen.v2) {
+                  scene.addVector({
+                    to: [eigen.v1.x, eigen.v1.y],
+                    color: "#3b82f6",
+                    width: 2.5,
+                    label: "v₁",
+                  });
+                  scene.addVector({
+                    to: [eigen.v2.x, eigen.v2.y],
+                    color: "#10b981",
+                    width: 2.5,
+                    label: "v₂",
+                  });
+                  scene.addVector({
+                    to: [
+                      eigen.v1.x * eigen.lambda1,
+                      eigen.v1.y * eigen.lambda1,
+                    ],
+                    color: "#60a5fa",
+                    width: 3.0,
+                    dashed: true,
+                    label: "A v₁",
+                  });
+                  scene.addVector({
+                    to: [
+                      eigen.v2.x * eigen.lambda2,
+                      eigen.v2.y * eigen.lambda2,
+                    ],
+                    color: "#34d399",
+                    width: 3.0,
+                    dashed: true,
+                    label: "A v₂",
+                  });
+                }
+              }
+
+              scene.render(ctx, plot, theme);
+            }}
+          >
+            <CanvasOverlay position="top-left">
+              <CanvasOverlay.Title>A x = λ x 特征空间</CanvasOverlay.Title>
+              <CanvasOverlay.Subtitle>
+                {mode === "probe"
+                  ? isAligned
+                    ? `🎯 捕获特征方向！λ ≈ ${approxLambda.toFixed(2)}`
+                    : "非特征方向 (发生偏转)"
+                  : mode === "spectral-ellipse"
+                    ? "单位圆在矩阵 A 作用下的主轴椭圆"
+                    : "特征基底对角化：A = V Λ V⁻¹"}
+              </CanvasOverlay.Subtitle>
+            </CanvasOverlay>
+
+            <CanvasOverlay position="bottom-left">
+              <CanvasOverlay.Item
+                color="#3b82f6"
+                label={
+                  eigen.hasReal
+                    ? `λ₁ = ${eigen.lambda1.toFixed(2)}, λ₂ = ${eigen.lambda2.toFixed(2)}`
+                    : `复特征根: ${(eigen.tr / 2).toFixed(2)} ± ${eigen.imag.toFixed(2)}i`
+                }
               />
-              <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
-            </div>
-          }
-          controls={
-            <div className="space-y-3">
-              <KdeTabs
-                options={MODES}
-                value={mode}
-                onChange={(val: string) => {
-                  setMode(val as EigenMode);
-                  redraw();
-                }}
+              <CanvasOverlay.Item
+                color="#f59e0b"
+                label={`det(A) = ${eigen.det.toFixed(2)}, tr(A) = ${eigen.tr.toFixed(2)}`}
               />
+            </CanvasOverlay>
+          </CanvasViewport>
+        }
+        controls={
+          <div className="space-y-3">
+            <KdeTabs
+              options={MODES}
+              value={mode}
+              onChange={(m) => setMode(m as EigenMode)}
+            />
 
-              <KdeCard title="预设矩阵与探测参数" variant="dense">
-                <div className="space-y-2.5">
-                  <PresetSelector
-                    label="预设矩阵:"
-                    options={PRESETS}
-                    value={preset}
-                    onChange={(p) => {
-                      handlePresetChange(p);
-                      redraw();
-                    }}
-                  />
+            <KdeCard title="预设矩阵 A" variant="dense">
+              <PresetSelector
+                label="典型矩阵类型:"
+                options={PRESETS}
+                value={preset}
+                onChange={handlePresetChange}
+              />
+            </KdeCard>
 
-                  {mode === "probe" && (
-                    <ParamSlider
-                      label="探测角 $\theta$"
-                      labelMode="adaptive"
-                      widthClass="w-full"
-                      min={0}
-                      max={Math.PI * 2}
-                      step={0.02}
-                      value={probeAngle}
-                      onChange={(val) => {
-                        setProbeAngle(val);
-                        redraw();
-                      }}
-                      display={`${((probeAngle * 180) / Math.PI).toFixed(0)}°`}
-                    />
-                  )}
-                </div>
+            {mode === "probe" && (
+              <KdeCard title="探测向量方向调节" variant="dense">
+                <ParamSlider
+                  label="方位角 $\theta$"
+                  labelMode="adaptive"
+                  widthClass="w-full"
+                  value={probeAngle}
+                  min={0}
+                  max={Math.PI * 2}
+                  step={0.02}
+                  onChange={setProbeAngle}
+                  display={`${((probeAngle * 180) / Math.PI).toFixed(0)}°`}
+                />
               </KdeCard>
+            )}
 
-              <KdeCard title="代数特征方程与几何洞察" variant="dense">
-                <div className="grid gap-3 sm:grid-cols-2 text-xs">
-                  <div className="space-y-1">
-                    <div className="font-mono text-sm text-foreground">
-                      {`$A = \\begin{pmatrix} ${a11.toFixed(2)} & ${a12.toFixed(2)} \\\\ ${a21.toFixed(2)} & ${a22.toFixed(2)} \\end{pmatrix}$`}
-                    </div>
-                    <div className="text-muted-foreground font-mono">
-                      {`$\\operatorname{tr}(A) = ${(a11 + a22).toFixed(2)},\\quad \\det(A) = ${(a11 * a22 - a12 * a21).toFixed(2)}$`}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground pt-1 border-t border-slate-700/50">
-                      {`特征多项式: $\\lambda^2 - ${eigen.tr.toFixed(2)}\\lambda + ${eigen.det.toFixed(2)} = 0$`}
-                    </p>
-                  </div>
-
-                  <div className="space-y-1 text-muted-foreground leading-normal">
-                    {eigen.hasReal ? (
-                      <p>
-                        虚线为特征子空间直线。当向量位于该直线上时，矩阵变换仅发生纯粹的标量伸缩（长度乘
-                        $\lambda$），方向绝不发生任何偏转！
-                      </p>
-                    ) : (
-                      <p className="text-rose-400">
-                        旋转变换不存在任何实不变直线，所有非零向量都在变换中被扭转偏向。
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </KdeCard>
-
-              <div className="grid grid-cols-2 gap-1.5">
-                <KdeReadout
-                  label="λ₁ 特征值"
-                  value={
-                    eigen.hasReal
-                      ? eigen.lambda1.toFixed(3)
-                      : `${eigen.lambda1.toFixed(2)} + ${eigen.imag.toFixed(2)}i`
-                  }
-                  variant="accent"
-                  dense
+            <KdeCard title="矩阵系数微调" variant="dense">
+              <div className="grid grid-cols-2 gap-2">
+                <ParamSlider
+                  label="$a_{11}$"
+                  widthClass="w-full"
+                  value={a11}
+                  min={-2.5}
+                  max={2.5}
+                  step={0.1}
+                  onChange={(v) => {
+                    setA11(v);
+                    setPreset("custom");
+                  }}
                 />
-                <KdeReadout
-                  label="λ₂ 特征值"
-                  value={
-                    eigen.hasReal
-                      ? eigen.lambda2.toFixed(3)
-                      : `${eigen.lambda2.toFixed(2)} - ${eigen.imag.toFixed(2)}i`
-                  }
-                  dense
+                <ParamSlider
+                  label="$a_{12}$"
+                  widthClass="w-full"
+                  value={a12}
+                  min={-2.5}
+                  max={2.5}
+                  step={0.1}
+                  onChange={(v) => {
+                    setA12(v);
+                    setPreset("custom");
+                  }}
                 />
-                <KdeReadout
-                  label="迹 tr(A)"
-                  value={(a11 + a22).toFixed(2)}
-                  dense
+                <ParamSlider
+                  label="$a_{21}$"
+                  widthClass="w-full"
+                  value={a21}
+                  min={-2.5}
+                  max={2.5}
+                  step={0.1}
+                  onChange={(v) => {
+                    setA21(v);
+                    setPreset("custom");
+                  }}
                 />
-                <KdeReadout
-                  label="行列式 det(A)"
-                  value={(a11 * a22 - a12 * a21).toFixed(2)}
-                  dense
+                <ParamSlider
+                  label="$a_{22}$"
+                  widthClass="w-full"
+                  value={a22}
+                  min={-2.5}
+                  max={2.5}
+                  step={0.1}
+                  onChange={(v) => {
+                    setA22(v);
+                    setPreset("custom");
+                  }}
                 />
               </div>
+            </KdeCard>
 
-              <p className="text-xs text-muted-foreground">
-                提示：在“特征方向探测器”模式下拖动滑块旋转紫色向量 x，当 x
-                与变换向量 Ax
-                共线时（高亮为绿色），即成功探测到特征向量；在“谱定理与主轴椭圆”模式下可直观看到单位圆被拉伸为主轴椭圆的过程。
-              </p>
+            <div className="grid grid-cols-2 gap-1.5">
+              <KdeReadout
+                label="迹 tr(A) = λ₁ + λ₂"
+                value={eigen.tr.toFixed(2)}
+                dense
+              />
+              <KdeReadout
+                label="行列式 det(A) = λ₁ λ₂"
+                value={eigen.det.toFixed(2)}
+                variant="accent"
+                dense
+              />
             </div>
-          }
-        />
-      </ExpandableDemo>
-    </AutoMath>
+
+            <KdeCard title="特征方程与特征根判定" variant="dense">
+              <div className="space-y-1 text-xs">
+                <div className="font-mono text-muted-foreground">
+                  {`$\\det(A - \\lambda I) = \\lambda^2 - (${eigen.tr.toFixed(2)})\\lambda + (${eigen.det.toFixed(2)}) = 0$`}
+                </div>
+                <div className="pt-1 border-t border-[var(--kde-border,#bec5cc)]/60">
+                  {eigen.hasReal ? (
+                    <span className="text-emerald-400 font-medium">
+                      {`实特征值：$\\lambda_1 = ${eigen.lambda1.toFixed(2)},\\; \\lambda_2 = ${eigen.lambda2.toFixed(2)}$`}
+                    </span>
+                  ) : (
+                    <span className="text-rose-400 font-medium">
+                      {`判别式 $\\Delta < 0$，存在共轭复特征根：$\\lambda = ${(eigen.tr / 2).toFixed(2)} \\pm ${eigen.imag.toFixed(2)}i$`}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </KdeCard>
+          </div>
+        }
+      />
+    </ExpandableDemo>
   );
 }

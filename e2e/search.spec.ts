@@ -31,9 +31,9 @@ test.describe("GFXVis 搜索系统", () => {
     await input.fill("B-Spline");
 
     // 5. Results should appear
-    const resultItem = dialog.locator(
-      'div[data-selected]:has-text("从 Bézier 到 B-Spline")',
-    );
+    const resultItem = dialog
+      .locator('div[data-selected]:has-text("从 Bézier 到 B-Spline")')
+      .first();
     await expect(resultItem).toBeVisible({ timeout: 5000 });
 
     // 6. Verify matching headings exist and are clickable
@@ -243,9 +243,9 @@ test.describe("GFXVis 搜索系统", () => {
     await input.fill("bezeir");
 
     // 1. Result card should appear for Bézier to B-Spline
-    const resultItem = dialog.locator(
-      'div[data-selected]:has-text("从 Bézier 到 B-Spline")',
-    );
+    const resultItem = dialog
+      .locator('div[data-selected]:has-text("从 Bézier 到 B-Spline")')
+      .first();
     await expect(resultItem).toBeVisible({ timeout: 5000 });
 
     // 2. Highlighting should match Bézier in title despite user typo bezeir
@@ -304,8 +304,10 @@ test.describe("GFXVis 搜索系统", () => {
     await expect(resultItem).toBeVisible({ timeout: 5000 });
     await resultItem.click();
 
+    await page.waitForLoadState("domcontentloaded");
+
     // 3. Open search dialog again
-    await page.locator("#search-trigger").click();
+    await page.keyboard.press("Control+k");
     await expect(dialog).toBeVisible();
 
     // 4. "最近搜索" section should be visible with "投影"

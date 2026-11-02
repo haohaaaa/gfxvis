@@ -12,7 +12,6 @@ import KdeButtonGroup from "../framework/KdeButtonGroup";
 import KdeProgressBar from "../framework/KdeProgressBar";
 import KdeMessageBar from "../framework/KdeMessageBar";
 import KdeOptionGroup from "../framework/KdeOptionGroup";
-import { AutoMath } from "../framework/AutoMath";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import PresetSelector from "../framework/PresetSelector";
 
@@ -394,234 +393,230 @@ export default function SystemFPolymorphismDiagram() {
   };
 
   return (
-    <AutoMath>
-      <ExpandableDemo id="system-f-polymorphism-explorer">
-        <KdeWindowShell
-          eyebrow="TYPE THEORY WORKSPACE · SYSTEM F"
-          mark="∀"
-          modeTag="DENSE-DOCK"
-          title="System F 参数多态与二阶两阶段求值探针"
-        >
-          <InteractiveLayout
-            preset="dense-dock"
-            top={
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-[var(--kde-muted)]">
-                    探针视角：
-                  </span>
-                  <KdeTabs
-                    onChange={(val) => setViewMode(val)}
-                    options={VIEW_OPTIONS}
-                    size="sm"
-                    value={viewMode}
+    <ExpandableDemo id="system-f-polymorphism-explorer">
+      <KdeWindowShell
+        eyebrow="TYPE THEORY WORKSPACE · SYSTEM F"
+        mark="∀"
+        modeTag="DENSE-DOCK"
+        title="System F 参数多态与二阶两阶段求值探针"
+      >
+        <InteractiveLayout
+          preset="dense-dock"
+          top={
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-[var(--kde-muted)]">
+                  探针视角：
+                </span>
+                <KdeTabs
+                  onChange={(val) => setViewMode(val)}
+                  options={VIEW_OPTIONS}
+                  size="sm"
+                  value={viewMode}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <KdeBadge variant="primary">
+                  {`∀-Type: $${preset.typeSignatureTex}$`}
+                </KdeBadge>
+              </div>
+            </div>
+          }
+          main={
+            <div className="relative flex h-[var(--demo-height,28rem)] w-full flex-col overflow-hidden rounded-xl border border-[var(--kde-border)] bg-[var(--kde-canvas)] p-5 shadow-inner">
+              <CanvasToolbar onReset={handleReset} />
+
+              {viewMode === "code_sandbox" ? (
+                <div className="flex-1 flex flex-col overflow-y-auto pr-1">
+                  <CodePlayground
+                    code={SYSTEM_F_TS_CODE}
+                    description="在线执行 TypeScript 泛型模拟的 System F 丘奇布尔值、丘奇自然数与多态恒等函数。"
+                    lang="ts"
+                    maxHeight="20rem"
+                    title="TypeScript System F 沙盒"
                   />
                 </div>
-                <div className="flex items-center gap-2">
-                  <KdeBadge variant="primary">
-                    {`∀-Type: $${preset.typeSignatureTex}$`}
-                  </KdeBadge>
-                </div>
-              </div>
-            }
-            main={
-              <div className="relative flex h-[var(--demo-height,28rem)] w-full flex-col overflow-hidden rounded-xl border border-[var(--kde-border)] bg-[var(--kde-canvas)] p-5 shadow-inner">
-                <CanvasToolbar onReset={handleReset} />
+              ) : (
+                <>
+                  {/* Stepper Toolbar */}
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--kde-border)] pb-3 pr-12">
+                    <KdeButtonGroup attached size="xs">
+                      <KdeButton
+                        size="xs"
+                        disabled={currentStepIndex <= 0}
+                        onClick={() => setCurrentStepIndex(0)}
+                        title="回到初始多态表达式"
+                      >
+                        ⏮ 初始
+                      </KdeButton>
+                      <KdeButton
+                        size="xs"
+                        disabled={currentStepIndex <= 0}
+                        onClick={() =>
+                          setCurrentStepIndex((prev) => Math.max(0, prev - 1))
+                        }
+                        title="回退一步"
+                      >
+                        ◀ 单步回退
+                      </KdeButton>
+                      <KdeButton
+                        size="xs"
+                        variant="primary"
+                        disabled={currentStepIndex >= maxSteps - 1}
+                        onClick={() =>
+                          setCurrentStepIndex((prev) =>
+                            Math.min(maxSteps - 1, prev + 1),
+                          )
+                        }
+                        title="推进归约"
+                      >
+                        二阶归约步进 ▶
+                      </KdeButton>
+                    </KdeButtonGroup>
 
-                {viewMode === "code_sandbox" ? (
-                  <div className="flex-1 flex flex-col overflow-y-auto pr-1">
-                    <CodePlayground
-                      code={SYSTEM_F_TS_CODE}
-                      description="在线执行 TypeScript 泛型模拟的 System F 丘奇布尔值、丘奇自然数与多态恒等函数。"
-                      lang="ts"
-                      maxHeight="20rem"
-                      title="TypeScript System F 沙盒"
-                    />
-                  </div>
-                ) : (
-                  <>
-                    {/* Stepper Toolbar */}
-                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--kde-border)] pb-3 pr-12">
-                      <KdeButtonGroup attached size="xs">
-                        <KdeButton
-                          size="xs"
-                          disabled={currentStepIndex <= 0}
-                          onClick={() => setCurrentStepIndex(0)}
-                          title="回到初始多态表达式"
-                        >
-                          ⏮ 初始
-                        </KdeButton>
-                        <KdeButton
-                          size="xs"
-                          disabled={currentStepIndex <= 0}
-                          onClick={() =>
-                            setCurrentStepIndex((prev) => Math.max(0, prev - 1))
-                          }
-                          title="回退一步"
-                        >
-                          ◀ 单步回退
-                        </KdeButton>
-                        <KdeButton
-                          size="xs"
-                          variant="primary"
-                          disabled={currentStepIndex >= maxSteps - 1}
-                          onClick={() =>
-                            setCurrentStepIndex((prev) =>
-                              Math.min(maxSteps - 1, prev + 1),
-                            )
-                          }
-                          title="推进归约"
-                        >
-                          二阶归约步进 ▶
-                        </KdeButton>
-                      </KdeButtonGroup>
-
-                      <div className="flex items-center gap-2.5">
-                        <KdeProgressBar
-                          steps={maxSteps}
-                          value={currentStepIndex + 1}
-                          size="sm"
-                          className="w-28"
-                          showLabel={false}
-                        />
-                        <span className="font-mono text-xs font-semibold text-[var(--kde-muted)]">
-                          步数：{currentStepIndex + 1} / {maxSteps}
-                        </span>
-                        <KdeBadge
-                          variant={currentStep.badgeVariant || "primary"}
-                        >
-                          {currentStep.phaseBadge}
-                        </KdeBadge>
-                      </div>
+                    <div className="flex items-center gap-2.5">
+                      <KdeProgressBar
+                        steps={maxSteps}
+                        value={currentStepIndex + 1}
+                        size="sm"
+                        className="w-28"
+                        showLabel={false}
+                      />
+                      <span className="font-mono text-xs font-semibold text-[var(--kde-muted)]">
+                        步数：{currentStepIndex + 1} / {maxSteps}
+                      </span>
+                      <KdeBadge variant={currentStep.badgeVariant || "primary"}>
+                        {currentStep.phaseBadge}
+                      </KdeBadge>
                     </div>
+                  </div>
 
-                    {/* Stepper View Area */}
-                    <div className="flex flex-1 flex-col justify-center overflow-y-auto overflow-x-auto text-center">
-                      {viewMode === "two_phase" ? (
-                        <div className="space-y-4 py-2">
-                          <div className="text-xs font-semibold text-[var(--kde-muted)]">
-                            {currentStep.phaseTitle}
-                          </div>
+                  {/* Stepper View Area */}
+                  <div className="flex flex-1 flex-col justify-center overflow-y-auto overflow-x-auto text-center">
+                    {viewMode === "two_phase" ? (
+                      <div className="space-y-4 py-2">
+                        <div className="text-xs font-semibold text-[var(--kde-muted)]">
+                          {currentStep.phaseTitle}
+                        </div>
 
-                          {/* Main Expression Box */}
-                          <div className="flex items-center justify-center overflow-x-auto px-4 py-3">
-                            <div className="rounded-2xl border border-[var(--kde-border)] bg-[var(--kde-raised)] px-6 py-4 shadow-lg backdrop-blur-md">
-                              <div className="font-mono text-lg font-bold text-[var(--kde-ink)] sm:text-xl">
-                                {`$${currentStep.expressionTex}$`}
-                              </div>
+                        {/* Main Expression Box */}
+                        <div className="flex items-center justify-center overflow-x-auto px-4 py-3">
+                          <div className="rounded-2xl border border-[var(--kde-border)] bg-[var(--kde-raised)] px-6 py-4 shadow-lg backdrop-blur-md">
+                            <div className="font-mono text-lg font-bold text-[var(--kde-ink)] sm:text-xl">
+                              {`$${currentStep.expressionTex}$`}
                             </div>
                           </div>
-
-                          {/* Action & Rule Banner */}
-                          <div className="mx-auto max-w-xl">
-                            <KdeMessageBar
-                              variant="info"
-                              mode="card"
-                              title={`归约法则：$${currentStep.ruleTex}$`}
-                            >
-                              {currentStep.actionDesc}
-                            </KdeMessageBar>
-                          </div>
                         </div>
-                      ) : (
-                        /* Free Theorem Commutative Diagram Mode */
-                        <div className="space-y-4 py-3 text-center">
-                          <div className="mx-auto max-w-lg">
-                            <KdeMessageBar
-                              variant="warning"
-                              mode="card"
-                              title="Reynolds 关系参数化定理与自然性交换图"
-                            >
-                              <div className="mb-2 text-xs font-medium text-[var(--kde-ink)]">
-                                {`$${preset.freeTheoremPropTex}$`}
-                              </div>
-                              <div className="my-2 font-mono text-base font-bold text-amber-700 dark:text-amber-300">
-                                {`$${preset.freeTheoremEquationTex}$`}
-                              </div>
-                              <div className="text-[11px] leading-relaxed text-[var(--kde-muted)]">
-                                💡 <strong>核心直觉</strong>
-                                ：纯参数多态函数无法检查具象类型的内部构造，因此它与任何类型间的任意转换函数{" "}
-                                $g$ 完全交换（Commutes）。
-                              </div>
-                            </KdeMessageBar>
-                          </div>
+
+                        {/* Action & Rule Banner */}
+                        <div className="mx-auto max-w-xl">
+                          <KdeMessageBar
+                            variant="info"
+                            mode="card"
+                            title={`归约法则：$${currentStep.ruleTex}$`}
+                          >
+                            {currentStep.actionDesc}
+                          </KdeMessageBar>
                         </div>
-                      )}
-                    </div>
-                  </>
-                )}
-                <CanvasResizer className="absolute bottom-0 inset-x-0 z-20" />
-              </div>
-            }
-            side={
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                <KdeCard title="多态演算理论预设" variant="dense">
-                  <PresetSelector
-                    layout="vertical"
-                    size="xs"
-                    onChange={handlePresetChange}
-                    options={PRESETS.map((p) => ({
-                      id: p.id,
-                      label: p.label,
-                      description: p.desc,
-                    }))}
-                    value={activePresetId}
-                  />
-                </KdeCard>
-
-                <KdeCard
-                  title="类型实参注入 (Type Instantiation)"
-                  variant="dense"
-                >
-                  <div className="space-y-2 text-xs">
-                    <div className="text-[11px] font-medium text-[var(--kde-muted)]">
-                      当前实参: [X ↦{" "}
-                      {instType === "PolyId" ? "∀Y. Y → Y" : instType}]
-                    </div>
-                    <KdeOptionGroup
-                      value={instType}
-                      onChange={(val) => {
-                        setInstType(val);
-                        setCurrentStepIndex(0);
-                      }}
-                      options={TYPE_OPTIONS}
-                      size="xs"
-                    />
-                  </div>
-                </KdeCard>
-
-                <KdeCard title="形式签名与多态项" variant="dense">
-                  <div className="space-y-2 text-xs">
-                    <div>
-                      <span className="text-[10px] text-[var(--kde-muted)]">
-                        全称类型签名：
-                      </span>
-                      <div className="p-1.5 rounded bg-[var(--kde-panel)] border border-[var(--kde-border)] font-mono text-[11px] text-[var(--kde-accent)] font-semibold">
-                        {`$${preset.typeSignatureTex}$`}
                       </div>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-[var(--kde-muted)]">
-                        项构造实现：
-                      </span>
-                      <div className="p-1.5 rounded bg-[var(--kde-panel)] border border-[var(--kde-border)] font-mono text-[11px] text-amber-700 dark:text-amber-300">
-                        {`$${preset.termTex}$`}
+                    ) : (
+                      /* Free Theorem Commutative Diagram Mode */
+                      <div className="space-y-4 py-3 text-center">
+                        <div className="mx-auto max-w-lg">
+                          <KdeMessageBar
+                            variant="warning"
+                            mode="card"
+                            title="Reynolds 关系参数化定理与自然性交换图"
+                          >
+                            <div className="mb-2 text-xs font-medium text-[var(--kde-ink)]">
+                              {`$${preset.freeTheoremPropTex}$`}
+                            </div>
+                            <div className="my-2 font-mono text-base font-bold text-amber-700 dark:text-amber-300">
+                              {`$${preset.freeTheoremEquationTex}$`}
+                            </div>
+                            <div className="text-[11px] leading-relaxed text-[var(--kde-muted)]">
+                              💡 <strong>核心直觉</strong>
+                              ：纯参数多态函数无法检查具象类型的内部构造，因此它与任何类型间的任意转换函数{" "}
+                              $g$ 完全交换（Commutes）。
+                            </div>
+                          </KdeMessageBar>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
-                </KdeCard>
-              </div>
-            }
-            bottom={
-              <KdeCard title="🔍 本多态构造深度理论洞见 (Parametricity & Impredicativity Insight)">
-                <p className="mt-1 text-xs leading-relaxed text-[var(--kde-ink)]">
-                  {preset.insight}
-                </p>
+                </>
+              )}
+              <CanvasResizer className="absolute bottom-0 inset-x-0 z-20" />
+            </div>
+          }
+          side={
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <KdeCard title="多态演算理论预设" variant="dense">
+                <PresetSelector
+                  layout="vertical"
+                  size="xs"
+                  onChange={handlePresetChange}
+                  options={PRESETS.map((p) => ({
+                    id: p.id,
+                    label: p.label,
+                    description: p.desc,
+                  }))}
+                  value={activePresetId}
+                />
               </KdeCard>
-            }
-          />
-        </KdeWindowShell>
-      </ExpandableDemo>
-    </AutoMath>
+
+              <KdeCard
+                title="类型实参注入 (Type Instantiation)"
+                variant="dense"
+              >
+                <div className="space-y-2 text-xs">
+                  <div className="text-[11px] font-medium text-[var(--kde-muted)]">
+                    当前实参: [X ↦{" "}
+                    {instType === "PolyId" ? "∀Y. Y → Y" : instType}]
+                  </div>
+                  <KdeOptionGroup
+                    value={instType}
+                    onChange={(val) => {
+                      setInstType(val);
+                      setCurrentStepIndex(0);
+                    }}
+                    options={TYPE_OPTIONS}
+                    size="xs"
+                  />
+                </div>
+              </KdeCard>
+
+              <KdeCard title="形式签名与多态项" variant="dense">
+                <div className="space-y-2 text-xs">
+                  <div>
+                    <span className="text-[10px] text-[var(--kde-muted)]">
+                      全称类型签名：
+                    </span>
+                    <div className="p-1.5 rounded bg-[var(--kde-panel)] border border-[var(--kde-border)] font-mono text-[11px] text-[var(--kde-accent)] font-semibold">
+                      {`$${preset.typeSignatureTex}$`}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[var(--kde-muted)]">
+                      项构造实现：
+                    </span>
+                    <div className="p-1.5 rounded bg-[var(--kde-panel)] border border-[var(--kde-border)] font-mono text-[11px] text-amber-700 dark:text-amber-300">
+                      {`$${preset.termTex}$`}
+                    </div>
+                  </div>
+                </div>
+              </KdeCard>
+            </div>
+          }
+          bottom={
+            <KdeCard title="🔍 本多态构造深度理论洞见 (Parametricity & Impredicativity Insight)">
+              <p className="mt-1 text-xs leading-relaxed text-[var(--kde-ink)]">
+                {preset.insight}
+              </p>
+            </KdeCard>
+          }
+        />
+      </KdeWindowShell>
+    </ExpandableDemo>
   );
 }

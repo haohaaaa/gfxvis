@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import AutoMath from "./AutoMath";
+export { default as KdeTabPanel, KdeTabContext } from "./KdeTabPanel";
 
 export interface KdeTabOption<T extends string> {
   id: T;
@@ -59,10 +61,11 @@ export default function KdeTabs<T extends string>({
     >
       {label && (
         <span className="mr-1.5 shrink-0 text-xs font-medium text-[var(--kde-muted,#626b73)]">
-          {label}
+          <AutoMath>{label}</AutoMath>
         </span>
       )}
       <div
+        role={variant === "pill" ? "group" : "tablist"}
         className={
           variant === "pill"
             ? "flex flex-wrap items-center gap-1 rounded-[var(--kde-control-radius,0.35rem)] bg-[var(--kde-panel,#eff0f1)] p-0.5"
@@ -91,14 +94,17 @@ export default function KdeTabs<T extends string>({
           return (
             <button
               key={opt.id}
+              role={variant === "pill" ? undefined : "tab"}
               type="button"
-              aria-selected={isActive}
-              aria-pressed={isActive}
+              aria-selected={variant === "pill" ? undefined : isActive}
+              aria-pressed={variant === "pill" ? isActive : undefined}
               onClick={() => onChange(opt.id)}
               className={buttonClasses}
             >
               {opt.icon && <span className="shrink-0">{opt.icon}</span>}
-              <span>{opt.label}</span>
+              <span>
+                <AutoMath>{opt.label}</AutoMath>
+              </span>
               {opt.badge !== undefined && (
                 <span
                   className={`rounded-full px-1.5 py-0.2 text-[0.65rem] font-bold ${

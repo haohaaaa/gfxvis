@@ -31,23 +31,17 @@ export default function ParamSlider({
   display,
   digits = 2,
 }: ParamSliderProps) {
-  const renderedLabel =
-    typeof label === "string" ? (
-      <AutoMath as="span" className="text-sm">
-        {label}
-      </AutoMath>
-    ) : (
-      label
-    );
+  const renderedLabel = (
+    <AutoMath as="span" className="text-sm">
+      {label}
+    </AutoMath>
+  );
 
-  const renderedDisplay =
-    typeof display === "string" ? (
-      <AutoMath as="span" className="tabular-nums">
-        {display}
-      </AutoMath>
-    ) : (
-      <span className="tabular-nums">{value.toFixed(digits)}</span>
-    );
+  const renderedDisplay = (
+    <AutoMath as="span" className="tabular-nums">
+      {display ?? value.toFixed(digits)}
+    </AutoMath>
+  );
 
   if (labelMode === "stacked") {
     return (

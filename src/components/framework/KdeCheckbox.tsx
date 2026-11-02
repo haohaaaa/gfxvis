@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
+import AutoMath from "./AutoMath";
 
 export interface KdeCheckboxProps {
   /** Checked boolean state */
@@ -109,12 +110,12 @@ export default function KdeCheckbox({
                 !disabled ? "group-hover:text-[var(--kde-accent,#3daee9)]" : ""
               }`}
             >
-              {label}
+              <AutoMath>{label}</AutoMath>
             </span>
           )}
           {description && (
             <span className="mt-0.5 text-[11px] leading-relaxed text-[var(--kde-muted,#626b73)]">
-              {description}
+              <AutoMath>{description}</AutoMath>
             </span>
           )}
         </div>

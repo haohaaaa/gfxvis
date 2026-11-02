@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
+import AutoMath from "./AutoMath";
 import "./InteractiveViewportGroup.css";
 
 export interface InteractiveViewportGroupProps {
@@ -51,7 +52,7 @@ export default function InteractiveViewportGroup({
           data-viewport-item
           data-viewport-item-index={index}
         >
-          {item}
+          <AutoMath>{item}</AutoMath>
         </div>
       ))}
     </div>

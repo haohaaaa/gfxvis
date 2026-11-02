@@ -14,7 +14,9 @@ test.describe("微积分板块 (Calculus) E2E 冒烟测试", () => {
     await expect(page.locator(".katex-error")).toHaveCount(0);
 
     // 2. 验证 Canvas 画布挂载并执行预设切换
-    const radialBtn = page.getByRole("button", { name: /径向场/ });
+    const radialBtn = page
+      .getByRole("tab", { name: /径向场/ })
+      .or(page.getByRole("button", { name: /径向场/ }));
     await radialBtn.scrollIntoViewIfNeeded();
     await radialBtn.click({ force: true });
     await expect(page.locator("canvas").first()).toBeVisible();

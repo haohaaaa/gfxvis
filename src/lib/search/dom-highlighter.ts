@@ -126,6 +126,7 @@ export function findInArticleMatches(query: string): InArticleMatch[] {
         parent.closest("pre") ||
         parent.closest(".katex") ||
         parent.closest(".katex-display") ||
+        parent.closest("astro-island") ||
         parent.closest("[data-island]") ||
         parent.closest("canvas")
       ) {
@@ -244,6 +245,7 @@ export function applyInArticleHighlights(
         parent.closest("pre") ||
         parent.closest(".katex") ||
         parent.closest(".katex-display") ||
+        parent.closest("astro-island") ||
         parent.closest("[data-island]") ||
         parent.closest("canvas")
       ) {

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import AutoMath from "./AutoMath";
 
 export interface KdeSwitchProps {
   /** Checked boolean state */
@@ -104,12 +105,12 @@ export default function KdeSwitch({
                   : ""
               }`}
             >
-              {label}
+              <AutoMath>{label}</AutoMath>
             </span>
           )}
           {description && (
             <span className="mt-0.5 text-[11px] leading-relaxed text-[var(--kde-muted,#626b73)]">
-              {description}
+              <AutoMath>{description}</AutoMath>
             </span>
           )}
         </div>

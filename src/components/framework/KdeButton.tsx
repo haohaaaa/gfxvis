@@ -1,4 +1,5 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
+import AutoMath from "./AutoMath";
 
 export type KdeButtonVariant =
   | "default"
@@ -68,7 +69,11 @@ export const KdeButton = forwardRef<HTMLButtonElement, KdeButtonProps>(
         ) : (
           icon && <span className="inline-flex shrink-0">{icon}</span>
         )}
-        {children && <span>{children}</span>}
+        {children && (
+          <span>
+            <AutoMath>{children}</AutoMath>
+          </span>
+        )}
         {!loading && iconRight && (
           <span className="inline-flex shrink-0">{iconRight}</span>
         )}

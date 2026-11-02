@@ -1,35 +1,148 @@
-import { AutoMath } from "../framework/AutoMath";
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import {
   Scene,
   Group,
-  PerspectiveCamera,
-  WebGLRenderer,
   Vector3,
   ArrowHelper,
   Mesh,
   BoxGeometry,
   CylinderGeometry,
   MeshStandardMaterial,
-  AmbientLight,
-  DirectionalLight,
   GridHelper,
 } from "three";
 import ExpandableDemo from "../framework/ExpandableDemo";
-import CanvasToolbar from "../framework/CanvasToolbar";
-import CanvasResizer from "../framework/CanvasResizer";
+import Viewer3DViewport from "../framework/Viewer3DViewport";
 import ParamSlider from "../framework/ParamSlider";
 import KdeWindowShell from "../framework/KdeWindowShell";
 import KdeCard from "../framework/KdeCard";
 import KdeTabs from "../framework/KdeTabs";
 import KdeReadout from "../framework/KdeReadout";
-import { createControls } from "../../visualizations/core/3d/controls";
+import { S3_PERMUTATIONS, type PermutationInfo } from "../../math/permutation";
 import { mathToWorld } from "../../visualizations/core/3d/coords";
-import { S3_PERMUTATIONS } from "../../math/permutation";
+import {
+  addStandardLights,
+  disposeObject,
+} from "../../visualizations/core/3d/three-utils";
 
 type DemoTab = "geometry" | "sparse";
 
-export default function PermutationMatrixDemo() {
+function createPermutationScene() {
+  const scene = new Scene();
+  addStandardLights(scene);
+
+  const grid = new GridHelper(10, 20, 0x3b82f6, 0x1e293b);
+  grid.position.y = 0;
+  scene.add(grid);
+
+  const dynamicGroup = new Group();
+  scene.add(dynamicGroup);
+
+  return {
+    scene,
+    update(
+      t: number,
+      P: number[][],
+      showBasis: boolean,
+      showObject: boolean,
+      showGrid: boolean,
+    ) {
+      grid.visible = showGrid;
+      disposeObject(dynamicGroup);
+      dynamicGroup.clear();
+
+      const L: number[][] = [
+        [
+          (1 - t) * 1 + t * P[0][0],
+          (1 - t) * 0 + t * P[0][1],
+          (1 - t) * 0 + t * P[0][2],
+        ],
+        [
+          (1 - t) * 0 + t * P[1][0],
+          (1 - t) * 1 + t * P[1][1],
+          (1 - t) * 0 + t * P[1][2],
+        ],
+        [
+          (1 - t) * 0 + t * P[2][0],
+          (1 - t) * 0 + t * P[2][1],
+          (1 - t) * 1 + t * P[2][2],
+        ],
+      ];
+
+      const basisColors = [0xef4444, 0x10b981, 0x3b82f6];
+      const unitVectors: [number, number, number][] = [
+        [1, 0, 0],
+        [0, 1, 0],
+        [0, 0, 1],
+      ];
+
+      if (showBasis) {
+        unitVectors.forEach((uv, i) => {
+          const vx = L[0][0] * uv[0] + L[0][1] * uv[1] + L[0][2] * uv[2];
+          const vy = L[1][0] * uv[0] + L[1][1] * uv[1] + L[1][2] * uv[2];
+          const vz = L[2][0] * uv[0] + L[2][1] * uv[1] + L[2][2] * uv[2];
+
+          const [wx, wy, wz] = mathToWorld(vx, vy, vz);
+          const dir = new Vector3(wx, wy, wz);
+          const len = dir.length() || 0.001;
+          dir.normalize();
+
+          const arrow = new ArrowHelper(
+            dir,
+            new Vector3(0, 0, 0),
+            len * 1.6,
+            basisColors[i],
+            0.32,
+            0.16,
+          );
+          dynamicGroup.add(arrow);
+        });
+      }
+
+      if (showObject) {
+        const objectGroup = new Group();
+
+        const stemGeom = new CylinderGeometry(0.08, 0.08, 1.4, 16);
+        const stemMat = new MeshStandardMaterial({
+          color: 0x6366f1,
+          metalness: 0.2,
+          roughness: 0.3,
+        });
+        const stem = new Mesh(stemGeom, stemMat);
+        stem.position.y = 0.7;
+        objectGroup.add(stem);
+
+        const topGeom = new BoxGeometry(0.8, 0.12, 0.12);
+        const topMat = new MeshStandardMaterial({
+          color: 0xec4899,
+          metalness: 0.2,
+          roughness: 0.3,
+        });
+        const topBar = new Mesh(topGeom, topMat);
+        topBar.position.set(0.35, 1.34, 0);
+        objectGroup.add(topBar);
+
+        const midGeom = new BoxGeometry(0.12, 0.12, 0.55);
+        const midMat = new MeshStandardMaterial({
+          color: 0xf59e0b,
+          metalness: 0.2,
+          roughness: 0.3,
+        });
+        const midBar = new Mesh(midGeom, midMat);
+        midBar.position.set(0, 0.85, 0.22);
+        objectGroup.add(midBar);
+
+        dynamicGroup.add(objectGroup);
+      }
+    },
+    dispose() {
+      disposeObject(dynamicGroup);
+      disposeObject(grid);
+      disposeObject(scene);
+    },
+  };
+}
+
+export default function PermutationMatrixDemo({ height }: { height?: string }) {
   const [activeTab, setActiveTab] = useState<DemoTab>("geometry");
   const [selectedPermId, setSelectedPermId] = useState<string>("t12");
   const [opMode, setOpMode] = useState<"left" | "right">("left");
@@ -42,16 +155,9 @@ export default function PermutationMatrixDemo() {
   // Sparse comparison state
   const [sparsePermuted, setSparsePermuted] = useState<boolean>(false);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const rendererRef = useRef<WebGLRenderer | null>(null);
-  const sceneRef = useRef<Scene | null>(null);
-  const cameraRef = useRef<PerspectiveCamera | null>(null);
-  const controlsRef = useRef<ReturnType<typeof createControls> | null>(null);
-  const dynamicGroupRef = useRef<Group | null>(null);
-  const gridHelperRef = useRef<GridHelper | null>(null);
   const animReqRef = useRef<number | null>(null);
 
-  const currentPerm = useMemo(() => {
+  const currentPerm: PermutationInfo = useMemo(() => {
     return (
       S3_PERMUTATIONS.find((p) => p.id === selectedPermId) || S3_PERMUTATIONS[0]
     );
@@ -73,7 +179,6 @@ export default function PermutationMatrixDemo() {
       if (!start) start = timestamp;
       const elapsed = timestamp - start;
       const progress = Math.min(1.0, elapsed / duration);
-      // easeOutCubic
       const eased = 1 - Math.pow(1 - progress, 3);
       setAnimProgress(eased);
 
@@ -90,197 +195,6 @@ export default function PermutationMatrixDemo() {
     };
   }, [isAnimating]);
 
-  // Three.js Scene Setup
-  useEffect(() => {
-    if (!containerRef.current || activeTab !== "geometry") return;
-
-    const width = containerRef.current.clientWidth;
-    const height = 460;
-
-    const scene = new Scene();
-    sceneRef.current = scene;
-
-    const camera = new PerspectiveCamera(45, width / height, 0.1, 100);
-    const [wx, wy, wz] = mathToWorld(3.8, -4.5, 3.2);
-    camera.position.set(wx, wy, wz);
-    camera.up.set(0, 1, 0);
-    cameraRef.current = camera;
-
-    const renderer = new WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    rendererRef.current = renderer;
-
-    containerRef.current.replaceChildren(renderer.domElement);
-
-    const controls = createControls(camera, renderer.domElement);
-    const [tx, ty, tz] = mathToWorld(0, 0, 0.5);
-    controls.target.set(tx, ty, tz);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controlsRef.current = controls;
-
-    // Lighting
-    const ambientLight = new AmbientLight(0xffffff, 0.85);
-    scene.add(ambientLight);
-
-    const dirLight1 = new DirectionalLight(0xffffff, 1.2);
-    dirLight1.position.set(5, 10, 7);
-    scene.add(dirLight1);
-
-    const dirLight2 = new DirectionalLight(0x90b0ff, 0.6);
-    dirLight2.position.set(-5, -5, -3);
-    scene.add(dirLight2);
-
-    // Ground Grid on xy plane (z = 0 in math coords -> y = 0 in world)
-    const grid = new GridHelper(10, 20, 0x3b82f6, 0x1e293b);
-    grid.position.y = 0;
-    scene.add(grid);
-    gridHelperRef.current = grid;
-
-    const dynamicGroup = new Group();
-    scene.add(dynamicGroup);
-    dynamicGroupRef.current = dynamicGroup;
-
-    let isSubscribed = true;
-    const renderLoop = () => {
-      if (!isSubscribed) return;
-      controls.update();
-      renderer.render(scene, camera);
-      requestAnimationFrame(renderLoop);
-    };
-    renderLoop();
-
-    const handleResize = () => {
-      if (!containerRef.current) return;
-      const w = containerRef.current.clientWidth;
-      camera.aspect = w / height;
-      camera.updateProjectionMatrix();
-      renderer.setSize(w, height);
-    };
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      isSubscribed = false;
-      window.removeEventListener("resize", handleResize);
-      renderer.dispose();
-      scene.clear();
-    };
-  }, [activeTab]);
-
-  // Update Grid visibility
-  useEffect(() => {
-    if (gridHelperRef.current) {
-      gridHelperRef.current.visible = showGrid;
-    }
-  }, [showGrid]);
-
-  // Update Dynamic 3D Objects (Basis & Geometry) under current interpolation
-  useEffect(() => {
-    const group = dynamicGroupRef.current;
-    if (!group || activeTab !== "geometry") return;
-
-    // Clear previous dynamic meshes
-    while (group.children.length > 0) {
-      const child = group.children[0];
-      group.remove(child);
-    }
-
-    // Interpolate matrix between Identity and P
-    const t = animProgress;
-    const P = currentPerm.matrix;
-    // Lerped matrix L = (1-t)I + t P
-    const L: number[][] = [
-      [
-        (1 - t) * 1 + t * P[0][0],
-        (1 - t) * 0 + t * P[0][1],
-        (1 - t) * 0 + t * P[0][2],
-      ],
-      [
-        (1 - t) * 0 + t * P[1][0],
-        (1 - t) * 1 + t * P[1][1],
-        (1 - t) * 0 + t * P[1][2],
-      ],
-      [
-        (1 - t) * 0 + t * P[2][0],
-        (1 - t) * 0 + t * P[2][1],
-        (1 - t) * 1 + t * P[2][2],
-      ],
-    ];
-
-    // Compute transformed basis vectors
-    const basisColors = [0xef4444, 0x10b981, 0x3b82f6]; // X: Red, Y: Green, Z: Blue
-    const unitVectors: [number, number, number][] = [
-      [1, 0, 0],
-      [0, 1, 0],
-      [0, 0, 1],
-    ];
-
-    if (showBasis) {
-      unitVectors.forEach((uv, i) => {
-        // Transformed vector v = L * uv
-        const vx = L[0][0] * uv[0] + L[0][1] * uv[1] + L[0][2] * uv[2];
-        const vy = L[1][0] * uv[0] + L[1][1] * uv[1] + L[1][2] * uv[2];
-        const vz = L[2][0] * uv[0] + L[2][1] * uv[1] + L[2][2] * uv[2];
-
-        const [wx, wy, wz] = mathToWorld(vx, vy, vz);
-        const dir = new Vector3(wx, wy, wz);
-        const len = dir.length() || 0.001;
-        dir.normalize();
-
-        const arrow = new ArrowHelper(
-          dir,
-          new Vector3(0, 0, 0),
-          len * 1.6,
-          basisColors[i],
-          0.32,
-          0.16,
-        );
-        group.add(arrow);
-      });
-    }
-
-    if (showObject) {
-      // Create an asymmetric 3D reference letter "F" / Tetrahedron
-      const objectGroup = new Group();
-
-      // Stem along Z
-      const stemGeom = new CylinderGeometry(0.08, 0.08, 1.4, 16);
-      const stemMat = new MeshStandardMaterial({
-        color: 0x6366f1,
-        metalness: 0.2,
-        roughness: 0.3,
-      });
-      const stem = new Mesh(stemGeom, stemMat);
-      stem.position.y = 0.7;
-      objectGroup.add(stem);
-
-      // Top bar along X
-      const topGeom = new BoxGeometry(0.8, 0.12, 0.12);
-      const topMat = new MeshStandardMaterial({
-        color: 0xec4899,
-        metalness: 0.2,
-        roughness: 0.3,
-      });
-      const topBar = new Mesh(topGeom, topMat);
-      topBar.position.set(0.35, 1.34, 0);
-      objectGroup.add(topBar);
-
-      // Mid bar along Y
-      const midGeom = new BoxGeometry(0.12, 0.12, 0.55);
-      const midMat = new MeshStandardMaterial({
-        color: 0xf59e0b,
-        metalness: 0.2,
-        roughness: 0.3,
-      });
-      const midBar = new Mesh(midGeom, midMat);
-      midBar.position.set(0, 0.85, 0.22);
-      objectGroup.add(midBar);
-
-      group.add(objectGroup);
-    }
-  }, [currentPerm, animProgress, showBasis, showObject, activeTab]);
-
   const modeTabs = (
     <KdeTabs
       options={[
@@ -293,12 +207,24 @@ export default function PermutationMatrixDemo() {
   );
 
   const geometryDisplay = (
-    <div className="relative w-full h-[var(--demo-height,28rem)] rounded-xl overflow-hidden border border-border bg-slate-950 shadow-inner">
-      <div
-        ref={containerRef}
-        className="w-full h-full cursor-grab active:cursor-grabbing"
-      />
-
+    <Viewer3DViewport
+      factory={createPermutationScene}
+      className="h-[var(--demo-height,28rem)]"
+      onReset={() => {
+        setAnimProgress(1.0);
+      }}
+      onUpdate={({ api, viewer }) => {
+        api.update(
+          animProgress,
+          currentPerm.matrix,
+          showBasis,
+          showObject,
+          showGrid,
+        );
+        viewer.render();
+      }}
+      deps={[animProgress, currentPerm, showBasis, showObject, showGrid]}
+    >
       {/* Overlay Chirality & Parity Badge */}
       <div className="absolute top-3 left-3 flex flex-col gap-1.5 pointer-events-none">
         <div
@@ -334,20 +260,7 @@ export default function PermutationMatrixDemo() {
           e₃ (Z)
         </span>
       </div>
-
-      <CanvasToolbar
-        onReset={() => {
-          setAnimProgress(1.0);
-          if (controlsRef.current && cameraRef.current) {
-            const [wx, wy, wz] = mathToWorld(3.8, -4.5, 3.2);
-            cameraRef.current.position.set(wx, wy, wz);
-            const [tx, ty, tz] = mathToWorld(0, 0, 0.5);
-            controlsRef.current.target.set(tx, ty, tz);
-          }
-        }}
-      />
-      <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
-    </div>
+    </Viewer3DViewport>
   );
 
   const geometryControls = (
@@ -385,6 +298,7 @@ export default function PermutationMatrixDemo() {
             const isSelected = p.id === currentPerm.id;
             return (
               <button
+                type="button"
                 key={p.id}
                 onClick={() => triggerTransition(p.id)}
                 className={`flex flex-col items-start p-2 rounded border text-left transition-all ${
@@ -405,7 +319,7 @@ export default function PermutationMatrixDemo() {
                     det={p.det > 0 ? "+1" : "-1"}
                   </span>
                 </div>
-                <span className="text-[10px] font-mono text-muted mt-0.5">
+                <span className="text-[10px] font-mono text-muted-foreground mt-0.5">
                   循环: {p.cycleNotation}
                 </span>
               </button>
@@ -417,7 +331,9 @@ export default function PermutationMatrixDemo() {
       <KdeCard title="代数结构与正交性诊断" variant="dense">
         <div className="space-y-2">
           <div>
-            <div className="text-[11px] text-muted mb-1">置换矩阵 P：</div>
+            <div className="text-[11px] text-muted-foreground mb-1">
+              置换矩阵 P：
+            </div>
             <div className="font-mono bg-surface-elevated/50 p-2 rounded border border-border flex flex-col items-center">
               {currentPerm.matrix.map((row: number[], rIdx: number) => (
                 <div key={rIdx} className="flex gap-3">
@@ -452,18 +368,12 @@ export default function PermutationMatrixDemo() {
             <KdeReadout
               label="行列式 det(P)"
               value={currentPerm.det > 0 ? "+1" : "-1"}
-              variant={currentPerm.det > 0 ? "success" : "danger"}
+              variant={currentPerm.det === 1 ? "success" : "danger"}
               dense
             />
             <KdeReadout
-              label="正交检验 PᵀP"
-              value="I (单位阵)"
-              variant="success"
-              dense
-            />
-            <KdeReadout
-              label="逆矩阵 P⁻¹"
-              value="Pᵀ (转置)"
+              label="正交性质 PᵀP = I"
+              value="严格正交 P⁻¹=Pᵀ"
               variant="accent"
               dense
             />
@@ -474,12 +384,12 @@ export default function PermutationMatrixDemo() {
   );
 
   const sparseDisplay = (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 p-4 bg-slate-950 rounded-xl border border-border min-h-[var(--demo-height,28rem)]">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Natural Ordering Matrix */}
         <div className="p-4 rounded-xl border border-border bg-surface flex flex-col gap-3">
           <div className="flex items-center justify-between border-b border-border pb-2">
-            <span className="text-xs font-bold text-ink">
+            <span className="text-xs font-bold text-foreground">
               1. 自然标号矩阵 A 与分解 L
             </span>
             <span className="text-xs font-mono text-rose-500 font-bold">
@@ -516,7 +426,7 @@ export default function PermutationMatrixDemo() {
               }),
             )}
           </div>
-          <p className="text-[11px] text-muted text-center">
+          <p className="text-[11px] text-muted-foreground text-center">
             自然编号下，远离对角线的端点连接导致消元时发生连锁填充（Fill-in
             泛滥）。
           </p>
@@ -525,7 +435,7 @@ export default function PermutationMatrixDemo() {
         {/* Permuted Matrix PAP^T */}
         <div className="p-4 rounded-xl border border-accent/40 bg-accent/5 flex flex-col gap-3">
           <div className="flex items-center justify-between border-b border-border pb-2">
-            <span className="text-xs font-bold text-ink">
+            <span className="text-xs font-bold text-foreground">
               2. RCM / AMD 置换后矩阵 P A Pᵀ 与 L
             </span>
             <span className="text-xs font-mono text-emerald-500 font-bold">
@@ -559,7 +469,7 @@ export default function PermutationMatrixDemo() {
               }),
             )}
           </div>
-          <p className="text-[11px] text-muted text-center">
+          <p className="text-[11px] text-muted-foreground text-center">
             通过置换矩阵重编号后，矩阵严格收缩为紧凑带状矩阵，Cholesky
             计算速度提升 3~10 倍！
           </p>
@@ -576,61 +486,58 @@ export default function PermutationMatrixDemo() {
 
       <KdeCard title="重编号算法控制" variant="dense">
         <button
+          type="button"
           onClick={() => setSparsePermuted(!sparsePermuted)}
           className={`w-full py-2 px-3 text-xs font-bold rounded-lg transition-all ${
             sparsePermuted
-              ? "bg-accent text-white shadow-md shadow-accent/20"
-              : "bg-surface border border-border text-ink hover:border-accent"
+              ? "bg-emerald-500 text-white"
+              : "bg-accent text-accent-foreground"
           }`}
         >
           {sparsePermuted
-            ? "✓ 已启用 AMD / RCM 置换 P A Pᵀ"
-            : "切换为 AMD 最小填充置换"}
+            ? "重置为自然编号 A"
+            : "应用 RCM / AMD 启发式重排序置换"}
         </button>
       </KdeCard>
 
-      <KdeCard title="Cholesky 填充对比" variant="dense">
-        <div className="space-y-1.5">
-          <KdeReadout
-            label="自然标号填充"
-            value="+8 个非零元"
-            variant="danger"
-            dense
-          />
-          <KdeReadout
-            label="AMD/RCM 置换填充"
-            value="+1 个非零元"
-            variant="success"
-            dense
-          />
-          <p className="text-[11px] text-muted mt-2">
-            重排矩阵节点标号 PAPᵀ
-            可将非零元集中于主对角线带状区域（Bandwidth），大幅减少 LLᵀ
-            分解中新增的非零填充。
-          </p>
-        </div>
+      <div className="grid grid-cols-2 gap-1.5">
+        <KdeReadout
+          label="填充元消减"
+          value={sparsePermuted ? "87.5% 减免" : "未优化"}
+          variant={sparsePermuted ? "success" : "danger"}
+          dense
+        />
+        <KdeReadout
+          label="稀疏结构带宽"
+          value={sparsePermuted ? "带宽 = 1 (紧凑)" : "带宽 = 4 (分散)"}
+          variant={sparsePermuted ? "accent" : "warning"}
+          dense
+        />
+      </div>
+
+      <KdeCard title="工业求解器价值" variant="dense">
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          SuiteSparse / CHOLMOD / Eigen
+          等稀疏直接法求解器中，90%以上的性能优化均来自于符号分解阶段的置换重排序（AMD、Metis、RCM）。
+        </p>
       </KdeCard>
     </div>
   );
 
   return (
-    <AutoMath>
-      <ExpandableDemo id="permutation-matrix-demo">
-        <KdeWindowShell
-          title="置换矩阵 (Permutation Matrix)"
-          eyebrow="Linear Algebra Workbench"
-          mark="P"
-          modeTag={
-            activeTab === "geometry"
-              ? "3D 几何手性与基底置换"
-              : "稀疏矩阵 Cholesky 填充优化"
-          }
-          display={activeTab === "geometry" ? geometryDisplay : sparseDisplay}
-          controls={
-            activeTab === "geometry" ? geometryControls : sparseControls
-          }
-        />
-      </ExpandableDemo>
-    </AutoMath>
+    <ExpandableDemo id="permutation-matrix" height={height}>
+      <KdeWindowShell
+        title="置换矩阵、对称群与稀疏消元重排序"
+        eyebrow="Linear Algebra · Permutation Matrices & S_n Group"
+        mark="P ∈ S_n"
+        modeTag={
+          activeTab === "geometry"
+            ? "3D 几何手性与基底置换"
+            : "稀疏 Cholesky 填充优化"
+        }
+        display={activeTab === "geometry" ? geometryDisplay : sparseDisplay}
+        controls={activeTab === "geometry" ? geometryControls : sparseControls}
+      />
+    </ExpandableDemo>
   );
 }

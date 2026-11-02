@@ -8,7 +8,6 @@ import KdeCard from "../framework/KdeCard";
 import KdeBadge from "../framework/KdeBadge";
 import KdeMessageBar from "../framework/KdeMessageBar";
 import CodePlayground from "../framework/CodePlayground";
-import { AutoMath } from "../framework/AutoMath";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import PresetSelector from "../framework/PresetSelector";
 import KdeButton from "../framework/KdeButton";
@@ -330,479 +329,478 @@ export default function ExistentialTypesDiagram() {
   };
 
   return (
-    <AutoMath>
-      <ExpandableDemo id="existential-types-sandbox">
-        <KdeWindowShell
-          eyebrow="TYPE THEORY WORKSPACE · EXISTENTIAL TYPES"
-          mark="∃"
-          modeTag="DENSE-DOCK"
-          title="存在类型（Existential Types）交互探针"
-        >
-          <InteractiveLayout
-            preset="dense-dock"
-            top={
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-[var(--kde-muted)]">
-                    探针视角：
-                  </span>
-                  <KdeTabs
-                    onChange={(val) => setActiveTab(val)}
-                    options={VIEW_OPTIONS}
-                    size="sm"
-                    value={activeTab}
+    <ExpandableDemo id="existential-types-sandbox">
+      <KdeWindowShell
+        eyebrow="TYPE THEORY WORKSPACE · EXISTENTIAL TYPES"
+        mark="∃"
+        modeTag="DENSE-DOCK"
+        title="存在类型（Existential Types）交互探针"
+      >
+        <InteractiveLayout
+          preset="dense-dock"
+          top={
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-[var(--kde-muted)]">
+                  探针视角：
+                </span>
+                <KdeTabs
+                  onChange={(val) => setActiveTab(val)}
+                  options={VIEW_OPTIONS}
+                  size="sm"
+                  value={activeTab}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <KdeBadge variant="primary">
+                  {`∃-Type: $${currentPreset.formalTex}$`}
+                </KdeBadge>
+              </div>
+            </div>
+          }
+          main={
+            <div className="relative flex h-[var(--demo-height,28rem)] w-full flex-col overflow-hidden rounded-xl border border-[var(--kde-border)] bg-[var(--kde-canvas)] p-5 shadow-inner">
+              <CanvasToolbar onReset={handleReset} />
+
+              {activeTab === "code_sandbox" ? (
+                <div className="flex-1 flex flex-col overflow-y-auto pr-1">
+                  <CodePlayground
+                    code={EXISTENTIAL_RUST_CODE}
+                    description="现场调用本地 rustc -O 编译并运行静态存在类型与动态虚表胖指针分发。"
+                    lang="rust"
+                    maxHeight="20rem"
+                    title="Rust 存在类型沙盒"
                   />
                 </div>
-                <div className="flex items-center gap-2">
-                  <KdeBadge variant="primary">
-                    {`∃-Type: $${currentPreset.formalTex}$`}
-                  </KdeBadge>
-                </div>
-              </div>
-            }
-            main={
-              <div className="relative flex h-[var(--demo-height,28rem)] w-full flex-col overflow-hidden rounded-xl border border-[var(--kde-border)] bg-[var(--kde-canvas)] p-5 shadow-inner">
-                <CanvasToolbar onReset={handleReset} />
+              ) : (
+                <>
+                  {/* Tab 1: Pack / Unpack & Type Escape Alert View */}
+                  {activeTab === "pack_unpack" && (
+                    <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-1">
+                      {/* Top Math & Witness Banner */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                        <div className="rounded-lg bg-[var(--kde-raised)] p-3 border border-[var(--kde-border)]">
+                          <span className="text-[var(--kde-muted)] font-semibold block mb-1">
+                            形式化抽象存在类型声明
+                          </span>
+                          <div className="text-[var(--kde-accent)] font-mono text-sm py-1 overflow-x-auto">
+                            {`$${currentPreset.formalTex}$`}
+                          </div>
+                          <div className="text-[11px] text-[var(--kde-muted)] mt-1">
+                            见证实体类型：
+                            <strong className="text-[var(--kde-ink)]">
+                              {currentPreset.witnessType}
+                            </strong>
+                          </div>
+                        </div>
 
-                {activeTab === "code_sandbox" ? (
-                  <div className="flex-1 flex flex-col overflow-y-auto pr-1">
-                    <CodePlayground
-                      code={EXISTENTIAL_RUST_CODE}
-                      description="现场调用本地 rustc -O 编译并运行静态存在类型与动态虚表胖指针分发。"
-                      lang="rust"
-                      maxHeight="20rem"
-                      title="Rust 存在类型沙盒"
-                    />
-                  </div>
-                ) : (
-                  <>
-                    {/* Tab 1: Pack / Unpack & Type Escape Alert View */}
-                    {activeTab === "pack_unpack" && (
-                      <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-1">
-                        {/* Top Math & Witness Banner */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                          <div className="rounded-lg bg-[var(--kde-raised)] p-3 border border-[var(--kde-border)]">
+                        <div className="rounded-lg bg-[var(--kde-raised)] p-3 border border-[var(--kde-border)] flex flex-col justify-between">
+                          <div>
                             <span className="text-[var(--kde-muted)] font-semibold block mb-1">
-                              形式化抽象存在类型声明
+                              沙盒开关：代换与逃逸测试
                             </span>
-                            <div className="text-[var(--kde-accent)] font-mono text-sm py-1 overflow-x-auto">
-                              {`$${currentPreset.formalTex}$`}
-                            </div>
-                            <div className="text-[11px] text-[var(--kde-muted)] mt-1">
-                              见证实体类型：
-                              <strong className="text-[var(--kde-ink)]">
-                                {currentPreset.witnessType}
-                              </strong>
+                            <div className="flex items-center gap-2 mt-2">
+                              <KdeButton
+                                size="xs"
+                                variant={
+                                  !isIllegalEscape ? "success" : "default"
+                                }
+                                onClick={() => setIsIllegalEscape(false)}
+                              >
+                                合法安全开箱 (X 未逃逸)
+                              </KdeButton>
+                              <KdeButton
+                                size="xs"
+                                variant={isIllegalEscape ? "danger" : "default"}
+                                onClick={() => setIsIllegalEscape(true)}
+                              >
+                                尝试非法逃逸 X (Type Escape)
+                              </KdeButton>
                             </div>
                           </div>
+                          <div className="mt-2 text-[11px]">
+                            状态：
+                            <span
+                              className={`font-semibold ${
+                                !isIllegalEscape
+                                  ? "text-emerald-700 dark:text-emerald-400"
+                                  : "text-rose-700 dark:text-rose-400"
+                              }`}
+                            >
+                              {!isIllegalEscape
+                                ? "● 通过类型检查 (Type Safe)"
+                                : "▲ 拦截类型变量逃逸 (Type Violation)"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
 
-                          <div className="rounded-lg bg-[var(--kde-raised)] p-3 border border-[var(--kde-border)] flex flex-col justify-between">
-                            <div>
-                              <span className="text-[var(--kde-muted)] font-semibold block mb-1">
-                                沙盒开关：代换与逃逸测试
-                              </span>
-                              <div className="flex items-center gap-2 mt-2">
-                                <KdeButton
-                                  size="xs"
-                                  variant={
-                                    !isIllegalEscape ? "success" : "default"
-                                  }
-                                  onClick={() => setIsIllegalEscape(false)}
-                                >
-                                  合法安全开箱 (X 未逃逸)
-                                </KdeButton>
-                                <KdeButton
-                                  size="xs"
-                                  variant={
-                                    isIllegalEscape ? "danger" : "default"
-                                  }
-                                  onClick={() => setIsIllegalEscape(true)}
-                                >
-                                  尝试非法逃逸 X (Type Escape)
-                                </KdeButton>
-                              </div>
+                      {/* Blackbox Packaging Visual */}
+                      <div className="rounded-lg bg-[var(--kde-raised)] p-3.5 border border-[var(--kde-border)] flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="flex items-center gap-3 w-full sm:w-auto">
+                          <div className="h-12 w-12 rounded-lg bg-indigo-500/15 border border-indigo-500/40 flex items-center justify-center font-mono font-bold text-indigo-700 dark:text-indigo-300 text-xl shadow-xs">
+                            ∃X
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-[var(--kde-ink)]">
+                              存在类型密封黑盒 (Opaque Box)
                             </div>
-                            <div className="mt-2 text-[11px]">
-                              状态：
+                            <div className="text-[11px] text-[var(--kde-muted)] font-mono mt-0.5">
+                              {isPacked
+                                ? "封包状态：外部不可见内部见证类型，仅通过契约交互"
+                                : "拆包状态：局部作用域内解开 X，受沙盒严密隔离"}
+                            </div>
+                          </div>
+                        </div>
+
+                        <KdeButton
+                          size="xs"
+                          variant="default"
+                          onClick={() => setIsPacked(!isPacked)}
+                        >
+                          {isPacked
+                            ? "点击模拟局部开箱 (open c)"
+                            : "点击重新封存 (pack)"}
+                        </KdeButton>
+                      </div>
+
+                      {/* Code & Logic Sandbox */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1 text-xs">
+                        <div className="rounded-lg bg-[var(--kde-raised)] p-3 border border-[var(--kde-border)] font-mono flex flex-col justify-between">
+                          <div>
+                            <div className="text-[var(--kde-muted)] font-semibold text-[11px] mb-1.5 flex items-center justify-between">
+                              <span>1. 实现方代码：打包（Pack）操作</span>
+                              <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">
+                                信息隐藏
+                              </span>
+                            </div>
+                            <pre className="text-[var(--kde-ink)] whitespace-pre-wrap leading-relaxed text-[11px] bg-[var(--kde-panel)] p-2.5 rounded-lg border border-[var(--kde-border)]">
+                              {currentPreset.packCode}
+                            </pre>
+                          </div>
+                          <div className="text-[11px] text-[var(--kde-muted)] mt-2 border-t border-[var(--kde-border)] pt-1.5">
+                            实现方在这一步把具体的{" "}
+                            <strong className="text-[var(--kde-ink)]">
+                              {currentPreset.witnessType}
+                            </strong>{" "}
+                            封入黑盒。
+                          </div>
+                        </div>
+
+                        <div
+                          className={`rounded-lg p-3 border font-mono flex flex-col justify-between transition-colors ${
+                            !isIllegalEscape
+                              ? "bg-emerald-500/10 border-emerald-500/40 text-[var(--kde-ink)] ring-1 ring-emerald-500/20"
+                              : "bg-rose-500/10 border-rose-500/40 text-[var(--kde-ink)] ring-1 ring-rose-500/20"
+                          }`}
+                        >
+                          <div>
+                            <div className="font-semibold text-[11px] mb-1.5 flex items-center justify-between">
+                              <span>
+                                2. 调用方代码：
+                                {!isIllegalEscape
+                                  ? "合法使用"
+                                  : "非法逃逸 (拦截)"}
+                              </span>
                               <span
-                                className={`font-semibold ${
+                                className={`text-[10px] font-bold ${
                                   !isIllegalEscape
                                     ? "text-emerald-700 dark:text-emerald-400"
                                     : "text-rose-700 dark:text-rose-400"
                                 }`}
                               >
                                 {!isIllegalEscape
-                                  ? "● 通过类型检查 (Type Safe)"
-                                  : "▲ 拦截类型变量逃逸 (Type Violation)"}
+                                  ? "SAFE UNPACK"
+                                  : "ESCAPE TRAPPED"}
                               </span>
                             </div>
-                          </div>
-                        </div>
-
-                        {/* Blackbox Packaging Visual */}
-                        <div className="rounded-lg bg-[var(--kde-raised)] p-3.5 border border-[var(--kde-border)] flex flex-col sm:flex-row items-center justify-between gap-4">
-                          <div className="flex items-center gap-3 w-full sm:w-auto">
-                            <div className="h-12 w-12 rounded-lg bg-indigo-500/15 border border-indigo-500/40 flex items-center justify-center font-mono font-bold text-indigo-700 dark:text-indigo-300 text-xl shadow-xs">
-                              ∃X
-                            </div>
-                            <div>
-                              <div className="text-xs font-bold text-[var(--kde-ink)]">
-                                存在类型密封黑盒 (Opaque Box)
-                              </div>
-                              <div className="text-[11px] text-[var(--kde-muted)] font-mono mt-0.5">
-                                {isPacked
-                                  ? "封包状态：外部不可见内部见证类型，仅通过契约交互"
-                                  : "拆包状态：局部作用域内解开 X，受沙盒严密隔离"}
-                              </div>
-                            </div>
+                            <pre className="whitespace-pre-wrap leading-relaxed text-[11px] bg-[var(--kde-panel)] p-2.5 rounded-lg border border-[var(--kde-border)] text-[var(--kde-ink)]">
+                              {!isIllegalEscape
+                                ? currentPreset.safeUnpackCode
+                                : currentPreset.illegalEscapeCode}
+                            </pre>
                           </div>
 
-                          <KdeButton
-                            size="xs"
-                            variant="default"
-                            onClick={() => setIsPacked(!isPacked)}
-                          >
-                            {isPacked
-                              ? "点击模拟局部开箱 (open c)"
-                              : "点击重新封存 (pack)"}
-                          </KdeButton>
-                        </div>
-
-                        {/* Code & Logic Sandbox */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1 text-xs">
-                          <div className="rounded-lg bg-[var(--kde-raised)] p-3 border border-[var(--kde-border)] font-mono flex flex-col justify-between">
-                            <div>
-                              <div className="text-[var(--kde-muted)] font-semibold text-[11px] mb-1.5 flex items-center justify-between">
-                                <span>1. 实现方代码：打包（Pack）操作</span>
-                                <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">
-                                  信息隐藏
-                                </span>
-                              </div>
-                              <pre className="text-[var(--kde-ink)] whitespace-pre-wrap leading-relaxed text-[11px] bg-[var(--kde-panel)] p-2.5 rounded-lg border border-[var(--kde-border)]">
-                                {currentPreset.packCode}
-                              </pre>
-                            </div>
-                            <div className="text-[11px] text-[var(--kde-muted)] mt-2 border-t border-[var(--kde-border)] pt-1.5">
-                              实现方在这一步把具体的{" "}
-                              <strong className="text-[var(--kde-ink)]">
-                                {currentPreset.witnessType}
-                              </strong>{" "}
-                              封入黑盒。
-                            </div>
-                          </div>
-
-                          <div
-                            className={`rounded-lg p-3 border font-mono flex flex-col justify-between transition-colors ${
-                              !isIllegalEscape
-                                ? "bg-emerald-500/10 border-emerald-500/40 text-[var(--kde-ink)] ring-1 ring-emerald-500/20"
-                                : "bg-rose-500/10 border-rose-500/40 text-[var(--kde-ink)] ring-1 ring-rose-500/20"
-                            }`}
-                          >
-                            <div>
-                              <div className="font-semibold text-[11px] mb-1.5 flex items-center justify-between">
-                                <span>
-                                  2. 调用方代码：
-                                  {!isIllegalEscape
-                                    ? "合法使用"
-                                    : "非法逃逸 (拦截)"}
-                                </span>
-                                <span
-                                  className={`text-[10px] font-bold ${
-                                    !isIllegalEscape
-                                      ? "text-emerald-700 dark:text-emerald-400"
-                                      : "text-rose-700 dark:text-rose-400"
-                                  }`}
-                                >
-                                  {!isIllegalEscape
-                                    ? "SAFE UNPACK"
-                                    : "ESCAPE TRAPPED"}
-                                </span>
-                              </div>
-                              <pre className="whitespace-pre-wrap leading-relaxed text-[11px] bg-[var(--kde-panel)] p-2.5 rounded-lg border border-[var(--kde-border)] text-[var(--kde-ink)]">
-                                {!isIllegalEscape
-                                  ? currentPreset.safeUnpackCode
-                                  : currentPreset.illegalEscapeCode}
-                              </pre>
-                            </div>
-
-                            <div className="mt-2.5">
-                              {!isIllegalEscape ? (
-                                <KdeMessageBar variant="success" mode="card">
-                                  开箱后只提取了不含类型变量 X
-                                  的结果，类型系统安全证明成立。
-                                </KdeMessageBar>
-                              ) : (
-                                <KdeMessageBar
-                                  variant="danger"
-                                  mode="card"
-                                  title="类型变量逃逸拦截"
-                                >
-                                  {currentPreset.escapeErrorExplanation}
-                                </KdeMessageBar>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Tab 2: Memory & Dispatch View */}
-                    {activeTab === "memory_dispatch" && (
-                      <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-1">
-                        <div className="rounded-lg bg-[var(--kde-raised)] p-3 border border-[var(--kde-border)]">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
-                            <span className="font-bold text-sm text-[var(--kde-ink)]">
-                              物理实现范式：{currentPreset.memoryModel.paradigm}
-                            </span>
-                            <span className="text-xs px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-800 dark:text-indigo-200 font-mono border border-indigo-500/30">
-                              开销模型：{currentPreset.memoryModel.overhead}
-                            </span>
-                          </div>
-                          <p className="text-xs text-[var(--kde-muted)] leading-relaxed">
-                            {currentPreset.memoryModel.layoutDescription}
-                          </p>
-                        </div>
-
-                        {/* Visual Memory Blocks */}
-                        <div className="rounded-lg bg-[var(--kde-raised)] p-4 border border-[var(--kde-border)]">
-                          <div className="text-xs font-semibold text-[var(--kde-muted)] uppercase tracking-wider mb-2.5">
-                            物理内存空间划分与指针拓扑 (Memory Layout)
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                            {currentPreset.memoryModel.layoutBlocks.map(
-                              (block, idx) => (
-                                <div
-                                  key={idx}
-                                  className={`rounded-lg border p-3 flex flex-col justify-between ${block.color}`}
-                                >
-                                  <div>
-                                    <div className="font-mono font-bold text-xs">
-                                      {block.name}
-                                    </div>
-                                    <div className="text-[11px] opacity-90 mt-1">
-                                      {block.role}
-                                    </div>
-                                  </div>
-                                  <div className="text-[10px] font-mono mt-3 opacity-90 border-t border-current/20 pt-1">
-                                    物理尺寸：{block.size}
-                                  </div>
-                                </div>
-                              ),
+                          <div className="mt-2.5">
+                            {!isIllegalEscape ? (
+                              <KdeMessageBar variant="success" mode="card">
+                                开箱后只提取了不含类型变量 X
+                                的结果，类型系统安全证明成立。
+                              </KdeMessageBar>
+                            ) : (
+                              <KdeMessageBar
+                                variant="danger"
+                                mode="card"
+                                title="类型变量逃逸拦截"
+                              >
+                                {currentPreset.escapeErrorExplanation}
+                              </KdeMessageBar>
                             )}
                           </div>
                         </div>
+                      </div>
+                    </div>
+                  )}
 
-                        {/* Assembly / Compiler Micro-architectural Hint */}
-                        <div className="rounded-lg bg-[var(--kde-raised)] p-3.5 border border-[var(--kde-border)] font-mono text-xs">
-                          <span className="text-[var(--kde-muted)] font-semibold block mb-1.5 text-[11px]">
-                            编译器汇编 / 分发微架构剖析 (Assembly Codegen Trace)
+                  {/* Tab 2: Memory & Dispatch View */}
+                  {activeTab === "memory_dispatch" && (
+                    <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-1">
+                      <div className="rounded-lg bg-[var(--kde-raised)] p-3 border border-[var(--kde-border)]">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
+                          <span className="font-bold text-sm text-[var(--kde-ink)]">
+                            物理实现范式：{currentPreset.memoryModel.paradigm}
                           </span>
-                          <pre className="text-[var(--kde-ink)] whitespace-pre-wrap leading-relaxed text-[11px] bg-[var(--kde-panel)] p-2.5 rounded-lg border border-[var(--kde-border)]">
-                            {currentPreset.memoryModel.assemblyHint}
-                          </pre>
+                          <span className="text-xs px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-800 dark:text-indigo-200 font-mono border border-indigo-500/30">
+                            开销模型：{currentPreset.memoryModel.overhead}
+                          </span>
+                        </div>
+                        <p className="text-xs text-[var(--kde-muted)] leading-relaxed">
+                          {currentPreset.memoryModel.layoutDescription}
+                        </p>
+                      </div>
+
+                      {/* Visual Memory Blocks */}
+                      <div className="rounded-lg bg-[var(--kde-raised)] p-4 border border-[var(--kde-border)]">
+                        <div className="text-xs font-semibold text-[var(--kde-muted)] uppercase tracking-wider mb-2.5">
+                          物理内存空间划分与指针拓扑 (Memory Layout)
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                          {currentPreset.memoryModel.layoutBlocks.map(
+                            (block, idx) => (
+                              <div
+                                key={idx}
+                                className={`rounded-lg border p-3 flex flex-col justify-between ${block.color}`}
+                              >
+                                <div>
+                                  <div className="font-mono font-bold text-xs">
+                                    {block.name}
+                                  </div>
+                                  <div className="text-[11px] opacity-90 mt-1">
+                                    {block.role}
+                                  </div>
+                                </div>
+                                <div className="text-[10px] font-mono mt-3 opacity-90 border-t border-current/20 pt-1">
+                                  物理尺寸：{block.size}
+                                </div>
+                              </div>
+                            ),
+                          )}
                         </div>
                       </div>
-                    )}
 
-                    {/* Tab 3: Universal vs Existential Balance View */}
-                    {activeTab === "universal_vs_existential" && (
-                      <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-1">
-                        <div className="text-center max-w-xl mx-auto py-1">
-                          <h4 className="text-sm font-bold text-[var(--kde-ink)]">
-                            全称多态（∀, Generics）与存在多态（∃,
-                            ADT）的权力天平
-                          </h4>
-                          <p className="text-xs text-[var(--kde-muted)] mt-0.5">
-                            调用方与实现方的绝对控制权反转：谁在指定类型？谁在隐藏类型？
-                          </p>
-                        </div>
+                      {/* Assembly / Compiler Micro-architectural Hint */}
+                      <div className="rounded-lg bg-[var(--kde-raised)] p-3.5 border border-[var(--kde-border)] font-mono text-xs">
+                        <span className="text-[var(--kde-muted)] font-semibold block mb-1.5 text-[11px]">
+                          编译器汇编 / 分发微架构剖析 (Assembly Codegen Trace)
+                        </span>
+                        <pre className="text-[var(--kde-ink)] whitespace-pre-wrap leading-relaxed text-[11px] bg-[var(--kde-panel)] p-2.5 rounded-lg border border-[var(--kde-border)]">
+                          {currentPreset.memoryModel.assemblyHint}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
-                          {/* Universal Side */}
-                          <div className="rounded-lg border border-sky-500/40 bg-sky-500/10 text-[var(--kde-ink)] p-3.5 flex flex-col justify-between ring-1 ring-sky-500/20">
-                            <div>
-                              <div className="flex items-center justify-between pb-2 border-b border-sky-500/20 mb-2.5">
-                                <span className="text-xs font-bold text-sky-700 dark:text-sky-300">
-                                  全称量词 ∀X (Universal Types)
-                                </span>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-800 dark:text-sky-200 font-mono">
-                                  泛型函数
-                                </span>
-                              </div>
-                              <div className="text-xs space-y-2">
-                                <div>
-                                  <span className="text-[var(--kde-muted)] text-[11px] block">
-                                    代码范式：
-                                  </span>
-                                  <code className="text-[11px] font-mono text-[var(--kde-ink)] bg-[var(--kde-panel)] px-1.5 py-0.5 rounded border border-[var(--kde-border)]">
-                                    {
-                                      currentPreset.universalVsExistential
-                                        .universalExample
-                                    }
-                                  </code>
-                                </div>
-                                <div className="text-[11px] text-[var(--kde-ink)] leading-relaxed">
-                                  <strong>权力归属：</strong>
-                                  <span className="text-[var(--kde-muted)]">
-                                    {
-                                      currentPreset.universalVsExistential
-                                        .callerRole
-                                    }
-                                  </span>
-                                </div>
-                                <div className="text-[11px] text-[var(--kde-ink)] leading-relaxed">
-                                  <strong>类型透明度：</strong>
-                                  <span className="text-[var(--kde-muted)]">
-                                    类型完全透明。调用方随时知道具体是 string
-                                    还是 int。
-                                  </span>
-                                </div>
-                              </div>
+                  {/* Tab 3: Universal vs Existential Balance View */}
+                  {activeTab === "universal_vs_existential" && (
+                    <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-1">
+                      <div className="text-center max-w-xl mx-auto py-1">
+                        <span
+                          className="block text-sm font-bold text-[var(--kde-ink)]"
+                          role="heading"
+                          aria-level={4}
+                        >
+                          全称多态（∀, Generics）与存在多态（∃, ADT）的权力天平
+                        </span>
+                        <p className="text-xs text-[var(--kde-muted)] mt-0.5">
+                          调用方与实现方的绝对控制权反转：谁在指定类型？谁在隐藏类型？
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
+                        {/* Universal Side */}
+                        <div className="rounded-lg border border-sky-500/40 bg-sky-500/10 text-[var(--kde-ink)] p-3.5 flex flex-col justify-between ring-1 ring-sky-500/20">
+                          <div>
+                            <div className="flex items-center justify-between pb-2 border-b border-sky-500/20 mb-2.5">
+                              <span className="text-xs font-bold text-sky-700 dark:text-sky-300">
+                                全称量词 ∀X (Universal Types)
+                              </span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-800 dark:text-sky-200 font-mono">
+                                泛型函数
+                              </span>
                             </div>
-
-                            <div className="text-[10px] text-sky-800 dark:text-sky-300 font-mono mt-3 border-t border-sky-500/20 pt-1.5">
-                              关系隐喻：雇主（调用方）指派工种，工人必须服从任何合规材料。
+                            <div className="text-xs space-y-2">
+                              <div>
+                                <span className="text-[var(--kde-muted)] text-[11px] block">
+                                  代码范式：
+                                </span>
+                                <code className="text-[11px] font-mono text-[var(--kde-ink)] bg-[var(--kde-panel)] px-1.5 py-0.5 rounded border border-[var(--kde-border)]">
+                                  {
+                                    currentPreset.universalVsExistential
+                                      .universalExample
+                                  }
+                                </code>
+                              </div>
+                              <div className="text-[11px] text-[var(--kde-ink)] leading-relaxed">
+                                <strong>权力归属：</strong>
+                                <span className="text-[var(--kde-muted)]">
+                                  {
+                                    currentPreset.universalVsExistential
+                                      .callerRole
+                                  }
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-[var(--kde-ink)] leading-relaxed">
+                                <strong>类型透明度：</strong>
+                                <span className="text-[var(--kde-muted)]">
+                                  类型完全透明。调用方随时知道具体是 string 还是
+                                  int。
+                                </span>
+                              </div>
                             </div>
                           </div>
 
-                          {/* Existential Side */}
-                          <div className="rounded-lg border border-purple-500/40 bg-purple-500/10 text-[var(--kde-ink)] p-3.5 flex flex-col justify-between ring-1 ring-purple-500/20">
-                            <div>
-                              <div className="flex items-center justify-between pb-2 border-b border-purple-500/20 mb-2.5">
-                                <span className="text-xs font-bold text-purple-700 dark:text-purple-300">
-                                  存在量词 ∃X (Existential Types)
-                                </span>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-800 dark:text-purple-200 font-mono">
-                                  抽象接口 / 模块
-                                </span>
-                              </div>
-                              <div className="text-xs space-y-2">
-                                <div>
-                                  <span className="text-[var(--kde-muted)] text-[11px] block">
-                                    代码范式：
-                                  </span>
-                                  <code className="text-[11px] font-mono text-[var(--kde-ink)] bg-[var(--kde-panel)] px-1.5 py-0.5 rounded border border-[var(--kde-border)]">
-                                    {
-                                      currentPreset.universalVsExistential
-                                        .existentialExample
-                                    }
-                                  </code>
-                                </div>
-                                <div className="text-[11px] text-[var(--kde-ink)] leading-relaxed">
-                                  <strong>权力归属：</strong>
-                                  <span className="text-[var(--kde-muted)]">
-                                    {
-                                      currentPreset.universalVsExistential
-                                        .calleeRole
-                                    }
-                                  </span>
-                                </div>
-                                <div className="text-[11px] text-[var(--kde-ink)] leading-relaxed">
-                                  <strong>类型不透明度：</strong>
-                                  <span className="text-[var(--kde-muted)]">
-                                    彻底黑盒封印。两个相同接口的实例甚至无法直接比较相等（无法假设内部具体类型相同）。
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
+                          <div className="text-[10px] text-sky-800 dark:text-sky-300 font-mono mt-3 border-t border-sky-500/20 pt-1.5">
+                            关系隐喻：雇主（调用方）指派工种，工人必须服从任何合规材料。
+                          </div>
+                        </div>
 
-                            <div className="text-[10px] text-purple-800 dark:text-purple-300 font-mono mt-3 border-t border-purple-500/20 pt-1.5">
-                              映射关系：
-                              {
-                                currentPreset.universalVsExistential
-                                  .languageMapping
-                              }
+                        {/* Existential Side */}
+                        <div className="rounded-lg border border-purple-500/40 bg-purple-500/10 text-[var(--kde-ink)] p-3.5 flex flex-col justify-between ring-1 ring-purple-500/20">
+                          <div>
+                            <div className="flex items-center justify-between pb-2 border-b border-purple-500/20 mb-2.5">
+                              <span className="text-xs font-bold text-purple-700 dark:text-purple-300">
+                                存在量词 ∃X (Existential Types)
+                              </span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-800 dark:text-purple-200 font-mono">
+                                抽象接口 / 模块
+                              </span>
                             </div>
+                            <div className="text-xs space-y-2">
+                              <div>
+                                <span className="text-[var(--kde-muted)] text-[11px] block">
+                                  代码范式：
+                                </span>
+                                <code className="text-[11px] font-mono text-[var(--kde-ink)] bg-[var(--kde-panel)] px-1.5 py-0.5 rounded border border-[var(--kde-border)]">
+                                  {
+                                    currentPreset.universalVsExistential
+                                      .existentialExample
+                                  }
+                                </code>
+                              </div>
+                              <div className="text-[11px] text-[var(--kde-ink)] leading-relaxed">
+                                <strong>权力归属：</strong>
+                                <span className="text-[var(--kde-muted)]">
+                                  {
+                                    currentPreset.universalVsExistential
+                                      .calleeRole
+                                  }
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-[var(--kde-ink)] leading-relaxed">
+                                <strong>类型不透明度：</strong>
+                                <span className="text-[var(--kde-muted)]">
+                                  彻底黑盒封印。两个相同接口的实例甚至无法直接比较相等（无法假设内部具体类型相同）。
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="text-[10px] text-purple-800 dark:text-purple-300 font-mono mt-3 border-t border-purple-500/20 pt-1.5">
+                            映射关系：
+                            {
+                              currentPreset.universalVsExistential
+                                .languageMapping
+                            }
                           </div>
                         </div>
                       </div>
-                    )}
-                  </>
-                )}
+                    </div>
+                  )}
+                </>
+              )}
 
-                <CanvasResizer className="absolute bottom-0 inset-x-0 z-20" />
-              </div>
-            }
-            side={
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                <KdeCard title="核心理论与工业界代表预设" variant="dense">
-                  <PresetSelector
-                    layout="vertical"
-                    size="xs"
-                    options={PRESETS.map((p) => ({
-                      id: p.id,
-                      label: p.label,
-                      description: p.desc,
-                    }))}
-                    value={selectedPresetId}
-                    onChange={(id: string) => {
-                      setSelectedPresetId(id);
-                      setIsIllegalEscape(false);
-                      setIsPacked(true);
-                    }}
-                  />
-                </KdeCard>
-
-                <KdeCard title="开箱与逃逸模拟控制" variant="dense">
-                  <div className="space-y-2 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[var(--kde-muted)]">状态：</span>
-                      <span
-                        className={`font-semibold text-[11px] ${
-                          !isIllegalEscape
-                            ? "text-emerald-700 dark:text-emerald-400"
-                            : "text-rose-700 dark:text-rose-400"
-                        }`}
-                      >
-                        {!isIllegalEscape
-                          ? "● 类型安全 (Safe)"
-                          : "▲ 逃逸拦截 (Escape Error)"}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      <KdeButton
-                        size="xs"
-                        variant={!isIllegalEscape ? "primary" : "default"}
-                        onClick={() => setIsIllegalEscape(false)}
-                      >
-                        安全开箱消费
-                      </KdeButton>
-                      <KdeButton
-                        size="xs"
-                        variant={isIllegalEscape ? "danger" : "default"}
-                        onClick={() => setIsIllegalEscape(true)}
-                      >
-                        尝试非法逃逸 X
-                      </KdeButton>
-                    </div>
-                  </div>
-                </KdeCard>
-
-                <KdeCard title="存在量化形式公理" variant="dense">
-                  <div className="space-y-2 text-xs">
-                    <div className="p-1.5 rounded bg-[var(--kde-panel)] border border-[var(--kde-border)] font-mono text-[11px] text-[var(--kde-accent)] overflow-x-auto">
-                      {`$${currentPreset.formalTex}$`}
-                    </div>
-                    <div className="text-[11px] text-[var(--kde-muted)]">
-                      见证实体类型：
-                      <strong className="text-[var(--kde-ink)]">
-                        {currentPreset.witnessType}
-                      </strong>
-                    </div>
-                  </div>
-                </KdeCard>
-              </div>
-            }
-            bottom={
-              <KdeCard title="🔍 存在类型理论洞见 (Existential Types Insight)">
-                <p className="mt-1 text-xs leading-relaxed text-[var(--kde-ink)]">
-                  {currentPreset.insight}
-                </p>
+              <CanvasResizer className="absolute bottom-0 inset-x-0 z-20" />
+            </div>
+          }
+          side={
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <KdeCard title="核心理论与工业界代表预设" variant="dense">
+                <PresetSelector
+                  layout="vertical"
+                  size="xs"
+                  options={PRESETS.map((p) => ({
+                    id: p.id,
+                    label: p.label,
+                    description: p.desc,
+                  }))}
+                  value={selectedPresetId}
+                  onChange={(id: string) => {
+                    setSelectedPresetId(id);
+                    setIsIllegalEscape(false);
+                    setIsPacked(true);
+                  }}
+                />
               </KdeCard>
-            }
-          />
-        </KdeWindowShell>
-      </ExpandableDemo>
-    </AutoMath>
+
+              <KdeCard title="开箱与逃逸模拟控制" variant="dense">
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[var(--kde-muted)]">状态：</span>
+                    <span
+                      className={`font-semibold text-[11px] ${
+                        !isIllegalEscape
+                          ? "text-emerald-700 dark:text-emerald-400"
+                          : "text-rose-700 dark:text-rose-400"
+                      }`}
+                    >
+                      {!isIllegalEscape
+                        ? "● 类型安全 (Safe)"
+                        : "▲ 逃逸拦截 (Escape Error)"}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    <KdeButton
+                      size="xs"
+                      variant={!isIllegalEscape ? "primary" : "default"}
+                      onClick={() => setIsIllegalEscape(false)}
+                    >
+                      安全开箱消费
+                    </KdeButton>
+                    <KdeButton
+                      size="xs"
+                      variant={isIllegalEscape ? "danger" : "default"}
+                      onClick={() => setIsIllegalEscape(true)}
+                    >
+                      尝试非法逃逸 X
+                    </KdeButton>
+                  </div>
+                </div>
+              </KdeCard>
+
+              <KdeCard title="存在量化形式公理" variant="dense">
+                <div className="space-y-2 text-xs">
+                  <div className="p-1.5 rounded bg-[var(--kde-panel)] border border-[var(--kde-border)] font-mono text-[11px] text-[var(--kde-accent)] overflow-x-auto">
+                    {`$${currentPreset.formalTex}$`}
+                  </div>
+                  <div className="text-[11px] text-[var(--kde-muted)]">
+                    见证实体类型：
+                    <strong className="text-[var(--kde-ink)]">
+                      {currentPreset.witnessType}
+                    </strong>
+                  </div>
+                </div>
+              </KdeCard>
+            </div>
+          }
+          bottom={
+            <KdeCard title="🔍 存在类型理论洞见 (Existential Types Insight)">
+              <p className="mt-1 text-xs leading-relaxed text-[var(--kde-ink)]">
+                {currentPreset.insight}
+              </p>
+            </KdeCard>
+          }
+        />
+      </KdeWindowShell>
+    </ExpandableDemo>
   );
 }

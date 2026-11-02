@@ -7,19 +7,19 @@ import {
   GRID_MIN,
   createCloudScene,
   FIELD3D,
+  type CloudScene,
 } from "../../visualizations/scenes/calculus/scalar-field-3d";
 import { attachGizmo3D } from "../../visualizations/core/3d/gizmo3d";
-import CanvasToolbar from "../framework/CanvasToolbar";
-import CanvasResizer from "../framework/CanvasResizer";
 import ExpandableDemo from "../framework/ExpandableDemo";
-import { AutoMath } from "../framework/AutoMath";
 import KdeWindowShell from "../framework/KdeWindowShell";
 import KdeCard from "../framework/KdeCard";
 import KdeCheckbox from "../framework/KdeCheckbox";
 import KdeReadout from "../framework/KdeReadout";
 import ParamSlider from "../framework/ParamSlider";
 import PresetSelector from "../framework/PresetSelector";
-import { useViewer3D } from "../framework/useViewer3D";
+import Viewer3DViewport, {
+  type Viewer3DViewportHandle,
+} from "../framework/Viewer3DViewport";
 
 const PROBE_PRESETS = [
   { id: "p1", label: "点 A (1.0, 0.8, 0.5)", pos: { x: 1.0, y: 0.8, z: 0.5 } },
@@ -59,48 +59,18 @@ export default function ScalarField3DDemo({ height }: { height?: string }) {
   const probeRef = useRef(probe);
   probeRef.current = probe;
 
-  const { containerRef, apiRef, viewerRef } = useViewer3D(
-    () => createCloudScene(),
-    ({ api, viewer }) => {
-      setStats(api.getStats());
-      api.setDensity(density);
-      api.setAxesVisible(true);
-      api.setArrowsVisible(arrowsVisible);
-      api.setProbe(probeRef.current.x, probeRef.current.y, probeRef.current.z);
-
-      return attachGizmo3D({
-        domElement: viewer.renderer.domElement,
-        camera: viewer.camera,
-        controls: viewer.controls,
-        gizmo: api.gizmo,
-        bounds: {
-          xMin: -CUBE_HALF,
-          xMax: CUBE_HALF,
-          yMin: -CUBE_HALF,
-          yMax: CUBE_HALF,
-          zMin: -CUBE_HALF,
-          zMax: CUBE_HALF,
-        },
-        getPosition: () => probeRef.current,
-        onPositionChange: (pos) => {
-          setProbe(pos);
-          setProbePreset("custom");
-          api.setProbe(pos.x, pos.y, pos.z);
-        },
-        render: () => viewer.render(),
-      });
-    },
-    [density, arrowsVisible],
-  );
+  const vpRef = useRef<Viewer3DViewportHandle<CloudScene> | null>(null);
 
   const handlePreset = (presetId: string) => {
     setProbePreset(presetId);
     const target = PROBE_PRESETS.find((p) => p.id === presetId);
     if (target) {
       setProbe(target.pos);
-      if (apiRef.current && viewerRef.current) {
-        apiRef.current.setProbe(target.pos.x, target.pos.y, target.pos.z);
-        viewerRef.current.render();
+      const api = vpRef.current?.getApi();
+      const viewer = vpRef.current?.getViewer();
+      if (api && viewer) {
+        api.setProbe(target.pos.x, target.pos.y, target.pos.z);
+        viewer.render();
       }
     }
   };
@@ -112,106 +82,134 @@ export default function ScalarField3DDemo({ height }: { height?: string }) {
   const gradMag = Math.hypot(gx, gy, gz);
 
   return (
-    <AutoMath>
-      <ExpandableDemo id="scalar-field-3d" height={height}>
-        <KdeWindowShell
-          title="三维标量场 · 空间点云与梯度向量场"
-          eyebrow="CALCULUS 3D LAB"
-          mark="3D"
-          modeTag="离散点云采样"
-          display={
-            <div
-              ref={containerRef}
-              className="relative h-[var(--demo-height,28rem)] w-full overflow-hidden"
-            >
-              <CanvasToolbar
-                onReset={() => viewerRef.current?.controls.reset()}
-              />
-              <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
-            </div>
-          }
-          controls={
-            <div className="space-y-3">
-              <PresetSelector
-                label="空间探针预设:"
-                options={PROBE_PRESETS}
-                value={probePreset}
-                onChange={handlePreset}
-              />
+    <ExpandableDemo id="scalar-field-3d" height={height}>
+      <KdeWindowShell
+        title="三维标量场 · 空间点云与梯度向量场"
+        eyebrow="CALCULUS 3D LAB"
+        mark="3D"
+        modeTag="离散点云采样"
+        display={
+          <Viewer3DViewport
+            ref={vpRef}
+            heightClass="h-[var(--demo-height,28rem)]"
+            factory={() => createCloudScene()}
+            onUpdate={({ api, viewer }) => {
+              setStats(api.getStats());
+              api.setDensity(density);
+              api.setAxesVisible(true);
+              api.setArrowsVisible(arrowsVisible);
+              api.setProbe(
+                probeRef.current.x,
+                probeRef.current.y,
+                probeRef.current.z,
+              );
 
-              <div className="grid gap-2 sm:grid-cols-2">
-                <KdeCard title="探针坐标与场值" variant="dense">
-                  <div className="space-y-1">
-                    <KdeReadout
-                      label="位置 P(x, y, z)"
-                      value={`(${probe.x.toFixed(2)}, ${probe.y.toFixed(2)}, ${probe.z.toFixed(2)})`}
-                      dense
-                    />
-                    <KdeReadout
-                      label="场值 \varphi(P)"
-                      value={val.toFixed(3)}
-                      variant="accent"
-                      dense
-                    />
-                  </div>
-                </KdeCard>
+              return attachGizmo3D({
+                domElement: viewer.renderer.domElement,
+                camera: viewer.camera,
+                controls: viewer.controls,
+                gizmo: api.gizmo,
+                bounds: {
+                  xMin: -CUBE_HALF,
+                  xMax: CUBE_HALF,
+                  yMin: -CUBE_HALF,
+                  yMax: CUBE_HALF,
+                  zMin: -CUBE_HALF,
+                  zMax: CUBE_HALF,
+                },
+                getPosition: () => probeRef.current,
+                onPositionChange: (pos) => {
+                  setProbe(pos);
+                  setProbePreset("custom");
+                  api.setProbe(pos.x, pos.y, pos.z);
+                },
+                render: () => viewer.render(),
+              });
+            }}
+            deps={[density, arrowsVisible]}
+          />
+        }
+        controls={
+          <div className="space-y-3">
+            <PresetSelector
+              label="空间探针预设:"
+              options={PROBE_PRESETS}
+              value={probePreset}
+              onChange={handlePreset}
+            />
 
-                <KdeCard title="局部梯度与上升率" variant="dense">
-                  <div className="space-y-1">
-                    <KdeReadout
-                      label="梯度 \nabla\varphi"
-                      value={`(${gx.toFixed(2)}, ${gy.toFixed(2)}, ${gz.toFixed(2)})`}
-                      variant="formula"
-                      dense
-                    />
-                    <KdeReadout
-                      label="梯度模长 \|\nabla\varphi\|"
-                      value={`${gradMag.toFixed(3)} (最速上升)`}
-                      variant="success"
-                      dense
-                    />
-                  </div>
-                </KdeCard>
-              </div>
-
-              <KdeCard title="显示与采样密度" variant="dense">
-                <div className="space-y-2">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 text-xs text-muted">
-                      <span>{stats.min.toFixed(1)}</span>
-                      <div
-                        className="h-3 w-28 rounded-full border border-border"
-                        style={{ background: colormapGradient("coolwarm") }}
-                      />
-                      <span>{stats.max.toFixed(1)}</span>
-                    </div>
-                    <KdeCheckbox
-                      label="网格梯度场"
-                      checked={arrowsVisible}
-                      onChange={setArrowsVisible}
-                    />
-                  </div>
-                  <ParamSlider
-                    label="采样密度"
-                    min={GRID_MIN}
-                    max={GRID_MAX}
-                    step={2}
-                    value={density}
-                    onChange={setDensity}
-                    display={`${density}³`}
+            <div className="grid gap-2 sm:grid-cols-2">
+              <KdeCard title="探针坐标与场值" variant="dense">
+                <div className="space-y-1">
+                  <KdeReadout
+                    label="位置 P(x, y, z)"
+                    value={`(${probe.x.toFixed(2)}, ${probe.y.toFixed(2)}, ${probe.z.toFixed(2)})`}
+                    dense
+                  />
+                  <KdeReadout
+                    label="场值 \varphi(P)"
+                    value={val.toFixed(3)}
+                    variant="accent"
+                    dense
                   />
                 </div>
               </KdeCard>
 
-              <p className="text-xs text-muted">
-                左键按住金黄色探针直接在 3D 空间拖动 · 左键/中键空白旋转 ·
-                滚轮缩放 · 右键平移；金黄大箭头为探针处的梯度{" "}
-                {"$\\nabla \\varphi$"} 方向。
-              </p>
+              <KdeCard title="局部梯度与上升率" variant="dense">
+                <div className="space-y-1">
+                  <KdeReadout
+                    label="梯度 \nabla\varphi"
+                    value={`(${gx.toFixed(2)}, ${gy.toFixed(2)}, ${gz.toFixed(2)})`}
+                    variant="formula"
+                    dense
+                  />
+                  <KdeReadout
+                    label="梯度模长 \|\nabla\varphi\|"
+                    value={`${gradMag.toFixed(3)} (最速上升)`}
+                    variant="success"
+                    dense
+                  />
+                </div>
+              </KdeCard>
             </div>
-          }
-        />
-      </ExpandableDemo>
-    </AutoMath>
+
+            <KdeCard title="显示与采样密度" variant="dense">
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-xs text-muted">
+                    <span>{stats.min.toFixed(1)}</span>
+                    <div
+                      className="h-3 w-28 rounded-full border border-border"
+                      style={{ background: colormapGradient("coolwarm") }}
+                    />
+                    <span>{stats.max.toFixed(1)}</span>
+                  </div>
+                  <KdeCheckbox
+                    label="网格梯度场"
+                    checked={arrowsVisible}
+                    onChange={setArrowsVisible}
+                  />
+                </div>
+                <ParamSlider
+                  label="采样密度"
+                  min={GRID_MIN}
+                  max={GRID_MAX}
+                  step={2}
+                  value={density}
+                  onChange={setDensity}
+                  display={`${density}³`}
+                />
+              </div>
+            </KdeCard>
+
+            <p className="text-xs text-muted">
+              左键按住金黄色探针直接在 3D 空间拖动 · 左键/中键空白旋转 ·
+              滚轮缩放 · 右键平移；金黄大箭头为探针处的梯度{" "}
+              {"$\\nabla \\varphi$"} 方向。
+            </p>
+          </div>
+        }
+      />
+    </ExpandableDemo>
   );
 }

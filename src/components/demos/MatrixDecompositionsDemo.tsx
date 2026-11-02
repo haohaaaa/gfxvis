@@ -1,19 +1,13 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import ExpandableDemo from "../framework/ExpandableDemo";
-import CanvasToolbar from "../framework/CanvasToolbar";
-import CanvasResizer from "../framework/CanvasResizer";
+import CanvasViewport from "../framework/CanvasViewport";
 import PresetSelector, { type PresetOption } from "../framework/PresetSelector";
 import ParamSlider from "../framework/ParamSlider";
-import { AutoMath } from "../framework/AutoMath";
 import KdeWindowShell from "../framework/KdeWindowShell";
 import KdeCard from "../framework/KdeCard";
 import KdeReadout from "../framework/KdeReadout";
 import KdeTabs from "../framework/KdeTabs";
-import { useCanvas2D } from "../framework/useCanvas2D";
-import {
-  drawAdaptiveAxes,
-  type Bounds2,
-} from "../../visualizations/core/2d/plot2d";
+import type { Bounds2 } from "../../visualizations/core/2d/plot2d";
 import {
   type Matrix2x2,
   multiplyMatrix2x2Vector2,
@@ -84,6 +78,13 @@ function interpolateMatrix2x2(
     [mix(m1[1][0], m2[1][0], t), mix(m1[1][1], m2[1][1], t)],
   ];
 }
+
+const INITIAL_BOUNDS: Bounds2 = {
+  xMin: -3.0,
+  xMax: 3.0,
+  yMin: -2.6,
+  yMax: 2.6,
+};
 
 export default function MatrixDecompositionsDemo({
   height = "560px",
@@ -159,16 +160,6 @@ export default function MatrixDecompositionsDemo({
     }
   }, [activeTab, progress, matrix, lu, qr, polar, svd]);
 
-  const stateRef = useRef({
-    currentTransform,
-    showGrid,
-    showCircle,
-  });
-
-  useEffect(() => {
-    stateRef.current = { currentTransform, showGrid, showCircle };
-  }, [currentTransform, showGrid, showCircle]);
-
   const handlePreset = (val: string) => {
     setPresetKey(val);
     setProgress(1.0);
@@ -225,186 +216,31 @@ export default function MatrixDecompositionsDemo({
     };
   }, [isPlaying]);
 
-  const initialBounds: Bounds2 = useMemo(
-    () => ({
-      xMin: -3.0,
-      xMax: 3.0,
-      yMin: -2.6,
-      yMax: 2.6,
-    }),
-    [],
-  );
-
-  const { containerRef, canvasRef, redraw, resetBounds } = useCanvas2D({
-    initialBounds,
-    equalScale: true,
-    draw: (ctx, plot, theme) => {
-      const {
-        currentTransform: M,
-        showGrid: sGrid,
-        showCircle: sCircle,
-      } = stateRef.current;
-      drawAdaptiveAxes(ctx, plot, theme, "x", "y");
-
-      // 1. Draw Transformed Grid
-      if (sGrid) {
-        ctx.save();
-        ctx.strokeStyle = theme.border;
-        ctx.lineWidth = 1;
-        const step = 0.5;
-        const range = 2.5;
-
-        for (let y = -range; y <= range + 1e-4; y += step) {
-          const pStart = multiplyMatrix2x2Vector2(M, { x: -range, y });
-          const pEnd = multiplyMatrix2x2Vector2(M, { x: range, y });
-          const sx1 = plot.toScreenX(pStart.x);
-          const sy1 = plot.toScreenY(pStart.y);
-          const sx2 = plot.toScreenX(pEnd.x);
-          const sy2 = plot.toScreenY(pEnd.y);
-          ctx.beginPath();
-          ctx.moveTo(sx1, sy1);
-          ctx.lineTo(sx2, sy2);
-          ctx.stroke();
-        }
-
-        for (let x = -range; x <= range + 1e-4; x += step) {
-          const pStart = multiplyMatrix2x2Vector2(M, { x, y: -range });
-          const pEnd = multiplyMatrix2x2Vector2(M, { x, y: range });
-          const sx1 = plot.toScreenX(pStart.x);
-          const sy1 = plot.toScreenY(pStart.y);
-          const sx2 = plot.toScreenX(pEnd.x);
-          const sy2 = plot.toScreenY(pEnd.y);
-          ctx.beginPath();
-          ctx.moveTo(sx1, sy1);
-          ctx.lineTo(sx2, sy2);
-          ctx.stroke();
-        }
-        ctx.restore();
-      }
-
-      // 2. Draw Transformed Unit Circle -> Ellipse
-      if (sCircle) {
-        ctx.save();
-        ctx.strokeStyle = theme.muted;
-        ctx.setLineDash([3, 3]);
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        const numSegments = 90;
-        for (let i = 0; i <= numSegments; i++) {
-          const theta = (i / numSegments) * Math.PI * 2;
-          const sx = plot.toScreenX(Math.cos(theta));
-          const sy = plot.toScreenY(Math.sin(theta));
-          if (i === 0) ctx.moveTo(sx, sy);
-          else ctx.lineTo(sx, sy);
-        }
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        ctx.strokeStyle = "rgba(16, 185, 129, 0.85)";
-        ctx.fillStyle = "rgba(16, 185, 129, 0.08)";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        for (let i = 0; i <= numSegments; i++) {
-          const theta = (i / numSegments) * Math.PI * 2;
-          const pt = multiplyMatrix2x2Vector2(M, {
-            x: Math.cos(theta),
-            y: Math.sin(theta),
-          });
-          const sx = plot.toScreenX(pt.x);
-          const sy = plot.toScreenY(pt.y);
-          if (i === 0) ctx.moveTo(sx, sy);
-          else ctx.lineTo(sx, sy);
-        }
-        ctx.fill();
-        ctx.stroke();
-        ctx.restore();
-      }
-
-      // 3. Draw Transformed Basis Vectors
-      const v1 = multiplyMatrix2x2Vector2(M, { x: 1, y: 0 });
-      const v2 = multiplyMatrix2x2Vector2(M, { x: 0, y: 1 });
-
-      const drawArrow = (
-        toX: number,
-        toY: number,
-        color: string,
-        label: string,
-      ) => {
-        const x1 = plot.toScreenX(0);
-        const y1 = plot.toScreenY(0);
-        const x2 = plot.toScreenX(toX);
-        const y2 = plot.toScreenY(toY);
-        const dx = x2 - x1;
-        const dy = y2 - y1;
-        const len = Math.hypot(dx, dy);
-        if (len < 1) return;
-
-        ctx.save();
-        ctx.strokeStyle = color;
-        ctx.fillStyle = color;
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-
-        const headLen = Math.min(10, len * 0.3);
-        const angle = Math.atan2(dy, dx);
-        ctx.beginPath();
-        ctx.moveTo(x2, y2);
-        ctx.lineTo(
-          x2 - headLen * Math.cos(angle - Math.PI / 6),
-          y2 - headLen * Math.sin(angle - Math.PI / 6),
-        );
-        ctx.lineTo(
-          x2 - headLen * Math.cos(angle + Math.PI / 6),
-          y2 - headLen * Math.sin(angle + Math.PI / 6),
-        );
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.font = "bold 12px sans-serif";
-        ctx.fillText(label, x2 + 6, y2 - 6);
-        ctx.restore();
-      };
-
-      drawArrow(v1.x, v1.y, "#3b82f6", "a₁");
-      drawArrow(v2.x, v2.y, "#ef4444", "a₂");
-    },
-  });
-
-  useEffect(() => {
-    redraw();
-  }, [currentTransform, showGrid, showCircle, redraw]);
-
   return (
-    <AutoMath>
-      <ExpandableDemo id="matrix-decompositions-demo" height={height}>
-        <KdeWindowShell
-          title="矩阵分解几何流形与主轴变换"
-          eyebrow="Linear Algebra · Matrix Decompositions"
-          mark="A = LU | QR | QP | UΣVᵀ"
-          modeTag={
-            activeTab === "lu"
-              ? "LU 分解 (高斯消元)"
-              : activeTab === "qr"
-                ? "QR 分解 (单边正交)"
-                : activeTab === "polar"
-                  ? "极分解 (旋转-应变分离)"
-                  : "SVD (终极完全正交)"
-          }
-          display={
-            <div
-              ref={containerRef}
-              className="relative h-[var(--demo-height,24rem)] w-full overflow-hidden rounded-md border border-slate-800 bg-slate-950"
-            >
-              <canvas ref={canvasRef} className="h-full w-full touch-none" />
-              <CanvasToolbar
-                onReset={() => {
-                  resetBounds();
-                  handlePreset("general_transform");
-                }}
-              >
+    <ExpandableDemo id="matrix-decompositions-demo" height={height}>
+      <KdeWindowShell
+        title="矩阵分解几何流形与主轴变换"
+        eyebrow="Linear Algebra · Matrix Decompositions"
+        mark="A = LU | QR | QP | UΣVᵀ"
+        modeTag={
+          activeTab === "lu"
+            ? "LU 分解 (高斯消元)"
+            : activeTab === "qr"
+              ? "QR 分解 (单边正交)"
+              : activeTab === "polar"
+                ? "极分解 (旋转-应变分离)"
+                : "SVD (终极完全正交)"
+        }
+        display={
+          <CanvasViewport
+            initialBounds={INITIAL_BOUNDS}
+            equalScale
+            className="h-[var(--demo-height,24rem)]"
+            onReset={() => {
+              handlePreset("general_transform");
+            }}
+            toolbarChildren={
+              <>
                 <button
                   type="button"
                   onClick={() => setShowGrid(!showGrid)}
@@ -427,249 +263,350 @@ export default function MatrixDecompositionsDemo({
                 >
                   椭圆
                 </button>
-              </CanvasToolbar>
-              <CanvasResizer className="absolute bottom-0 inset-x-0 z-20" />
-            </div>
-          }
-          controls={
-            <div className="space-y-3">
-              <KdeTabs
-                options={DECOMP_TABS}
-                value={activeTab}
-                onChange={(tab: string) => {
-                  setActiveTab(tab as DecompTab);
-                  setProgress(1.0);
-                }}
-              />
+              </>
+            }
+            onDraw={(ctx, plot, theme, scene) => {
+              scene.addAxes("x", "y");
 
-              <KdeCard title="预设场景与变换时间轴" variant="dense">
-                <div className="space-y-2.5">
-                  <PresetSelector
-                    options={PRESETS}
-                    value={presetKey}
-                    onChange={handlePreset}
-                    className="w-full"
+              const M = currentTransform;
+
+              // 1. Transformed Grid
+              if (showGrid) {
+                scene.raw((ctx, plot, theme) => {
+                  ctx.save();
+                  ctx.strokeStyle = theme.border;
+                  ctx.lineWidth = 1;
+                  const step = 0.5;
+                  const range = 2.5;
+
+                  for (let y = -range; y <= range + 1e-4; y += step) {
+                    const pStart = multiplyMatrix2x2Vector2(M, {
+                      x: -range,
+                      y,
+                    });
+                    const pEnd = multiplyMatrix2x2Vector2(M, { x: range, y });
+                    ctx.beginPath();
+                    ctx.moveTo(
+                      plot.toScreenX(pStart.x),
+                      plot.toScreenY(pStart.y),
+                    );
+                    ctx.lineTo(plot.toScreenX(pEnd.x), plot.toScreenY(pEnd.y));
+                    ctx.stroke();
+                  }
+
+                  for (let x = -range; x <= range + 1e-4; x += step) {
+                    const pStart = multiplyMatrix2x2Vector2(M, {
+                      x,
+                      y: -range,
+                    });
+                    const pEnd = multiplyMatrix2x2Vector2(M, { x, y: range });
+                    ctx.beginPath();
+                    ctx.moveTo(
+                      plot.toScreenX(pStart.x),
+                      plot.toScreenY(pStart.y),
+                    );
+                    ctx.lineTo(plot.toScreenX(pEnd.x), plot.toScreenY(pEnd.y));
+                    ctx.stroke();
+                  }
+                  ctx.restore();
+                });
+              }
+
+              // 2. Transformed Unit Circle -> Ellipse
+              if (showCircle) {
+                const numSegments = 90;
+                const circlePoints: Array<[number, number]> = [];
+                const ellipsePoints: Array<[number, number]> = [];
+
+                for (let i = 0; i <= numSegments; i++) {
+                  const theta = (i / numSegments) * Math.PI * 2;
+                  const cosT = Math.cos(theta);
+                  const sinT = Math.sin(theta);
+                  circlePoints.push([cosT, sinT]);
+
+                  const pt = multiplyMatrix2x2Vector2(M, {
+                    x: cosT,
+                    y: sinT,
+                  });
+                  ellipsePoints.push([pt.x, pt.y]);
+                }
+
+                scene.addPolyline({
+                  points: circlePoints,
+                  closed: true,
+                  color: theme.muted,
+                  width: 1.2,
+                  dash: [3, 3],
+                });
+
+                scene.addPolyline({
+                  points: ellipsePoints,
+                  closed: true,
+                  color: "rgba(16, 185, 129, 0.85)",
+                  fillColor: "rgba(16, 185, 129, 0.08)",
+                  width: 2,
+                });
+              }
+
+              // 3. Transformed Basis Vectors
+              const v1 = multiplyMatrix2x2Vector2(M, { x: 1, y: 0 });
+              const v2 = multiplyMatrix2x2Vector2(M, { x: 0, y: 1 });
+
+              scene.addVector({
+                to: [v1.x, v1.y],
+                color: "#3b82f6",
+                label: "a₁",
+                width: 2.5,
+              });
+
+              scene.addVector({
+                to: [v2.x, v2.y],
+                color: "#ef4444",
+                label: "a₂",
+                width: 2.5,
+              });
+
+              scene.render(ctx, plot, theme);
+            }}
+          />
+        }
+        controls={
+          <div className="space-y-3">
+            <KdeTabs
+              options={DECOMP_TABS}
+              value={activeTab}
+              onChange={(tab: string) => {
+                setActiveTab(tab as DecompTab);
+                setProgress(1.0);
+              }}
+            />
+
+            <KdeCard title="预设场景与变换时间轴" variant="dense">
+              <div className="space-y-2.5">
+                <PresetSelector
+                  options={PRESETS}
+                  value={presetKey}
+                  onChange={handlePreset}
+                  className="w-full"
+                />
+
+                <div className="space-y-1.5 pt-1 border-t border-[var(--kde-border)]">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-foreground">
+                      时间轴 $t \in [0, 1]$
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsPlaying(!isPlaying)}
+                        className="rounded bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground shadow-xs hover:bg-primary/90"
+                      >
+                        {isPlaying ? "⏸ 暂停" : "▶ 播放分步"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsPlaying(false);
+                          setProgress(progress < 0.5 ? 0.5 : 1.0);
+                        }}
+                        className="rounded bg-slate-800 px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground"
+                      >
+                        跳至下一阶段
+                      </button>
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={progress}
+                    onChange={(e) => {
+                      setIsPlaying(false);
+                      setProgress(parseFloat(e.target.value));
+                    }}
+                    className="w-full accent-primary cursor-pointer"
                   />
-
-                  <div className="space-y-1.5 pt-1 border-t border-slate-700/50">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-medium text-foreground">
-                        时间轴 $t \in [0, 1]$
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setIsPlaying(!isPlaying)}
-                          className="rounded bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground shadow-xs hover:bg-primary/90"
-                        >
-                          {isPlaying ? "⏸ 暂停" : "▶ 播放分步"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsPlaying(false);
-                            setProgress(progress < 0.5 ? 0.5 : 1.0);
-                          }}
-                          className="rounded bg-slate-800 px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground"
-                        >
-                          跳至下一阶段
-                        </button>
-                      </div>
-                    </div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={1}
-                      step={0.01}
-                      value={progress}
-                      onChange={(e) => {
-                        setIsPlaying(false);
-                        setProgress(parseFloat(e.target.value));
-                      }}
-                      className="w-full accent-primary cursor-pointer"
-                    />
-                    <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
-                      <span>0.0: 标准基 I</span>
-                      {activeTab === "svd" ? (
-                        <>
-                          <span>0.33: Vᵀ 旋转</span>
-                          <span>0.66: Σ 对角缩放</span>
-                          <span>1.0: U 旋转</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>
-                            0.5:{" "}
-                            {activeTab === "lu"
-                              ? "U (上三角剪切)"
-                              : activeTab === "qr"
-                                ? "R (上三角拉伸)"
-                                : "P (纯主轴对称拉伸)"}
-                          </span>
-                          <span>1.0: 最终矩阵 A</span>
-                        </>
-                      )}
-                    </div>
+                  <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
+                    <span>0.0: 标准基 I</span>
+                    {activeTab === "svd" ? (
+                      <>
+                        <span>0.33: Vᵀ 旋转</span>
+                        <span>0.66: Σ 对角缩放</span>
+                        <span>1.0: U 旋转</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>
+                          0.5:{" "}
+                          {activeTab === "lu"
+                            ? "U (上三角剪切)"
+                            : activeTab === "qr"
+                              ? "R (上三角拉伸)"
+                              : "P (纯主轴对称拉伸)"}
+                        </span>
+                        <span>1.0: 最终矩阵 A</span>
+                      </>
+                    )}
                   </div>
                 </div>
-              </KdeCard>
-
-              <KdeCard title="待分解矩阵参数 A" variant="dense">
-                <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <ParamSlider
-                      label="$a_{11}$"
-                      labelMode="adaptive"
-                      widthClass="w-full"
-                      value={matrix[0][0]}
-                      min={-2.5}
-                      max={2.5}
-                      step={0.1}
-                      onChange={(v) => {
-                        setMatrix([[v, matrix[0][1]], matrix[1]]);
-                        setPresetKey("custom");
-                      }}
-                    />
-                    <ParamSlider
-                      label="$a_{12}$"
-                      labelMode="adaptive"
-                      widthClass="w-full"
-                      value={matrix[1][0]}
-                      min={-2.5}
-                      max={2.5}
-                      step={0.1}
-                      onChange={(v) => {
-                        setMatrix([matrix[0], [v, matrix[1][1]]]);
-                        setPresetKey("custom");
-                      }}
-                    />
-                    <ParamSlider
-                      label="$a_{21}$"
-                      labelMode="adaptive"
-                      widthClass="w-full"
-                      value={matrix[0][1]}
-                      min={-2.5}
-                      max={2.5}
-                      step={0.1}
-                      onChange={(v) => {
-                        setMatrix([[matrix[0][0], v], matrix[1]]);
-                        setPresetKey("custom");
-                      }}
-                    />
-                    <ParamSlider
-                      label="$a_{22}$"
-                      labelMode="adaptive"
-                      widthClass="w-full"
-                      value={matrix[1][1]}
-                      min={-2.5}
-                      max={2.5}
-                      step={0.1}
-                      onChange={(v) => {
-                        setMatrix([matrix[0], [matrix[1][0], v]]);
-                        setPresetKey("custom");
-                      }}
-                    />
-                  </div>
-                </div>
-              </KdeCard>
-
-              {activeTab === "lu" && (
-                <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-1.5 font-mono text-[11px]">
-                  <div className="flex justify-between items-center text-amber-500 font-bold">
-                    <span>高斯消元三角分解：A = L · U</span>
-                    <span className="text-[10px] text-muted-foreground">
-                      非正交消元
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1 justify-center py-1">
-                    {`$L = \\begin{pmatrix} 1 & 0 \\\\ ${fmt(lu.L[0][1])} & 1 \\end{pmatrix},\\quad U = \\begin{pmatrix} ${fmt(lu.U[0][0])} & ${fmt(lu.U[1][0])} \\\\ 0 & ${fmt(lu.U[1][1])} \\end{pmatrix}$`}
-                  </div>
-                  <p className="text-[11px] text-muted-foreground font-sans pt-1">
-                    💡 <strong>几何直观</strong>：矩阵 $U$
-                    负责主轴缩放与水平剪切；单位下三角矩阵 $L$
-                    记录消元过程的逆向垂直剪切。
-                  </p>
-                </div>
-              )}
-
-              {activeTab === "qr" && (
-                <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-3 space-y-1.5 font-mono text-[11px]">
-                  <div className="flex justify-between items-center text-blue-500 font-bold">
-                    <span>单边正交三角分解：A = Q · R</span>
-                    <span className="text-[10px] text-muted-foreground">
-                      QᵀQ = I
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1 justify-center py-1">
-                    {`$Q = \\begin{pmatrix} ${fmt(qr.Q[0][0])} & ${fmt(qr.Q[1][0])} \\\\ ${fmt(qr.Q[0][1])} & ${fmt(qr.Q[1][1])} \\end{pmatrix},\\quad R = \\begin{pmatrix} ${fmt(qr.R[0][0])} & ${fmt(qr.R[1][0])} \\\\ 0 & ${fmt(qr.R[1][1])} \\end{pmatrix}$`}
-                  </div>
-                  <p className="text-[11px] text-muted-foreground font-sans pt-1">
-                    💡 <strong>几何直观</strong>：矩阵 $R$
-                    负责在原始坐标轴上剪切拉伸， $Q$
-                    是纯正交旋转/反射矩阵，将剪切后的基底刚体旋转到最终位置。
-                  </p>
-                </div>
-              )}
-
-              {activeTab === "polar" && (
-                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-1.5 font-mono text-[11px]">
-                  <div className="flex justify-between items-center text-emerald-500 font-bold">
-                    <span>右极分解：A = Q · P</span>
-                    <span className="text-[10px] text-muted-foreground">
-                      旋转 × 对称拉伸
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1 justify-center py-1">
-                    {`$Q = \\begin{pmatrix} ${fmt(polar.Q[0][0])} & ${fmt(polar.Q[1][0])} \\\\ ${fmt(polar.Q[0][1])} & ${fmt(polar.Q[1][1])} \\end{pmatrix},\\quad P = \\begin{pmatrix} ${fmt(polar.P[0][0])} & ${fmt(polar.P[1][0])} \\\\ ${fmt(polar.P[0][1])} & ${fmt(polar.P[1][1])} \\end{pmatrix}$`}
-                  </div>
-                  <p className="text-[11px] text-muted-foreground font-sans pt-1">
-                    💡 <strong>物理与图形学灵魂</strong>：
-                    {"$P = \\sqrt{A^\\top A}$"}{" "}
-                    为半正定对称矩阵，代表纯拉伸形变；
-                    {"$Q = U V^\\top$"} 为正交矩阵，代表刚体旋转。
-                  </p>
-                </div>
-              )}
-
-              {activeTab === "svd" && (
-                <div className="rounded-lg border border-purple-500/30 bg-purple-500/5 p-3 space-y-1.5 font-mono text-[11px]">
-                  <div className="flex justify-between items-center text-purple-500 font-bold">
-                    <span>奇异值分解：A = U · Σ · Vᵀ</span>
-                    <span className="text-[10px] text-muted-foreground">
-                      双边完全正交对角化
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1 justify-center py-1 text-[10px]">
-                    {`$\\Sigma = \\begin{pmatrix} ${fmt(svd.sigma1)} & 0 \\\\ 0 & ${fmt(svd.sigma2)} \\end{pmatrix}$`}
-                    {`$U = \\begin{pmatrix} ${fmt(svd.u1.x)} & ${fmt(svd.u2.x)} \\\\ ${fmt(svd.u1.y)} & ${fmt(svd.u2.y)} \\end{pmatrix},\\quad V = \\begin{pmatrix} ${fmt(svd.v1.x)} & ${fmt(svd.v2.x)} \\\\ ${fmt(svd.v1.y)} & ${fmt(svd.v2.y)} \\end{pmatrix}$`}
-                  </div>
-                  <p className="text-[11px] text-muted-foreground font-sans pt-1">
-                    💡 <strong>终极正交统领</strong>：通过在输入空间 ($V$)
-                    与输出空间 ($U$)
-                    同时寻找标准正交基，将所有剪切分量完全归零，只留下纯对角缩放
-                    $\Sigma$。
-                  </p>
-                </div>
-              )}
-
-              <div className="grid grid-cols-3 gap-1.5">
-                <KdeReadout
-                  label="行列式 det(A)"
-                  value={fmt(detA)}
-                  variant="accent"
-                  dense
-                />
-                <KdeReadout label="条件数 κ(A)" value={fmt(condNum, 1)} dense />
-                <KdeReadout
-                  label="奇异值 σ₁, σ₂"
-                  value={`${fmt(svd.sigma1)}, ${fmt(svd.sigma2)}`}
-                  dense
-                />
               </div>
+            </KdeCard>
+
+            <KdeCard title="待分解矩阵参数 A" variant="dense">
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <ParamSlider
+                    label="$a_{11}$"
+                    labelMode="adaptive"
+                    widthClass="w-full"
+                    value={matrix[0][0]}
+                    min={-2.5}
+                    max={2.5}
+                    step={0.1}
+                    onChange={(v) => {
+                      setMatrix([[v, matrix[0][1]], matrix[1]]);
+                      setPresetKey("custom");
+                    }}
+                  />
+                  <ParamSlider
+                    label="$a_{12}$"
+                    labelMode="adaptive"
+                    widthClass="w-full"
+                    value={matrix[1][0]}
+                    min={-2.5}
+                    max={2.5}
+                    step={0.1}
+                    onChange={(v) => {
+                      setMatrix([matrix[0], [v, matrix[1][1]]]);
+                      setPresetKey("custom");
+                    }}
+                  />
+                  <ParamSlider
+                    label="$a_{21}$"
+                    labelMode="adaptive"
+                    widthClass="w-full"
+                    value={matrix[0][1]}
+                    min={-2.5}
+                    max={2.5}
+                    step={0.1}
+                    onChange={(v) => {
+                      setMatrix([[matrix[0][0], v], matrix[1]]);
+                      setPresetKey("custom");
+                    }}
+                  />
+                  <ParamSlider
+                    label="$a_{22}$"
+                    labelMode="adaptive"
+                    widthClass="w-full"
+                    value={matrix[1][1]}
+                    min={-2.5}
+                    max={2.5}
+                    step={0.1}
+                    onChange={(v) => {
+                      setMatrix([matrix[0], [matrix[1][0], v]]);
+                      setPresetKey("custom");
+                    }}
+                  />
+                </div>
+              </div>
+            </KdeCard>
+
+            {activeTab === "lu" && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-1.5 font-mono text-[11px]">
+                <div className="flex justify-between items-center text-amber-500 font-bold">
+                  <span>高斯消元三角分解：A = L · U</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    非正交消元
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1 justify-center py-1">
+                  {`$L = \\begin{pmatrix} 1 & 0 \\\\ ${fmt(lu.L[0][1])} & 1 \\end{pmatrix},\\quad U = \\begin{pmatrix} ${fmt(lu.U[0][0])} & ${fmt(lu.U[1][0])} \\\\ 0 & ${fmt(lu.U[1][1])} \\end{pmatrix}$`}
+                </div>
+                <p className="text-[11px] text-muted-foreground font-sans pt-1">
+                  💡 <strong>几何直观</strong>：矩阵 $U$
+                  负责主轴缩放与水平剪切；单位下三角矩阵 $L$
+                  记录消元过程的逆向垂直剪切。
+                </p>
+              </div>
+            )}
+
+            {activeTab === "qr" && (
+              <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-3 space-y-1.5 font-mono text-[11px]">
+                <div className="flex justify-between items-center text-blue-500 font-bold">
+                  <span>单边正交三角分解：A = Q · R</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    QᵀQ = I
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1 justify-center py-1">
+                  {`$Q = \\begin{pmatrix} ${fmt(qr.Q[0][0])} & ${fmt(qr.Q[1][0])} \\\\ ${fmt(qr.Q[0][1])} & ${fmt(qr.Q[1][1])} \\end{pmatrix},\\quad R = \\begin{pmatrix} ${fmt(qr.R[0][0])} & ${fmt(qr.R[1][0])} \\\\ 0 & ${fmt(qr.R[1][1])} \\end{pmatrix}$`}
+                </div>
+                <p className="text-[11px] text-muted-foreground font-sans pt-1">
+                  💡 <strong>几何直观</strong>：矩阵 $R$
+                  负责在原始坐标轴上剪切拉伸， $Q$
+                  是纯正交旋转/反射矩阵，将剪切后的基底刚体旋转到最终位置。
+                </p>
+              </div>
+            )}
+
+            {activeTab === "polar" && (
+              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-1.5 font-mono text-[11px]">
+                <div className="flex justify-between items-center text-emerald-500 font-bold">
+                  <span>右极分解：A = Q · P</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    旋转 × 对称拉伸
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1 justify-center py-1">
+                  {`$Q = \\begin{pmatrix} ${fmt(polar.Q[0][0])} & ${fmt(polar.Q[1][0])} \\\\ ${fmt(polar.Q[0][1])} & ${fmt(polar.Q[1][1])} \\end{pmatrix},\\quad P = \\begin{pmatrix} ${fmt(polar.P[0][0])} & ${fmt(polar.P[1][0])} \\\\ ${fmt(polar.P[0][1])} & ${fmt(polar.P[1][1])} \\end{pmatrix}$`}
+                </div>
+                <p className="text-[11px] text-muted-foreground font-sans pt-1">
+                  💡 <strong>物理与图形学灵魂</strong>：
+                  {"$P = \\sqrt{A^\\top A}$"} 为半正定对称矩阵，代表纯拉伸形变；
+                  {"$Q = U V^\\top$"} 为正交矩阵，代表刚体旋转。
+                </p>
+              </div>
+            )}
+
+            {activeTab === "svd" && (
+              <div className="rounded-lg border border-purple-500/30 bg-purple-500/5 p-3 space-y-1.5 font-mono text-[11px]">
+                <div className="flex justify-between items-center text-purple-500 font-bold">
+                  <span>奇异值分解：A = U · Σ · Vᵀ</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    双边完全正交对角化
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1 justify-center py-1 text-[10px]">
+                  {`$\\Sigma = \\begin{pmatrix} ${fmt(svd.sigma1)} & 0 \\\\ 0 & ${fmt(svd.sigma2)} \\end{pmatrix}$`}
+                  {`$U = \\begin{pmatrix} ${fmt(svd.u1.x)} & ${fmt(svd.u2.x)} \\\\ ${fmt(svd.u1.y)} & ${fmt(svd.u2.y)} \\end{pmatrix},\\quad V = \\begin{pmatrix} ${fmt(svd.v1.x)} & ${fmt(svd.v2.x)} \\\\ ${fmt(svd.v1.y)} & ${fmt(svd.v2.y)} \\end{pmatrix}$`}
+                </div>
+                <p className="text-[11px] text-muted-foreground font-sans pt-1">
+                  💡 <strong>终极正交统领</strong>：通过在输入空间 ($V$)
+                  与输出空间 ($U$)
+                  同时寻找标准正交基，将所有剪切分量完全归零，只留下纯对角缩放
+                  $\Sigma$。
+                </p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-3 gap-1.5">
+              <KdeReadout
+                label="行列式 det(A)"
+                value={fmt(detA)}
+                variant="accent"
+                dense
+              />
+              <KdeReadout label="条件数 κ(A)" value={fmt(condNum, 1)} dense />
+              <KdeReadout
+                label="奇异值 σ₁, σ₂"
+                value={`${fmt(svd.sigma1)}, ${fmt(svd.sigma2)}`}
+                dense
+              />
             </div>
-          }
-        />
-      </ExpandableDemo>
-    </AutoMath>
+          </div>
+        }
+      />
+    </ExpandableDemo>
   );
 }

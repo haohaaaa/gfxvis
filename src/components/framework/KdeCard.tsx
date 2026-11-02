@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import AutoMath from "./AutoMath";
 
 export interface KdeCardProps {
   title?: ReactNode;
@@ -52,29 +53,33 @@ export default function KdeCard({
             <div className="flex items-center gap-2">
               {title && (
                 <div className="text-xs font-semibold text-[var(--kde-ink)]">
-                  {title}
+                  <AutoMath>{title}</AutoMath>
                 </div>
               )}
-              {badge}
+              {badge && <AutoMath>{badge}</AutoMath>}
             </div>
             {subtitle && (
               <div className="text-[11px] text-[var(--kde-muted)]">
-                {subtitle}
+                <AutoMath>{subtitle}</AutoMath>
               </div>
             )}
           </div>
           {headerAction && (
-            <div className="flex items-center gap-1.5">{headerAction}</div>
+            <div className="flex items-center gap-1.5">
+              <AutoMath>{headerAction}</AutoMath>
+            </div>
           )}
         </div>
       )}
 
-      <div className="min-w-0 flex-1">{children}</div>
+      <div className="min-w-0 flex-1">
+        <AutoMath>{children}</AutoMath>
+      </div>
 
       {footer && (
-        <div className="mt-2.5 border-t border-[var(--kde-border)]/60 pt-2 text-xs text-[var(--kde-muted)]">
+        <AutoMath className="mt-2.5 border-t border-[var(--kde-border)]/60 pt-2 text-xs text-[var(--kde-muted)]">
           {footer}
-        </div>
+        </AutoMath>
       )}
     </div>
   );

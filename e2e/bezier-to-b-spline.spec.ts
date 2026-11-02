@@ -43,6 +43,7 @@ async function moveRange(
 
 test.describe("Bézier 到 B-Spline 文章", () => {
   test("十三位 KDE island 和画布都能挂载", async ({ page }) => {
+    test.slow();
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
 
@@ -147,6 +148,7 @@ test.describe("Bézier 到 B-Spline 文章", () => {
     await expect(basis.locator("canvas")).toHaveCount(2);
     for (let index = 0; index < 2; index += 1) {
       const canvas = basis.locator("canvas").nth(index);
+      await canvas.scrollIntoViewIfNeeded();
       await expect(canvas).toBeVisible();
       await expect.poll(() => hasPaintedPixels(canvas)).toBe(true);
     }

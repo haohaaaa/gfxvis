@@ -10,7 +10,6 @@ import KdeButton from "../framework/KdeButton";
 import KdeButtonGroup from "../framework/KdeButtonGroup";
 import KdeProgressBar from "../framework/KdeProgressBar";
 import CodePlayground from "../framework/CodePlayground";
-import { AutoMath } from "../framework/AutoMath";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import PresetSelector from "../framework/PresetSelector";
 
@@ -433,290 +432,282 @@ export default function AdtRecursiveTypesDiagram() {
   };
 
   return (
-    <AutoMath>
-      <ExpandableDemo id="adt-recursive-types-explorer">
-        <KdeWindowShell
-          eyebrow="TYPE THEORY WORKSPACE · ADT & RECURSION"
-          mark="μ"
-          modeTag="DENSE-DOCK"
-          title="代数数据类型（ADT）与递归类型交互探针"
-        >
-          <InteractiveLayout
-            preset="dense-dock"
-            top={
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-[var(--kde-muted)]">
-                    探针视角：
-                  </span>
-                  <KdeTabs
-                    onChange={(val) => setViewMode(val)}
-                    options={VIEW_OPTIONS}
-                    size="sm"
-                    value={viewMode}
+    <ExpandableDemo id="adt-recursive-types-explorer">
+      <KdeWindowShell
+        eyebrow="TYPE THEORY WORKSPACE · ADT & RECURSION"
+        mark="μ"
+        modeTag="DENSE-DOCK"
+        title="代数数据类型（ADT）与递归类型交互探针"
+      >
+        <InteractiveLayout
+          preset="dense-dock"
+          top={
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-[var(--kde-muted)]">
+                  探针视角：
+                </span>
+                <KdeTabs
+                  onChange={(val) => setViewMode(val)}
+                  options={VIEW_OPTIONS}
+                  size="sm"
+                  value={viewMode}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <KdeBadge variant="primary">
+                  {`μ-Type: $${preset.muTypeTex}$`}
+                </KdeBadge>
+              </div>
+            </div>
+          }
+          main={
+            <div className="relative flex h-[var(--demo-height,28rem)] w-full flex-col overflow-hidden rounded-xl border border-[var(--kde-border)] bg-[var(--kde-canvas)] p-5 shadow-inner">
+              <CanvasToolbar onReset={handleReset} />
+
+              {viewMode === "code_sandbox" ? (
+                <div className="flex-1 flex flex-col overflow-y-auto pr-1">
+                  <CodePlayground
+                    code={ADT_RUST_CODE}
+                    description="现场编译并运行 Rust 递归 enum 与 Box 指针尺寸度量代码。"
+                    lang="rust"
+                    maxHeight="20rem"
+                    title="Rust 递归 ADT 沙盒"
                   />
                 </div>
-                <div className="flex items-center gap-2">
-                  <KdeBadge variant="primary">
-                    {`μ-Type: $${preset.muTypeTex}$`}
-                  </KdeBadge>
-                </div>
-              </div>
-            }
-            main={
-              <div className="relative flex h-[var(--demo-height,28rem)] w-full flex-col overflow-hidden rounded-xl border border-[var(--kde-border)] bg-[var(--kde-canvas)] p-5 shadow-inner">
-                <CanvasToolbar onReset={handleReset} />
+              ) : (
+                <>
+                  {/* Stepper Toolbar (Visible in Stepper Mode) */}
+                  {viewMode === "stepper" && (
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--kde-border)] pb-3 pr-12">
+                      <KdeButtonGroup attached size="xs">
+                        <KdeButton
+                          size="xs"
+                          variant="default"
+                          disabled={currentStepIndex <= 0}
+                          onClick={() => setCurrentStepIndex(0)}
+                          title="重置至折叠初态"
+                        >
+                          ⏮ 初始 (Folded)
+                        </KdeButton>
+                        <KdeButton
+                          size="xs"
+                          variant="default"
+                          disabled={currentStepIndex <= 0}
+                          onClick={() =>
+                            setCurrentStepIndex((prev) => Math.max(0, prev - 1))
+                          }
+                          title="折叠一层包装"
+                        >
+                          fold 折叠包装 ◀
+                        </KdeButton>
+                        <KdeButton
+                          size="xs"
+                          variant="default"
+                          disabled={currentStepIndex >= maxSteps - 1}
+                          onClick={() =>
+                            setCurrentStepIndex((prev) =>
+                              Math.min(maxSteps - 1, prev + 1),
+                            )
+                          }
+                          title="展开一层结构"
+                        >
+                          unfold 单步展开 ▶
+                        </KdeButton>
+                      </KdeButtonGroup>
 
-                {viewMode === "code_sandbox" ? (
-                  <div className="flex-1 flex flex-col overflow-y-auto pr-1">
-                    <CodePlayground
-                      code={ADT_RUST_CODE}
-                      description="现场编译并运行 Rust 递归 enum 与 Box 指针尺寸度量代码。"
-                      lang="rust"
-                      maxHeight="20rem"
-                      title="Rust 递归 ADT 沙盒"
-                    />
-                  </div>
-                ) : (
-                  <>
-                    {/* Stepper Toolbar (Visible in Stepper Mode) */}
+                      <div className="flex items-center gap-2.5">
+                        <KdeProgressBar
+                          steps={maxSteps}
+                          value={currentStepIndex + 1}
+                          size="sm"
+                          className="w-28"
+                          showLabel={false}
+                        />
+                        <span className="font-mono text-xs font-semibold text-[var(--kde-muted)]">
+                          深度：{currentStepIndex} / {maxSteps - 1}
+                        </span>
+                        <KdeBadge
+                          variant={
+                            currentStepIndex === 0 ? "neutral" : "primary"
+                          }
+                        >
+                          {currentStep.statusLabel}
+                        </KdeBadge>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Main View Area */}
+                  <div className="flex flex-1 flex-col justify-center overflow-y-auto overflow-x-auto text-center">
                     {viewMode === "stepper" && (
-                      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--kde-border)] pb-3 pr-12">
-                        <KdeButtonGroup attached size="xs">
-                          <KdeButton
-                            size="xs"
-                            variant="default"
-                            disabled={currentStepIndex <= 0}
-                            onClick={() => setCurrentStepIndex(0)}
-                            title="重置至折叠初态"
-                          >
-                            ⏮ 初始 (Folded)
-                          </KdeButton>
-                          <KdeButton
-                            size="xs"
-                            variant="default"
-                            disabled={currentStepIndex <= 0}
-                            onClick={() =>
-                              setCurrentStepIndex((prev) =>
-                                Math.max(0, prev - 1),
-                              )
-                            }
-                            title="折叠一层包装"
-                          >
-                            fold 折叠包装 ◀
-                          </KdeButton>
-                          <KdeButton
-                            size="xs"
-                            variant="default"
-                            disabled={currentStepIndex >= maxSteps - 1}
-                            onClick={() =>
-                              setCurrentStepIndex((prev) =>
-                                Math.min(maxSteps - 1, prev + 1),
-                              )
-                            }
-                            title="展开一层结构"
-                          >
-                            unfold 单步展开 ▶
-                          </KdeButton>
-                        </KdeButtonGroup>
+                      <div className="space-y-4 py-2">
+                        <div className="text-xs font-semibold text-[var(--kde-muted)]">
+                          当前 Iso-recursive 层级展开状态：
+                        </div>
 
-                        <div className="flex items-center gap-2.5">
-                          <KdeProgressBar
-                            steps={maxSteps}
-                            value={currentStepIndex + 1}
-                            size="sm"
-                            className="w-28"
-                            showLabel={false}
-                          />
-                          <span className="font-mono text-xs font-semibold text-[var(--kde-muted)]">
-                            深度：{currentStepIndex} / {maxSteps - 1}
-                          </span>
-                          <KdeBadge
-                            variant={
-                              currentStepIndex === 0 ? "neutral" : "primary"
-                            }
-                          >
-                            {currentStep.statusLabel}
-                          </KdeBadge>
+                        {/* Main Term Box */}
+                        <div className="flex items-center justify-center overflow-x-auto px-4 py-2">
+                          <div className="rounded-2xl border border-[var(--kde-border)] bg-[var(--kde-raised)] px-6 py-4 shadow-md backdrop-blur-md">
+                            <div className="font-mono text-base font-bold text-[var(--kde-ink)] sm:text-lg">
+                              {`$${currentStep.termTex}$`}
+                            </div>
+                            <div className="mt-2 font-mono text-xs text-[var(--kde-accent)]">
+                              类型签名：
+                              {`$${currentStep.typeTex}$`}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Action & Explanation */}
+                        <div className="mx-auto max-w-xl text-left text-xs leading-relaxed text-[var(--kde-muted)] bg-[var(--kde-panel)] p-3 rounded-lg border border-[var(--kde-border)]">
+                          {currentStep.desc}
                         </div>
                       </div>
                     )}
 
-                    {/* Main View Area */}
-                    <div className="flex flex-1 flex-col justify-center overflow-y-auto overflow-x-auto text-center">
-                      {viewMode === "stepper" && (
-                        <div className="space-y-4 py-2">
-                          <div className="text-xs font-semibold text-[var(--kde-muted)]">
-                            当前 Iso-recursive 层级展开状态：
-                          </div>
+                    {viewMode === "zipper" && (
+                      <div className="space-y-4 py-3 text-center">
+                        <div className="mx-auto max-w-xl text-left">
+                          <KdeCard
+                            title="Huet Zipper 形式导数与光标上下文"
+                            badge={
+                              <KdeBadge variant="primary">
+                                Type Derivative
+                              </KdeBadge>
+                            }
+                            variant="default"
+                          >
+                            <div className="mb-2 text-xs font-medium text-[var(--kde-muted)]">
+                              一阶形式导数多项式：
+                            </div>
+                            <div className="my-2 overflow-x-auto rounded-lg border border-[var(--kde-border)] bg-[var(--kde-panel)] p-3 text-center font-mono text-sm font-bold text-[var(--kde-accent)]">
+                              {`$${preset.derivativeTex}$`}
+                            </div>
+                            <div className="mt-3 text-[11px] leading-relaxed text-[var(--kde-ink)]">
+                              💡 <strong>微积分几何解释</strong>：
+                              <span className="text-[var(--kde-muted)]">
+                                {preset.zipperInterpretation}
+                              </span>
+                            </div>
+                          </KdeCard>
+                        </div>
+                      </div>
+                    )}
 
-                          {/* Main Term Box */}
-                          <div className="flex items-center justify-center overflow-x-auto px-4 py-2">
-                            <div className="rounded-2xl border border-[var(--kde-border)] bg-[var(--kde-raised)] px-6 py-4 shadow-md backdrop-blur-md">
-                              <div className="font-mono text-base font-bold text-[var(--kde-ink)] sm:text-lg">
-                                {`$${currentStep.termTex}$`}
+                    {viewMode === "memory" && (
+                      <div className="space-y-4 py-3 text-center">
+                        <div className="mx-auto max-w-xl text-left">
+                          <KdeCard
+                            title="物理内存连续内联 vs 指针间接层 (Box Indirection)"
+                            badge={
+                              <KdeBadge variant="warning">
+                                Memory Layout
+                              </KdeBadge>
+                            }
+                            variant="default"
+                          >
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                              <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 p-3 text-[var(--kde-ink)] ring-1 ring-rose-500/20">
+                                <div className="text-[11px] font-semibold text-rose-700 dark:text-rose-400">
+                                  直接连续内联布局 (Direct Inlining)
+                                </div>
+                                <div className="mt-1 font-mono text-xs text-[var(--kde-ink)]">
+                                  {preset.memoryAnalysis.directSize}
+                                </div>
                               </div>
-                              <div className="mt-2 font-mono text-xs text-[var(--kde-accent)]">
-                                类型签名：
-                                {`$${currentStep.typeTex}$`}
+
+                              <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 text-[var(--kde-ink)] ring-1 ring-emerald-500/20">
+                                <div className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                                  Box 指针间接布局 (Box Indirection)
+                                </div>
+                                <div className="mt-1 font-mono text-xs text-[var(--kde-ink)]">
+                                  {preset.memoryAnalysis.boxedSize}
+                                </div>
                               </div>
                             </div>
-                          </div>
 
-                          {/* Action & Explanation */}
-                          <div className="mx-auto max-w-xl text-left text-xs leading-relaxed text-[var(--kde-muted)] bg-[var(--kde-panel)] p-3 rounded-lg border border-[var(--kde-border)]">
-                            {currentStep.desc}
-                          </div>
+                            <div className="mt-3.5 border-t border-[var(--kde-border)]/50 pt-3 text-[11px] leading-relaxed text-[var(--kde-ink)]">
+                              💡 <strong>编译器物理约束</strong>：
+                              <span className="text-[var(--kde-muted)]">
+                                {preset.memoryAnalysis.explanation}
+                              </span>
+                            </div>
+                          </KdeCard>
                         </div>
-                      )}
-
-                      {viewMode === "zipper" && (
-                        <div className="space-y-4 py-3 text-center">
-                          <div className="mx-auto max-w-xl text-left">
-                            <KdeCard
-                              title="Huet Zipper 形式导数与光标上下文"
-                              badge={
-                                <KdeBadge variant="primary">
-                                  Type Derivative
-                                </KdeBadge>
-                              }
-                              variant="default"
-                            >
-                              <div className="mb-2 text-xs font-medium text-[var(--kde-muted)]">
-                                一阶形式导数多项式：
-                              </div>
-                              <div className="my-2 overflow-x-auto rounded-lg border border-[var(--kde-border)] bg-[var(--kde-panel)] p-3 text-center font-mono text-sm font-bold text-[var(--kde-accent)]">
-                                {`$${preset.derivativeTex}$`}
-                              </div>
-                              <div className="mt-3 text-[11px] leading-relaxed text-[var(--kde-ink)]">
-                                💡 <strong>微积分几何解释</strong>：
-                                <span className="text-[var(--kde-muted)]">
-                                  {preset.zipperInterpretation}
-                                </span>
-                              </div>
-                            </KdeCard>
-                          </div>
-                        </div>
-                      )}
-
-                      {viewMode === "memory" && (
-                        <div className="space-y-4 py-3 text-center">
-                          <div className="mx-auto max-w-xl text-left">
-                            <KdeCard
-                              title="物理内存连续内联 vs 指针间接层 (Box Indirection)"
-                              badge={
-                                <KdeBadge variant="warning">
-                                  Memory Layout
-                                </KdeBadge>
-                              }
-                              variant="default"
-                            >
-                              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 p-3 text-[var(--kde-ink)] ring-1 ring-rose-500/20">
-                                  <div className="text-[11px] font-semibold text-rose-700 dark:text-rose-400">
-                                    直接连续内联布局 (Direct Inlining)
-                                  </div>
-                                  <div className="mt-1 font-mono text-xs text-[var(--kde-ink)]">
-                                    {preset.memoryAnalysis.directSize}
-                                  </div>
-                                </div>
-
-                                <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 text-[var(--kde-ink)] ring-1 ring-emerald-500/20">
-                                  <div className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
-                                    Box 指针间接布局 (Box Indirection)
-                                  </div>
-                                  <div className="mt-1 font-mono text-xs text-[var(--kde-ink)]">
-                                    {preset.memoryAnalysis.boxedSize}
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="mt-3.5 border-t border-[var(--kde-border)]/50 pt-3 text-[11px] leading-relaxed text-[var(--kde-ink)]">
-                                💡 <strong>编译器物理约束</strong>：
-                                <span className="text-[var(--kde-muted)]">
-                                  {preset.memoryAnalysis.explanation}
-                                </span>
-                              </div>
-                            </KdeCard>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-                <CanvasResizer className="absolute bottom-0 inset-x-0 z-20" />
-              </div>
-            }
-            side={
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                <KdeCard title="经典代数类型与递归演化预设" variant="dense">
-                  <PresetSelector
-                    layout="vertical"
-                    size="xs"
-                    onChange={handlePresetChange}
-                    options={PRESETS.map((p) => ({
-                      id: p.id,
-                      label: p.label,
-                      description: p.desc,
-                    }))}
-                    value={activePresetId}
-                  />
-                </KdeCard>
-
-                <KdeCard title="展开状态与递归深度" variant="dense">
-                  <div className="space-y-2.5 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[var(--kde-muted)]">
-                        展开深度：
-                      </span>
-                      <span className="font-semibold text-[var(--kde-ink)]">
-                        {currentStepIndex} / {maxSteps - 1}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[var(--kde-muted)]">
-                        当前状态：
-                      </span>
-                      <KdeBadge variant="primary">
-                        {currentStep.statusLabel}
-                      </KdeBadge>
-                    </div>
-                    <div className="pt-1">
-                      <KdeProgressBar
-                        steps={maxSteps}
-                        value={currentStepIndex + 1}
-                        size="sm"
-                        showLabel
-                      />
-                    </div>
+                      </div>
+                    )}
                   </div>
-                </KdeCard>
-
-                <KdeCard title="代数多项式同构方程" variant="dense">
-                  <div className="space-y-2 text-xs">
-                    <div className="p-2 rounded bg-[var(--kde-panel)] border border-[var(--kde-border)] font-mono text-[11px] text-[var(--kde-accent)]">
-                      {`$${preset.equationTex}$`}
-                    </div>
-                    <div className="text-[11px] text-[var(--kde-muted)] leading-relaxed">
-                      类型级不动点：<strong>{`$${preset.muTypeTex}$`}</strong>
-                    </div>
-                  </div>
-                </KdeCard>
-              </div>
-            }
-            bottom={
-              <KdeCard>
-                <div className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
-                  🔍 代数结构与多项式理论洞见 (Algebraic Structure Insight)
-                </div>
-                <p className="mt-2 text-xs leading-relaxed text-[var(--kde-ink)]">
-                  {preset.insight}
-                </p>
+                </>
+              )}
+              <CanvasResizer className="absolute bottom-0 inset-x-0 z-20" />
+            </div>
+          }
+          side={
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <KdeCard title="经典代数类型与递归演化预设" variant="dense">
+                <PresetSelector
+                  layout="vertical"
+                  size="xs"
+                  onChange={handlePresetChange}
+                  options={PRESETS.map((p) => ({
+                    id: p.id,
+                    label: p.label,
+                    description: p.desc,
+                  }))}
+                  value={activePresetId}
+                />
               </KdeCard>
-            }
-          />
-        </KdeWindowShell>
-      </ExpandableDemo>
-    </AutoMath>
+
+              <KdeCard title="展开状态与递归深度" variant="dense">
+                <div className="space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[var(--kde-muted)]">展开深度：</span>
+                    <span className="font-semibold text-[var(--kde-ink)]">
+                      {currentStepIndex} / {maxSteps - 1}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[var(--kde-muted)]">当前状态：</span>
+                    <KdeBadge variant="primary">
+                      {currentStep.statusLabel}
+                    </KdeBadge>
+                  </div>
+                  <div className="pt-1">
+                    <KdeProgressBar
+                      steps={maxSteps}
+                      value={currentStepIndex + 1}
+                      size="sm"
+                      showLabel
+                    />
+                  </div>
+                </div>
+              </KdeCard>
+
+              <KdeCard title="代数多项式同构方程" variant="dense">
+                <div className="space-y-2 text-xs">
+                  <div className="p-2 rounded bg-[var(--kde-panel)] border border-[var(--kde-border)] font-mono text-[11px] text-[var(--kde-accent)]">
+                    {`$${preset.equationTex}$`}
+                  </div>
+                  <div className="text-[11px] text-[var(--kde-muted)] leading-relaxed">
+                    类型级不动点：<strong>{`$${preset.muTypeTex}$`}</strong>
+                  </div>
+                </div>
+              </KdeCard>
+            </div>
+          }
+          bottom={
+            <KdeCard>
+              <div className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
+                🔍 代数结构与多项式理论洞见 (Algebraic Structure Insight)
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-[var(--kde-ink)]">
+                {preset.insight}
+              </p>
+            </KdeCard>
+          }
+        />
+      </KdeWindowShell>
+    </ExpandableDemo>
   );
 }

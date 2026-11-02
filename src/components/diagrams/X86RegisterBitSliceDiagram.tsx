@@ -101,9 +101,13 @@ export default function X86RegisterBitSliceDiagram() {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
           <div className="flex items-center gap-2">
             <span className="flex h-3 w-3 items-center justify-center rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-            <h4 className="text-sm font-bold text-ink">
+            <span
+              className="text-sm font-bold text-ink"
+              role="heading"
+              aria-level={4}
+            >
               x86-64 寄存器物理分片拓扑与 32 位清零硬件机制
-            </h4>
+            </span>
           </div>
           <span className="rounded-md border border-border/80 bg-surface px-2 py-0.5 font-mono text-[11px] text-muted">
             以累加器 RAX 为例

@@ -1,12 +1,11 @@
-import { AutoMath } from "../framework/AutoMath";
 import { useEffect, useRef, useState } from "react";
 import KdeTabs, { type KdeTabOption } from "../framework/KdeTabs";
 import KdeGroupBox from "../framework/KdeGroupBox";
-import CanvasToolbar from "../framework/CanvasToolbar";
-import CanvasResizer from "../framework/CanvasResizer";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import ParamSlider from "../framework/ParamSlider";
-import { useCanvas2D } from "../framework/useCanvas2D";
+import CanvasViewport, {
+  type CanvasViewportHandle,
+} from "../framework/CanvasViewport";
 import KdeWindowShell from "../framework/KdeWindowShell";
 import KdeCard from "../framework/KdeCard";
 import KdeBadge from "../framework/KdeBadge";
@@ -1124,81 +1123,18 @@ function ProbeCanvas({
   onSelectPoint,
   onMovePoint,
 }: ProbeCanvasProps) {
-  const canvasElementRef = useRef<HTMLCanvasElement | null>(null);
+  const vpRef = useRef<CanvasViewportHandle | null>(null);
   const dragTargetRef = useRef<PointSelection | null>(null);
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  const { containerRef, canvasRef, setBounds } = useCanvas2D(
-    {
-      initialBounds: state.bounds,
-      draw(ctx, plot, theme) {
-        const current = stateRef.current;
-        drawPlotAxes(ctx, plot, theme);
-        drawGeometryProbe(
-          ctx,
-          plot,
-          theme,
-          current.triangle,
-          current.point,
-          current.selectedPoint,
-          current.highlight,
-        );
-      },
-      onLeftDown(e, plot) {
-        const canvas = canvasElementRef.current ?? canvasRef.current;
-        const point = pointFromPointer(e, canvas, plot);
-        const vertex = closestVertex(point, [stateRef.current.triangle], plot);
-        const target =
-          vertex ??
-          (isNearPoint(point, stateRef.current.point, plot)
-            ? { kind: "probe" as const }
-            : null);
-        if (!target) return false;
-        dragTargetRef.current = target;
-        onSelectPoint(target);
-        if (canvas) canvas.style.cursor = "grabbing";
-        return true;
-      },
-      onLeftMove(e, plot) {
-        const canvas = canvasElementRef.current ?? canvasRef.current;
-        const target = dragTargetRef.current;
-        if (!target) return;
-        onMovePoint(
-          target,
-          clampToPlot(pointFromPointer(e, canvas, plot), plot),
-        );
-      },
-      onLeftUp() {
-        dragTargetRef.current = null;
-        const canvas = canvasElementRef.current ?? canvasRef.current;
-        if (canvas) canvas.style.cursor = "";
-      },
-      onHover(e, plot) {
-        const canvas = canvasElementRef.current ?? canvasRef.current;
-        const point = pointFromPointer(e, canvas, plot);
-        const canGrab =
-          closestVertex(point, [stateRef.current.triangle], plot) !== null ||
-          isNearPoint(point, stateRef.current.point, plot);
-        if (canvas) canvas.style.cursor = canGrab ? "grab" : "";
-      },
-      onPointerLeave() {
-        const canvas = canvasElementRef.current ?? canvasRef.current;
-        if (!dragTargetRef.current && canvas) {
-          canvas.style.cursor = "";
-        }
-      },
-    },
-    [state],
-  );
+  useEffect(() => {
+    vpRef.current?.redraw();
+  }, [state]);
 
   useEffect(() => {
-    canvasElementRef.current = canvasRef.current;
-  }, [canvasRef]);
-
-  useEffect(() => {
-    setBounds(state.bounds);
-  }, [setBounds, state.bounds]);
+    vpRef.current?.setBounds(state.bounds);
+  }, [state.bounds]);
 
   return (
     <div
@@ -1208,24 +1144,81 @@ function ProbeCanvas({
           : "hidden"
       }
     >
-      <div
-        ref={containerRef}
+      <CanvasViewport
+        ref={vpRef}
+        initialBounds={state.bounds}
         className="edge-function-console__canvas-surface relative h-full min-h-0 w-full flex-1 overflow-hidden"
-        data-testid="probe-canvas-container"
-        data-view-x-min={state.bounds.xMin}
-        data-view-x-max={state.bounds.xMax}
-        data-view-y-min={state.bounds.yMin}
-        data-view-y-max={state.bounds.yMax}
-      >
-        <canvas
-          ref={canvasRef}
-          className="absolute inset-0 h-full w-full touch-none"
-          aria-label="几何探针：边函数与重心坐标画布"
-          data-testid="probe-canvas"
-        />
-        <CanvasToolbar onReset={() => setBounds(state.bounds)} />
-        <CanvasResizer className="absolute bottom-0 inset-x-0 z-20" />
-      </div>
+        heightClass="h-full min-h-0"
+        testId="probe-canvas-container"
+        onReset={() => vpRef.current?.setBounds(state.bounds)}
+        canvasProps={{
+          "aria-label": "几何探针：边函数与重心坐标画布",
+          "data-testid": "probe-canvas",
+          className: "touch-none",
+        }}
+        onDraw={(ctx, plot, theme) => {
+          const current = stateRef.current;
+          drawPlotAxes(ctx, plot, theme);
+          drawGeometryProbe(
+            ctx,
+            plot,
+            theme,
+            current.triangle,
+            current.point,
+            current.selectedPoint,
+            current.highlight,
+          );
+        }}
+        onLeftDown={(e, plot) => {
+          const canvas = vpRef.current?.getCanvas();
+          if (!canvas) return false;
+          const point = pointFromPointer(e, canvas, plot);
+          const vertex = closestVertex(
+            point,
+            [stateRef.current.triangle],
+            plot,
+          );
+          const target =
+            vertex ??
+            (isNearPoint(point, stateRef.current.point, plot)
+              ? { kind: "probe" as const }
+              : null);
+          if (!target) return false;
+          dragTargetRef.current = target;
+          onSelectPoint(target);
+          canvas.style.cursor = "grabbing";
+          return true;
+        }}
+        onLeftMove={(e, plot) => {
+          const canvas = vpRef.current?.getCanvas();
+          const target = dragTargetRef.current;
+          if (!target || !canvas) return;
+          onMovePoint(
+            target,
+            clampToPlot(pointFromPointer(e, canvas, plot), plot),
+          );
+        }}
+        onLeftUp={() => {
+          dragTargetRef.current = null;
+          const canvas = vpRef.current?.getCanvas();
+          if (canvas) canvas.style.cursor = "";
+        }}
+        onHover={(e, plot) => {
+          const canvas = vpRef.current?.getCanvas();
+          if (!canvas) return;
+          const point = pointFromPointer(e, canvas, plot);
+          const canGrab =
+            closestVertex(point, [stateRef.current.triangle], plot) !== null ||
+            isNearPoint(point, stateRef.current.point, plot);
+          canvas.style.cursor = canGrab ? "grab" : "";
+        }}
+        onPointerLeave={() => {
+          const canvas = vpRef.current?.getCanvas();
+          if (!dragTargetRef.current && canvas) {
+            canvas.style.cursor = "";
+          }
+        }}
+      />
     </div>
   );
 }
@@ -1247,86 +1240,18 @@ function CoverageCanvas({
   onHoverCell,
   onTogglePinCell,
 }: CoverageCanvasProps) {
-  const canvasElementRef = useRef<HTMLCanvasElement | null>(null);
+  const vpRef = useRef<CanvasViewportHandle | null>(null);
   const dragTargetRef = useRef<PointSelection | null>(null);
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  const { containerRef, canvasRef, setBounds } = useCanvas2D(
-    {
-      initialBounds: state.bounds,
-      draw(ctx, plot, theme) {
-        const current = stateRef.current;
-        drawPlotAxes(ctx, plot, theme);
-        drawPixelGrid(
-          ctx,
-          plot,
-          theme,
-          current.triangles,
-          current.rate,
-          current.hoveredCell,
-          current.pinnedCell,
-          pixelGridBounds(plot),
-          current.selectedPoint,
-          current.selectedTriangleId,
-        );
-      },
-      onLeftDown(e, plot) {
-        const canvas = canvasElementRef.current ?? canvasRef.current;
-        const point = pointFromPointer(e, canvas, plot);
-        const target = closestVertex(point, stateRef.current.triangles, plot);
-        if (target) {
-          dragTargetRef.current = target;
-          onSelectPoint(target);
-          if (canvas) canvas.style.cursor = "grabbing";
-          return true;
-        }
-        const cell = cellFromPoint(point, pixelGridBounds(plot));
-        if (cell) {
-          onTogglePinCell(cell);
-          return true;
-        }
-        return false;
-      },
-      onLeftMove(e, plot) {
-        const canvas = canvasElementRef.current ?? canvasRef.current;
-        const target = dragTargetRef.current;
-        if (!target) return;
-        onMovePoint(
-          target,
-          clampToPlot(pointFromPointer(e, canvas, plot), plot),
-        );
-      },
-      onLeftUp() {
-        dragTargetRef.current = null;
-        const canvas = canvasElementRef.current ?? canvasRef.current;
-        if (canvas) canvas.style.cursor = "";
-      },
-      onHover(e, plot) {
-        const canvas = canvasElementRef.current ?? canvasRef.current;
-        const point = pointFromPointer(e, canvas, plot);
-        const target = closestVertex(point, stateRef.current.triangles, plot);
-        if (canvas) canvas.style.cursor = target ? "grab" : "";
-        onHoverCell(cellFromPoint(point, pixelGridBounds(plot)));
-      },
-      onPointerLeave() {
-        const canvas = canvasElementRef.current ?? canvasRef.current;
-        if (!dragTargetRef.current && canvas) {
-          canvas.style.cursor = "";
-        }
-        onHoverCell(null);
-      },
-    },
-    [state],
-  );
+  useEffect(() => {
+    vpRef.current?.redraw();
+  }, [state]);
 
   useEffect(() => {
-    canvasElementRef.current = canvasRef.current;
-  }, [canvasRef]);
-
-  useEffect(() => {
-    setBounds(state.bounds);
-  }, [setBounds, state.bounds]);
+    vpRef.current?.setBounds(state.bounds);
+  }, [state.bounds]);
 
   return (
     <div
@@ -1336,24 +1261,82 @@ function CoverageCanvas({
           : "hidden"
       }
     >
-      <div
-        ref={containerRef}
+      <CanvasViewport
+        ref={vpRef}
+        initialBounds={state.bounds}
         className="edge-function-console__canvas-surface relative h-full min-h-0 w-full flex-1 overflow-hidden"
-        data-testid="coverage-canvas-container"
-        data-view-x-min={state.bounds.xMin}
-        data-view-x-max={state.bounds.xMax}
-        data-view-y-min={state.bounds.yMin}
-        data-view-y-max={state.bounds.yMax}
-      >
-        <canvas
-          ref={canvasRef}
-          className="absolute inset-0 h-full w-full touch-none"
-          aria-label="MSAA 覆盖：多三角形采样与深度测试画布"
-          data-testid="coverage-canvas"
-        />
-        <CanvasToolbar onReset={() => setBounds(state.bounds)} />
-        <CanvasResizer className="absolute bottom-0 inset-x-0 z-20" />
-      </div>
+        heightClass="h-full min-h-0"
+        testId="coverage-canvas-container"
+        onReset={() => vpRef.current?.setBounds(state.bounds)}
+        canvasProps={{
+          "aria-label": "MSAA 覆盖：多三角形采样与深度测试画布",
+          "data-testid": "coverage-canvas",
+          className: "touch-none",
+        }}
+        onDraw={(ctx, plot, theme) => {
+          const current = stateRef.current;
+          drawPlotAxes(ctx, plot, theme);
+          drawPixelGrid(
+            ctx,
+            plot,
+            theme,
+            current.triangles,
+            current.rate,
+            current.hoveredCell,
+            current.pinnedCell,
+            pixelGridBounds(plot),
+            current.selectedPoint,
+            current.selectedTriangleId,
+          );
+        }}
+        onLeftDown={(e, plot) => {
+          const canvas = vpRef.current?.getCanvas();
+          if (!canvas) return false;
+          const point = pointFromPointer(e, canvas, plot);
+          const target = closestVertex(point, stateRef.current.triangles, plot);
+          if (target) {
+            dragTargetRef.current = target;
+            onSelectPoint(target);
+            canvas.style.cursor = "grabbing";
+            return true;
+          }
+          const cell = cellFromPoint(point, pixelGridBounds(plot));
+          if (cell) {
+            onTogglePinCell(cell);
+            return true;
+          }
+          return false;
+        }}
+        onLeftMove={(e, plot) => {
+          const canvas = vpRef.current?.getCanvas();
+          const target = dragTargetRef.current;
+          if (!target || !canvas) return;
+          onMovePoint(
+            target,
+            clampToPlot(pointFromPointer(e, canvas, plot), plot),
+          );
+        }}
+        onLeftUp={() => {
+          dragTargetRef.current = null;
+          const canvas = vpRef.current?.getCanvas();
+          if (canvas) canvas.style.cursor = "";
+        }}
+        onHover={(e, plot) => {
+          const canvas = vpRef.current?.getCanvas();
+          if (!canvas) return;
+          const point = pointFromPointer(e, canvas, plot);
+          const target = closestVertex(point, stateRef.current.triangles, plot);
+          canvas.style.cursor = target ? "grab" : "";
+          onHoverCell(cellFromPoint(point, pixelGridBounds(plot)));
+        }}
+        onPointerLeave={() => {
+          const canvas = vpRef.current?.getCanvas();
+          if (!dragTargetRef.current && canvas) {
+            canvas.style.cursor = "";
+          }
+          onHoverCell(null);
+        }}
+      />
     </div>
   );
 }
@@ -1685,702 +1668,698 @@ export default function EdgeFunctionRasterizerDemo() {
   );
 
   return (
-    <AutoMath>
-      <ExpandableDemo id="edge-function-rasterizer-demo">
-        <KdeWindowShell
-          channel="CH 03"
-          title="Edge Function 与 MSAA 光栅化交互演示"
-          eyebrow="BREEZE WORKSPACE · RASTERIZATION"
-          mark="B"
-          modeTag="RASTER"
-          testId="edge-function-demo"
-          tabs={viewTabs}
-          display={
-            <div className="relative h-full w-full min-h-[20rem] flex-1">
-              <ProbeCanvas
-                active={mode === "probe"}
-                state={probeState}
-                onSelectPoint={selectProbePoint}
-                onMovePoint={moveProbePoint}
-              />
-              <CoverageCanvas
-                active={mode === "coverage"}
-                state={coverageState}
-                onSelectPoint={selectCoveragePoint}
-                onMovePoint={moveCoveragePoint}
-                onHoverCell={(cell) =>
-                  setCoverageState((current) => {
-                    if (
-                      current.hoveredCell?.x === cell?.x &&
-                      current.hoveredCell?.y === cell?.y
-                    ) {
-                      return current;
+    <ExpandableDemo id="edge-function-rasterizer-demo">
+      <KdeWindowShell
+        channel="CH 03"
+        title="Edge Function 与 MSAA 光栅化交互演示"
+        eyebrow="BREEZE WORKSPACE · RASTERIZATION"
+        mark="B"
+        modeTag="RASTER"
+        testId="edge-function-demo"
+        tabs={viewTabs}
+        display={
+          <div className="relative h-full w-full min-h-[20rem] flex-1">
+            <ProbeCanvas
+              active={mode === "probe"}
+              state={probeState}
+              onSelectPoint={selectProbePoint}
+              onMovePoint={moveProbePoint}
+            />
+            <CoverageCanvas
+              active={mode === "coverage"}
+              state={coverageState}
+              onSelectPoint={selectCoveragePoint}
+              onMovePoint={moveCoveragePoint}
+              onHoverCell={(cell) =>
+                setCoverageState((current) => {
+                  if (
+                    current.hoveredCell?.x === cell?.x &&
+                    current.hoveredCell?.y === cell?.y
+                  ) {
+                    return current;
+                  }
+                  return { ...current, hoveredCell: cell };
+                })
+              }
+              onTogglePinCell={handleTogglePinCell}
+            />
+          </div>
+        }
+        controls={
+          <div className="flex flex-col gap-4">
+            {mode === "coverage" && (
+              <KdeGroupBox
+                title="MSAA CONFIGURATION"
+                action={
+                  <KdeTabs<string>
+                    label="采样率"
+                    options={RATE_OPTIONS}
+                    value={String(coverageState.rate)}
+                    onChange={(value) =>
+                      setCoverageState((current) => ({
+                        ...current,
+                        rate: Number(value) as MsaaRate,
+                      }))
                     }
-                    return { ...current, hoveredCell: cell };
-                  })
+                    size="xs"
+                    variant="pill"
+                  />
                 }
-                onTogglePinCell={handleTogglePinCell}
-              />
-            </div>
-          }
-          controls={
-            <div className="flex flex-col gap-4">
-              {mode === "coverage" && (
-                <KdeGroupBox
-                  title="MSAA CONFIGURATION"
-                  action={
-                    <KdeTabs<string>
-                      label="采样率"
-                      options={RATE_OPTIONS}
-                      value={String(coverageState.rate)}
-                      onChange={(value) =>
-                        setCoverageState((current) => ({
-                          ...current,
-                          rate: Number(value) as MsaaRate,
-                        }))
-                      }
-                      size="xs"
-                      variant="pill"
-                    />
-                  }
-                >
-                  <p
-                    className="rounded-[var(--kde-control-radius,0.35rem)] border border-[var(--kde-border)] bg-[var(--kde-panel)] px-3 py-2 text-xs leading-relaxed text-[var(--kde-muted)]"
-                    data-testid="msaa-sample-count"
-                    data-console-panel
-                  >
-                    示意性规则采样布局：每像素{" "}
-                    {sampleOffsets(coverageState.rate).length}{" "}
-                    个样本，网格随当前视野适配；颜色显示深度测试后的可见三角形。
-                  </p>
-                </KdeGroupBox>
-              )}
-
-              {mode === "coverage" && selectedCoverageTriangle ? (
-                <KdeCard
-                  title="多三角形深度与图层管理"
-                  badge={
-                    <KdeBadge variant="primary">
-                      {coverageState.triangles.length} / {TRIANGLE_LIMIT}{" "}
-                      个三角形
-                    </KdeBadge>
-                  }
-                  headerAction={
-                    <KdeButtonGroup attached size="xs">
-                      <KdeButton
-                        size="xs"
-                        onClick={handleAddTriangle}
-                        disabled={
-                          coverageState.triangles.length >= TRIANGLE_LIMIT
-                        }
-                        aria-label="添加三角形"
-                      >
-                        + 添加
-                      </KdeButton>
-                      <KdeButton
-                        size="xs"
-                        onClick={removeSelectedTriangle}
-                        disabled={coverageState.triangles.length <= 1}
-                        aria-label={"删除 " + selectedCoverageTriangle.id}
-                      >
-                        删除
-                      </KdeButton>
-                    </KdeButtonGroup>
-                  }
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2">
-                    <KdeTabs<string>
-                      label="选中三角形"
-                      options={triangleOptions}
-                      value={selectedCoverageTriangle.id}
-                      onChange={selectCoverageTriangle}
-                      size="xs"
-                      variant="pill"
-                    />
-                    <span
-                      className="hidden text-xs text-[var(--kde-muted)]"
-                      data-testid="triangle-count"
-                    >
-                      {coverageState.triangles.length} / {TRIANGLE_LIMIT}{" "}
-                      个三角形
-                    </span>
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div data-testid="selected-depth-control">
-                      <ParamSlider
-                        labelMode="adaptive"
-                        label={
-                          <span className="text-xs">
-                            {selectedCoverageTriangle.id} 深度 z（越小越近）
-                          </span>
-                        }
-                        min={0.05}
-                        max={0.95}
-                        step={0.05}
-                        value={selectedCoverageTriangle.depth}
-                        onChange={updateSelectedDepth}
-                        widthClass="w-32"
-                        display={formatNumber(selectedCoverageTriangle.depth)}
-                      />
-                    </div>
-                    <KdeButtonGroup attached size="xs">
-                      <KdeButton
-                        size="xs"
-                        onClick={() =>
-                          moveTriangle(selectedCoverageTriangle.id, "front")
-                        }
-                        disabled={
-                          coverageState.triangles[0]?.id ===
-                          selectedCoverageTriangle.id
-                        }
-                        aria-label={
-                          "将 " + selectedCoverageTriangle.id + " 提到最前"
-                        }
-                      >
-                        提到最前
-                      </KdeButton>
-                      <KdeButton
-                        size="xs"
-                        onClick={() =>
-                          moveTriangle(selectedCoverageTriangle.id, "back")
-                        }
-                        disabled={
-                          coverageState.triangles[
-                            coverageState.triangles.length - 1
-                          ]?.id === selectedCoverageTriangle.id
-                        }
-                        aria-label={
-                          "将 " + selectedCoverageTriangle.id + " 移到最后"
-                        }
-                      >
-                        移到最后
-                      </KdeButton>
-                    </KdeButtonGroup>
-                  </div>
-                  <p className="mt-2 text-xs leading-relaxed text-[var(--kde-muted)]">
-                    绘制顺序从前到后排列。每个 MSAA
-                    样本独立做深度测试；较小深度通过严格小于比较获胜，同深度时先绘制者保留。
-                  </p>
-                </KdeCard>
-              ) : null}
-
-              {mode === "probe" && (
-                <KdeCard
-                  title="顶点与采样点定位 (Point & Probe)"
-                  badge={
-                    <KdeBadge variant="primary">
-                      {activeLabel || "采样点 P"}
-                    </KdeBadge>
-                  }
-                  headerAction={
-                    <KdeButtonGroup attached size="xs">
-                      <KdeButton
-                        size="xs"
-                        variant={
-                          activeSelection?.kind === "probe"
-                            ? "primary"
-                            : "default"
-                        }
-                        onClick={() => selectProbePoint({ kind: "probe" })}
-                      >
-                        P (探针)
-                      </KdeButton>
-                      <KdeButton
-                        size="xs"
-                        variant={
-                          activeSelection?.kind === "vertex" &&
-                          activeSelection.vertexIndex === 0
-                            ? "primary"
-                            : "default"
-                        }
-                        onClick={() =>
-                          selectProbePoint({ kind: "vertex", vertexIndex: 0 })
-                        }
-                      >
-                        P₀
-                      </KdeButton>
-                      <KdeButton
-                        size="xs"
-                        variant={
-                          activeSelection?.kind === "vertex" &&
-                          activeSelection.vertexIndex === 1
-                            ? "primary"
-                            : "default"
-                        }
-                        onClick={() =>
-                          selectProbePoint({ kind: "vertex", vertexIndex: 1 })
-                        }
-                      >
-                        P₁
-                      </KdeButton>
-                      <KdeButton
-                        size="xs"
-                        variant={
-                          activeSelection?.kind === "vertex" &&
-                          activeSelection.vertexIndex === 2
-                            ? "primary"
-                            : "default"
-                        }
-                        onClick={() =>
-                          selectProbePoint({ kind: "vertex", vertexIndex: 2 })
-                        }
-                      >
-                        P₂
-                      </KdeButton>
-                    </KdeButtonGroup>
-                  }
-                >
-                  <div className="space-y-3">
-                    <div className="space-y-1.5">
-                      <div className="text-xs text-[var(--kde-muted)]">
-                        采样探针快速预设位置：
-                      </div>
-                      <KdeButtonGroup attached size="xs" className="w-full">
-                        <KdeButton
-                          size="xs"
-                          className="flex-1"
-                          onClick={() => {
-                            selectProbePoint({ kind: "probe" });
-                            setProbeState((curr) => ({
-                              ...curr,
-                              point: { x: 0.25, y: 0.25 },
-                              draft: { x: "0.25", y: "0.25" },
-                            }));
-                          }}
-                        >
-                          内部
-                        </KdeButton>
-                        <KdeButton
-                          size="xs"
-                          className="flex-1"
-                          onClick={() => {
-                            selectProbePoint({ kind: "probe" });
-                            setProbeState((curr) => ({
-                              ...curr,
-                              point: { x: 0.0, y: -0.67 },
-                              draft: { x: "0.00", y: "-0.67" },
-                            }));
-                          }}
-                        >
-                          底边
-                        </KdeButton>
-                        <KdeButton
-                          size="xs"
-                          className="flex-1"
-                          onClick={() => {
-                            selectProbePoint({ kind: "probe" });
-                            setProbeState((curr) => ({
-                              ...curr,
-                              point: { x: 2.0, y: 1.5 },
-                              draft: { x: "2.00", y: "1.50" },
-                            }));
-                          }}
-                        >
-                          外部
-                        </KdeButton>
-                      </KdeButtonGroup>
-                    </div>
-
-                    <div
-                      className="flex flex-col gap-2 rounded-[var(--kde-control-radius,0.35rem)] border border-[var(--kde-border)] bg-[var(--kde-panel)] p-2.5"
-                      data-testid="selected-point-editor"
-                      data-console-panel
-                    >
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-[var(--kde-muted)]">
-                          坐标精确输入
-                        </span>
-                        <span
-                          className="font-mono font-semibold text-[var(--kde-accent)]"
-                          data-testid="selected-point-label"
-                        >
-                          {activeLabel}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <label className="flex min-w-0 items-center gap-1.5 text-xs text-[var(--kde-muted)]">
-                          <span className="font-mono font-medium">x</span>
-                          <input
-                            type="number"
-                            step="any"
-                            value={activeDraft.x}
-                            onChange={(event) =>
-                              changeCoordinate("x", event.currentTarget.value)
-                            }
-                            onBlur={() => restoreCoordinateDraft("x")}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter")
-                                event.currentTarget.blur();
-                            }}
-                            aria-label={activeLabel + " x 坐标"}
-                            data-testid="selected-coordinate-x"
-                            className="w-full min-w-0 rounded-[var(--kde-control-radius,0.35rem)] border border-[var(--kde-border)] bg-[var(--kde-raised)] px-2 py-1.5 font-mono text-sm text-[var(--kde-ink)] outline-none focus:border-[var(--kde-accent)] focus:ring-2 focus:ring-[var(--kde-accent)]/20"
-                          />
-                        </label>
-                        <label className="flex min-w-0 items-center gap-1.5 text-xs text-[var(--kde-muted)]">
-                          <span className="font-mono font-medium">y</span>
-                          <input
-                            type="number"
-                            step="any"
-                            value={activeDraft.y}
-                            onChange={(event) =>
-                              changeCoordinate("y", event.currentTarget.value)
-                            }
-                            onBlur={() => restoreCoordinateDraft("y")}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter")
-                                event.currentTarget.blur();
-                            }}
-                            aria-label={activeLabel + " y 坐标"}
-                            data-testid="selected-coordinate-y"
-                            className="w-full min-w-0 rounded-[var(--kde-control-radius,0.35rem)] border border-[var(--kde-border)] bg-[var(--kde-raised)] px-2 py-1.5 font-mono text-sm text-[var(--kde-ink)] outline-none focus:border-[var(--kde-accent)] focus:ring-2 focus:ring-[var(--kde-accent)]/20"
-                          />
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </KdeCard>
-              )}
-
-              {mode === "coverage" && activeSelection && activePoint && (
-                <div
-                  className="flex flex-col gap-2.5 rounded-[var(--kde-control-radius,0.35rem)] border border-[var(--kde-accent)]/50 bg-[var(--kde-accent)]/10 p-3"
-                  data-testid="selected-point-editor"
+              >
+                <p
+                  className="rounded-[var(--kde-control-radius,0.35rem)] border border-[var(--kde-border)] bg-[var(--kde-panel)] px-3 py-2 text-xs leading-relaxed text-[var(--kde-muted)]"
+                  data-testid="msaa-sample-count"
                   data-console-panel
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="text-xs text-[var(--kde-muted)]">
-                      正在编辑
-                    </div>
-                    <div
-                      className="font-mono text-sm font-semibold text-[var(--kde-accent)]"
-                      data-testid="selected-point-label"
-                    >
-                      {activeLabel}
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <label className="flex min-w-0 items-center gap-1.5 text-xs text-[var(--kde-muted)]">
-                      <span className="font-mono font-medium">x</span>
-                      <input
-                        type="number"
-                        step="any"
-                        value={activeDraft.x}
-                        onChange={(event) =>
-                          changeCoordinate("x", event.currentTarget.value)
-                        }
-                        onBlur={() => restoreCoordinateDraft("x")}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") event.currentTarget.blur();
-                        }}
-                        aria-label={activeLabel + " x 坐标"}
-                        data-testid="selected-coordinate-x"
-                        className="w-full min-w-0 rounded-[var(--kde-control-radius,0.35rem)] border border-[var(--kde-border)] bg-[var(--kde-raised)] px-2 py-1.5 font-mono text-sm text-[var(--kde-ink)] outline-none focus:border-[var(--kde-accent)] focus:ring-2 focus:ring-[var(--kde-accent)]/20"
-                      />
-                    </label>
-                    <label className="flex min-w-0 items-center gap-1.5 text-xs text-[var(--kde-muted)]">
-                      <span className="font-mono font-medium">y</span>
-                      <input
-                        type="number"
-                        step="any"
-                        value={activeDraft.y}
-                        onChange={(event) =>
-                          changeCoordinate("y", event.currentTarget.value)
-                        }
-                        onBlur={() => restoreCoordinateDraft("y")}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") event.currentTarget.blur();
-                        }}
-                        aria-label={activeLabel + " y 坐标"}
-                        data-testid="selected-coordinate-y"
-                        className="w-full min-w-0 rounded-[var(--kde-control-radius,0.35rem)] border border-[var(--kde-border)] bg-[var(--kde-raised)] px-2 py-1.5 font-mono text-sm text-[var(--kde-ink)] outline-none focus:border-[var(--kde-accent)] focus:ring-2 focus:ring-[var(--kde-accent)]/20"
-                      />
-                    </label>
-                  </div>
-                </div>
-              )}
+                  示意性规则采样布局：每像素{" "}
+                  {sampleOffsets(coverageState.rate).length}{" "}
+                  个样本，网格随当前视野适配；颜色显示深度测试后的可见三角形。
+                </p>
+              </KdeGroupBox>
+            )}
 
-              {mode === "coverage" && (!activeSelection || !activePoint) && (
-                <div data-testid="point-editor-hint" data-console-panel>
-                  <KdeMessageBar variant="neutral" mode="card">
-                    点击画布上的采样点或顶点，可直接输入坐标；拖动点也会同步数值。
-                  </KdeMessageBar>
-                </div>
-              )}
-            </div>
-          }
-          footer={
-            <div className="w-full space-y-3">
-              <div className="flex items-center justify-between border-b border-[var(--kde-border)]/50 pb-1.5 text-[0.62rem] font-medium tracking-wider text-[var(--kde-muted)]">
-                <span>LIVE READOUTS</span>
-                <span>
-                  {mode === "probe" ? "EDGE / BARYCENTRIC" : "MSAA / DEPTH"}
-                </span>
-              </div>
-              {mode === "probe" ? (
-                <KdeCard
-                  title="边函数与重心坐标代数特征"
-                  badge={
-                    <KdeBadge
-                      variant={
-                        probeAnalysis.degenerate
-                          ? "warning"
-                          : probeAnalysis.inside
-                            ? "success"
-                            : "default"
+            {mode === "coverage" && selectedCoverageTriangle ? (
+              <KdeCard
+                title="多三角形深度与图层管理"
+                badge={
+                  <KdeBadge variant="primary">
+                    {coverageState.triangles.length} / {TRIANGLE_LIMIT} 个三角形
+                  </KdeBadge>
+                }
+                headerAction={
+                  <KdeButtonGroup attached size="xs">
+                    <KdeButton
+                      size="xs"
+                      onClick={handleAddTriangle}
+                      disabled={
+                        coverageState.triangles.length >= TRIANGLE_LIMIT
                       }
+                      aria-label="添加三角形"
+                    >
+                      + 添加
+                    </KdeButton>
+                    <KdeButton
+                      size="xs"
+                      onClick={removeSelectedTriangle}
+                      disabled={coverageState.triangles.length <= 1}
+                      aria-label={"删除 " + selectedCoverageTriangle.id}
+                    >
+                      删除
+                    </KdeButton>
+                  </KdeButtonGroup>
+                }
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2 pb-2">
+                  <KdeTabs<string>
+                    label="选中三角形"
+                    options={triangleOptions}
+                    value={selectedCoverageTriangle.id}
+                    onChange={selectCoverageTriangle}
+                    size="xs"
+                    variant="pill"
+                  />
+                  <span
+                    className="hidden text-xs text-[var(--kde-muted)]"
+                    data-testid="triangle-count"
+                  >
+                    {coverageState.triangles.length} / {TRIANGLE_LIMIT} 个三角形
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div data-testid="selected-depth-control">
+                    <ParamSlider
+                      labelMode="adaptive"
+                      label={
+                        <span className="text-xs">
+                          {selectedCoverageTriangle.id} 深度 z（越小越近）
+                        </span>
+                      }
+                      min={0.05}
+                      max={0.95}
+                      step={0.05}
+                      value={selectedCoverageTriangle.depth}
+                      onChange={updateSelectedDepth}
+                      widthClass="w-32"
+                      display={formatNumber(selectedCoverageTriangle.depth)}
+                    />
+                  </div>
+                  <KdeButtonGroup attached size="xs">
+                    <KdeButton
+                      size="xs"
+                      onClick={() =>
+                        moveTriangle(selectedCoverageTriangle.id, "front")
+                      }
+                      disabled={
+                        coverageState.triangles[0]?.id ===
+                        selectedCoverageTriangle.id
+                      }
+                      aria-label={
+                        "将 " + selectedCoverageTriangle.id + " 提到最前"
+                      }
+                    >
+                      提到最前
+                    </KdeButton>
+                    <KdeButton
+                      size="xs"
+                      onClick={() =>
+                        moveTriangle(selectedCoverageTriangle.id, "back")
+                      }
+                      disabled={
+                        coverageState.triangles[
+                          coverageState.triangles.length - 1
+                        ]?.id === selectedCoverageTriangle.id
+                      }
+                      aria-label={
+                        "将 " + selectedCoverageTriangle.id + " 移到最后"
+                      }
+                    >
+                      移到最后
+                    </KdeButton>
+                  </KdeButtonGroup>
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-[var(--kde-muted)]">
+                  绘制顺序从前到后排列。每个 MSAA
+                  样本独立做深度测试；较小深度通过严格小于比较获胜，同深度时先绘制者保留。
+                </p>
+              </KdeCard>
+            ) : null}
+
+            {mode === "probe" && (
+              <KdeCard
+                title="顶点与采样点定位 (Point & Probe)"
+                badge={
+                  <KdeBadge variant="primary">
+                    {activeLabel || "采样点 P"}
+                  </KdeBadge>
+                }
+                headerAction={
+                  <KdeButtonGroup attached size="xs">
+                    <KdeButton
+                      size="xs"
+                      variant={
+                        activeSelection?.kind === "probe"
+                          ? "primary"
+                          : "default"
+                      }
+                      onClick={() => selectProbePoint({ kind: "probe" })}
+                    >
+                      P (探针)
+                    </KdeButton>
+                    <KdeButton
+                      size="xs"
+                      variant={
+                        activeSelection?.kind === "vertex" &&
+                        activeSelection.vertexIndex === 0
+                          ? "primary"
+                          : "default"
+                      }
+                      onClick={() =>
+                        selectProbePoint({ kind: "vertex", vertexIndex: 0 })
+                      }
+                    >
+                      P₀
+                    </KdeButton>
+                    <KdeButton
+                      size="xs"
+                      variant={
+                        activeSelection?.kind === "vertex" &&
+                        activeSelection.vertexIndex === 1
+                          ? "primary"
+                          : "default"
+                      }
+                      onClick={() =>
+                        selectProbePoint({ kind: "vertex", vertexIndex: 1 })
+                      }
+                    >
+                      P₁
+                    </KdeButton>
+                    <KdeButton
+                      size="xs"
+                      variant={
+                        activeSelection?.kind === "vertex" &&
+                        activeSelection.vertexIndex === 2
+                          ? "primary"
+                          : "default"
+                      }
+                      onClick={() =>
+                        selectProbePoint({ kind: "vertex", vertexIndex: 2 })
+                      }
+                    >
+                      P₂
+                    </KdeButton>
+                  </KdeButtonGroup>
+                }
+              >
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <div className="text-xs text-[var(--kde-muted)]">
+                      采样探针快速预设位置：
+                    </div>
+                    <KdeButtonGroup attached size="xs" className="w-full">
+                      <KdeButton
+                        size="xs"
+                        className="flex-1"
+                        onClick={() => {
+                          selectProbePoint({ kind: "probe" });
+                          setProbeState((curr) => ({
+                            ...curr,
+                            point: { x: 0.25, y: 0.25 },
+                            draft: { x: "0.25", y: "0.25" },
+                          }));
+                        }}
+                      >
+                        内部
+                      </KdeButton>
+                      <KdeButton
+                        size="xs"
+                        className="flex-1"
+                        onClick={() => {
+                          selectProbePoint({ kind: "probe" });
+                          setProbeState((curr) => ({
+                            ...curr,
+                            point: { x: 0.0, y: -0.67 },
+                            draft: { x: "0.00", y: "-0.67" },
+                          }));
+                        }}
+                      >
+                        底边
+                      </KdeButton>
+                      <KdeButton
+                        size="xs"
+                        className="flex-1"
+                        onClick={() => {
+                          selectProbePoint({ kind: "probe" });
+                          setProbeState((curr) => ({
+                            ...curr,
+                            point: { x: 2.0, y: 1.5 },
+                            draft: { x: "2.00", y: "1.50" },
+                          }));
+                        }}
+                      >
+                        外部
+                      </KdeButton>
+                    </KdeButtonGroup>
+                  </div>
+
+                  <div
+                    className="flex flex-col gap-2 rounded-[var(--kde-control-radius,0.35rem)] border border-[var(--kde-border)] bg-[var(--kde-panel)] p-2.5"
+                    data-testid="selected-point-editor"
+                    data-console-panel
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-[var(--kde-muted)]">
+                        坐标精确输入
+                      </span>
+                      <span
+                        className="font-mono font-semibold text-[var(--kde-accent)]"
+                        data-testid="selected-point-label"
+                      >
+                        {activeLabel}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="flex min-w-0 items-center gap-1.5 text-xs text-[var(--kde-muted)]">
+                        <span className="font-mono font-medium">x</span>
+                        <input
+                          type="number"
+                          step="any"
+                          value={activeDraft.x}
+                          onChange={(event) =>
+                            changeCoordinate("x", event.currentTarget.value)
+                          }
+                          onBlur={() => restoreCoordinateDraft("x")}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter")
+                              event.currentTarget.blur();
+                          }}
+                          aria-label={activeLabel + " x 坐标"}
+                          data-testid="selected-coordinate-x"
+                          className="w-full min-w-0 rounded-[var(--kde-control-radius,0.35rem)] border border-[var(--kde-border)] bg-[var(--kde-raised)] px-2 py-1.5 font-mono text-sm text-[var(--kde-ink)] outline-none focus:border-[var(--kde-accent)] focus:ring-2 focus:ring-[var(--kde-accent)]/20"
+                        />
+                      </label>
+                      <label className="flex min-w-0 items-center gap-1.5 text-xs text-[var(--kde-muted)]">
+                        <span className="font-mono font-medium">y</span>
+                        <input
+                          type="number"
+                          step="any"
+                          value={activeDraft.y}
+                          onChange={(event) =>
+                            changeCoordinate("y", event.currentTarget.value)
+                          }
+                          onBlur={() => restoreCoordinateDraft("y")}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter")
+                              event.currentTarget.blur();
+                          }}
+                          aria-label={activeLabel + " y 坐标"}
+                          data-testid="selected-coordinate-y"
+                          className="w-full min-w-0 rounded-[var(--kde-control-radius,0.35rem)] border border-[var(--kde-border)] bg-[var(--kde-raised)] px-2 py-1.5 font-mono text-sm text-[var(--kde-ink)] outline-none focus:border-[var(--kde-accent)] focus:ring-2 focus:ring-[var(--kde-accent)]/20"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </KdeCard>
+            )}
+
+            {mode === "coverage" && activeSelection && activePoint && (
+              <div
+                className="flex flex-col gap-2.5 rounded-[var(--kde-control-radius,0.35rem)] border border-[var(--kde-accent)]/50 bg-[var(--kde-accent)]/10 p-3"
+                data-testid="selected-point-editor"
+                data-console-panel
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-xs text-[var(--kde-muted)]">
+                    正在编辑
+                  </div>
+                  <div
+                    className="font-mono text-sm font-semibold text-[var(--kde-accent)]"
+                    data-testid="selected-point-label"
+                  >
+                    {activeLabel}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="flex min-w-0 items-center gap-1.5 text-xs text-[var(--kde-muted)]">
+                    <span className="font-mono font-medium">x</span>
+                    <input
+                      type="number"
+                      step="any"
+                      value={activeDraft.x}
+                      onChange={(event) =>
+                        changeCoordinate("x", event.currentTarget.value)
+                      }
+                      onBlur={() => restoreCoordinateDraft("x")}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") event.currentTarget.blur();
+                      }}
+                      aria-label={activeLabel + " x 坐标"}
+                      data-testid="selected-coordinate-x"
+                      className="w-full min-w-0 rounded-[var(--kde-control-radius,0.35rem)] border border-[var(--kde-border)] bg-[var(--kde-raised)] px-2 py-1.5 font-mono text-sm text-[var(--kde-ink)] outline-none focus:border-[var(--kde-accent)] focus:ring-2 focus:ring-[var(--kde-accent)]/20"
+                    />
+                  </label>
+                  <label className="flex min-w-0 items-center gap-1.5 text-xs text-[var(--kde-muted)]">
+                    <span className="font-mono font-medium">y</span>
+                    <input
+                      type="number"
+                      step="any"
+                      value={activeDraft.y}
+                      onChange={(event) =>
+                        changeCoordinate("y", event.currentTarget.value)
+                      }
+                      onBlur={() => restoreCoordinateDraft("y")}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") event.currentTarget.blur();
+                      }}
+                      aria-label={activeLabel + " y 坐标"}
+                      data-testid="selected-coordinate-y"
+                      className="w-full min-w-0 rounded-[var(--kde-control-radius,0.35rem)] border border-[var(--kde-border)] bg-[var(--kde-raised)] px-2 py-1.5 font-mono text-sm text-[var(--kde-ink)] outline-none focus:border-[var(--kde-accent)] focus:ring-2 focus:ring-[var(--kde-accent)]/20"
+                    />
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {mode === "coverage" && (!activeSelection || !activePoint) && (
+              <div data-testid="point-editor-hint" data-console-panel>
+                <KdeMessageBar variant="neutral" mode="card">
+                  点击画布上的采样点或顶点，可直接输入坐标；拖动点也会同步数值。
+                </KdeMessageBar>
+              </div>
+            )}
+          </div>
+        }
+        footer={
+          <div className="w-full space-y-3">
+            <div className="flex items-center justify-between border-b border-[var(--kde-border)]/50 pb-1.5 text-[0.62rem] font-medium tracking-wider text-[var(--kde-muted)]">
+              <span>LIVE READOUTS</span>
+              <span>
+                {mode === "probe" ? "EDGE / BARYCENTRIC" : "MSAA / DEPTH"}
+              </span>
+            </div>
+            {mode === "probe" ? (
+              <KdeCard
+                title="边函数与重心坐标代数特征"
+                badge={
+                  <KdeBadge
+                    variant={
+                      probeAnalysis.degenerate
+                        ? "warning"
+                        : probeAnalysis.inside
+                          ? "success"
+                          : "default"
+                    }
+                  >
+                    {probeAnalysis.degenerate
+                      ? "退化三角形"
+                      : probeAnalysis.inside
+                        ? "点在内部"
+                        : "点在外部"}
+                  </KdeBadge>
+                }
+                headerAction={
+                  <span
+                    className="text-xs text-[var(--kde-muted)]"
+                    data-testid="probe-vector-summary"
+                  >
+                    向量：P₀→P · P₁→P · P₂→P
+                  </span>
+                }
+                footer={
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p
+                      className="text-xs leading-relaxed text-[var(--kde-muted)]"
+                      data-testid="probe-highlight-summary"
+                    >
+                      {probeHighlightDetails}
+                    </p>
+                    <span
+                      className={
+                        probeAnalysis.degenerate
+                          ? "rounded-[var(--kde-control-radius,0.35rem)] bg-amber-500/15 px-2.5 py-1 text-xs font-semibold text-amber-600 dark:text-amber-400"
+                          : probeAnalysis.inside
+                            ? "rounded-[var(--kde-control-radius,0.35rem)] bg-emerald-500/15 px-2.5 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400"
+                            : "rounded-[var(--kde-control-radius,0.35rem)] bg-[var(--kde-panel)] px-2.5 py-1 text-xs font-semibold text-[var(--kde-muted)]"
+                      }
+                      data-testid="probe-status"
                     >
                       {probeAnalysis.degenerate
                         ? "退化三角形"
                         : probeAnalysis.inside
-                          ? "点在内部"
-                          : "点在外部"}
-                    </KdeBadge>
-                  }
-                  headerAction={
-                    <span
-                      className="text-xs text-[var(--kde-muted)]"
-                      data-testid="probe-vector-summary"
-                    >
-                      向量：P₀→P · P₁→P · P₂→P
+                          ? "采样点在三角形内"
+                          : "采样点在三角形外"}
                     </span>
-                  }
-                  footer={
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p
-                        className="text-xs leading-relaxed text-[var(--kde-muted)]"
-                        data-testid="probe-highlight-summary"
-                      >
-                        {probeHighlightDetails}
-                      </p>
-                      <span
-                        className={
-                          probeAnalysis.degenerate
-                            ? "rounded-[var(--kde-control-radius,0.35rem)] bg-amber-500/15 px-2.5 py-1 text-xs font-semibold text-amber-600 dark:text-amber-400"
-                            : probeAnalysis.inside
-                              ? "rounded-[var(--kde-control-radius,0.35rem)] bg-emerald-500/15 px-2.5 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400"
-                              : "rounded-[var(--kde-control-radius,0.35rem)] bg-[var(--kde-panel)] px-2.5 py-1 text-xs font-semibold text-[var(--kde-muted)]"
-                        }
-                        data-testid="probe-status"
-                      >
-                        {probeAnalysis.degenerate
-                          ? "退化三角形"
-                          : probeAnalysis.inside
-                            ? "采样点在三角形内"
-                            : "采样点在三角形外"}
-                      </span>
+                  </div>
+                }
+              >
+                <span className="hidden" data-testid="probe-triangle-count">
+                  1 个三角形
+                </span>
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5 pb-2">
+                  <div className="rounded-[var(--kde-control-radius,0.35rem)] border border-[var(--kde-border)] bg-[var(--kde-panel)] p-2.5">
+                    <div className="text-xs text-[var(--kde-muted)]">
+                      采样点 P
                     </div>
-                  }
-                >
-                  <span className="hidden" data-testid="probe-triangle-count">
-                    1 个三角形
-                  </span>
-                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5 pb-2">
-                    <div className="rounded-[var(--kde-control-radius,0.35rem)] border border-[var(--kde-border)] bg-[var(--kde-panel)] p-2.5">
-                      <div className="text-xs text-[var(--kde-muted)]">
-                        采样点 P
-                      </div>
-                      <div
-                        className="mt-1 font-mono text-sm text-[var(--kde-ink)] font-bold"
-                        data-testid="probe-point"
-                      >
-                        ({formatNumber(probeState.point.x)},{" "}
-                        {formatNumber(probeState.point.y)})
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      aria-pressed={probeState.highlight === "D"}
-                      onClick={() =>
-                        setProbeState((current) => ({
-                          ...current,
-                          highlight: "D",
-                        }))
-                      }
-                      className={cardClass(probeState.highlight === "D")}
-                      data-testid="probe-card-D"
-                      data-console-readout
+                    <div
+                      className="mt-1 font-mono text-sm text-[var(--kde-ink)] font-bold"
+                      data-testid="probe-point"
                     >
-                      <div className="text-xs text-[var(--kde-muted)]">
-                        有向双面积 D
-                      </div>
-                      <div
-                        className="mt-1 font-mono text-sm text-[var(--kde-ink)] font-bold"
-                        data-testid="probe-determinant"
-                      >
-                        {formatNumber(probeAnalysis.determinant)}
-                      </div>
-                    </button>
-                    {probeAnalysis.edgeFunctions.map((value, index) => {
-                      const id = ("E" + index) as ProbeHighlight;
-                      const selected = probeState.highlight === id;
-                      return (
-                        <button
-                          type="button"
-                          aria-pressed={selected}
-                          onClick={() =>
-                            setProbeState((current) => ({
-                              ...current,
-                              highlight: id,
-                            }))
-                          }
-                          className={cardClass(selected)}
-                          key={index}
-                          data-testid={"probe-card-E" + index}
-                          data-console-readout
-                        >
-                          <div className="text-xs text-[var(--kde-muted)]">
-                            E{index}（对边函数）
-                          </div>
-                          <div
-                            className="mt-1 font-mono text-sm text-[var(--kde-ink)] font-bold"
-                            data-testid={"probe-edge-" + index}
-                          >
-                            {formatNumber(value)}
-                          </div>
-                        </button>
-                      );
-                    })}
+                      ({formatNumber(probeState.point.x)},{" "}
+                      {formatNumber(probeState.point.y)})
+                    </div>
                   </div>
-                  <div className="grid gap-2 sm:grid-cols-3">
-                    {[0, 1, 2].map((index) => {
-                      const id = ("lambda" + index) as ProbeHighlight;
-                      const selected = probeState.highlight === id;
-                      const weight = probeAnalysis.weights?.[index];
-                      return (
-                        <button
-                          type="button"
-                          aria-pressed={selected}
-                          onClick={() =>
-                            setProbeState((current) => ({
-                              ...current,
-                              highlight: id,
-                            }))
-                          }
-                          className={cardClass(selected)}
-                          key={index}
-                          data-testid={"probe-card-lambda" + index}
-                          data-console-readout
-                        >
-                          <div className="text-xs text-[var(--kde-muted)]">
-                            重心坐标 λ{index}
-                          </div>
-                          <div
-                            className="mt-1 font-mono text-sm text-[var(--kde-ink)] font-bold"
-                            data-testid={"probe-weight-" + index}
-                          >
-                            {weight === undefined || weight === null
-                              ? "未定义"
-                              : formatNumber(weight)}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </KdeCard>
-              ) : null}
-
-              {mode === "coverage" && cellResult ? (
-                <KdeCard
-                  title={`像素 (${selectedCell.x}, ${selectedCell.y}) 覆盖详情`}
-                  badge={
-                    <KdeBadge variant="primary">
-                      {cellResult.offsets.length} 个样本
-                    </KdeBadge>
-                  }
-                  headerAction={
-                    coverageState.pinnedCell ? (
+                  <button
+                    type="button"
+                    aria-pressed={probeState.highlight === "D"}
+                    onClick={() =>
+                      setProbeState((current) => ({
+                        ...current,
+                        highlight: "D",
+                      }))
+                    }
+                    className={cardClass(probeState.highlight === "D")}
+                    data-testid="probe-card-D"
+                    data-console-readout
+                  >
+                    <div className="text-xs text-[var(--kde-muted)]">
+                      有向双面积 D
+                    </div>
+                    <div
+                      className="mt-1 font-mono text-sm text-[var(--kde-ink)] font-bold"
+                      data-testid="probe-determinant"
+                    >
+                      {formatNumber(probeAnalysis.determinant)}
+                    </div>
+                  </button>
+                  {probeAnalysis.edgeFunctions.map((value, index) => {
+                    const id = ("E" + index) as ProbeHighlight;
+                    const selected = probeState.highlight === id;
+                    return (
                       <button
                         type="button"
-                        onClick={handleUnpinCell}
-                        className="inline-flex items-center gap-1 rounded-[var(--kde-control-radius,0.35rem)] border border-[var(--kde-accent)]/50 bg-[var(--kde-accent)]/15 px-2 py-0.5 text-[11px] font-medium text-[var(--kde-accent)] transition hover:bg-[var(--kde-accent)]/25"
-                        title="点击解除像素锁定"
+                        aria-pressed={selected}
+                        onClick={() =>
+                          setProbeState((current) => ({
+                            ...current,
+                            highlight: id,
+                          }))
+                        }
+                        className={cardClass(selected)}
+                        key={index}
+                        data-testid={"probe-card-E" + index}
+                        data-console-readout
                       >
-                        <span>📌 已锁定</span>
-                        <span className="text-[10px] opacity-70">✕</span>
-                      </button>
-                    ) : (
-                      <span className="inline-flex items-center rounded-[var(--kde-control-radius,0.35rem)] border border-[var(--kde-border)] bg-[var(--kde-panel)] px-2 py-0.5 text-[10px] text-[var(--kde-muted)]">
-                        实时悬停（点击画布格锁定）
-                      </span>
-                    )
-                  }
-                  footer={
-                    <div
-                      className="text-xs text-[var(--kde-muted)]"
-                      data-testid="pixel-winner-summary"
-                    >
-                      最终可见样本：
-                      {coverageState.triangles
-                        .map((triangle) => {
-                          const count =
-                            cellResult.winnerMasks
-                              .get(triangle.id)
-                              ?.filter(Boolean).length ?? 0;
-                          return count > 0
-                            ? " " +
-                                triangle.id +
-                                " " +
-                                count +
-                                "/" +
-                                coverageState.rate
-                            : "";
-                        })
-                        .filter(Boolean)
-                        .join(" · ") || " 无三角形覆盖"}
-                    </div>
-                  }
-                >
-                  <span className="hidden" data-testid="pixel-sample-count">
-                    {cellResult.offsets.length} 个样本
-                  </span>
-                  <p className="mb-2 text-xs leading-relaxed text-[var(--kde-muted)]">
-                    每个掩码按 s{cellResult.offsets.length - 1}…s0
-                    显示，最低位对应
-                    s0；“几何覆盖”不含深度遮挡，“最终可见”应用绘制顺序和深度测试。
-                  </p>
-                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {coverageState.triangles.map((triangle) => {
-                      const geometricMask =
-                        cellResult.triangleMasks.get(triangle.id) ?? [];
-                      const visibleMask =
-                        cellResult.winnerMasks.get(triangle.id) ?? [];
-                      return (
-                        <div
-                          className="rounded-[var(--kde-control-radius,0.35rem)] border border-[var(--kde-border)] bg-[var(--kde-panel)] p-2.5"
-                          key={triangle.id}
-                          data-testid={"pixel-triangle-" + triangle.id}
-                        >
-                          <div className="text-xs font-semibold text-[var(--kde-ink)]">
-                            {triangle.id} · z={formatNumber(triangle.depth)}
-                          </div>
-                          <div
-                            className="mt-1 font-mono text-[11px] text-[var(--kde-muted)]"
-                            data-testid={"pixel-mask-" + triangle.id}
-                          >
-                            几何 {formatMask(geometricMask)}（
-                            {geometricMask.filter(Boolean).length}/
-                            {coverageState.rate}）
-                          </div>
-                          <div
-                            className="font-mono text-[11px] text-[var(--kde-muted)]"
-                            data-testid={"pixel-visible-mask-" + triangle.id}
-                          >
-                            可见 {formatMask(visibleMask)}（
-                            {visibleMask.filter(Boolean).length}/
-                            {coverageState.rate}）
-                          </div>
+                        <div className="text-xs text-[var(--kde-muted)]">
+                          E{index}（对边函数）
                         </div>
-                      );
-                    })}
+                        <div
+                          className="mt-1 font-mono text-sm text-[var(--kde-ink)] font-bold"
+                          data-testid={"probe-edge-" + index}
+                        >
+                          {formatNumber(value)}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {[0, 1, 2].map((index) => {
+                    const id = ("lambda" + index) as ProbeHighlight;
+                    const selected = probeState.highlight === id;
+                    const weight = probeAnalysis.weights?.[index];
+                    return (
+                      <button
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() =>
+                          setProbeState((current) => ({
+                            ...current,
+                            highlight: id,
+                          }))
+                        }
+                        className={cardClass(selected)}
+                        key={index}
+                        data-testid={"probe-card-lambda" + index}
+                        data-console-readout
+                      >
+                        <div className="text-xs text-[var(--kde-muted)]">
+                          重心坐标 λ{index}
+                        </div>
+                        <div
+                          className="mt-1 font-mono text-sm text-[var(--kde-ink)] font-bold"
+                          data-testid={"probe-weight-" + index}
+                        >
+                          {weight === undefined || weight === null
+                            ? "未定义"
+                            : formatNumber(weight)}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </KdeCard>
+            ) : null}
+
+            {mode === "coverage" && cellResult ? (
+              <KdeCard
+                title={`像素 (${selectedCell.x}, ${selectedCell.y}) 覆盖详情`}
+                badge={
+                  <KdeBadge variant="primary">
+                    {cellResult.offsets.length} 个样本
+                  </KdeBadge>
+                }
+                headerAction={
+                  coverageState.pinnedCell ? (
+                    <button
+                      type="button"
+                      onClick={handleUnpinCell}
+                      className="inline-flex items-center gap-1 rounded-[var(--kde-control-radius,0.35rem)] border border-[var(--kde-accent)]/50 bg-[var(--kde-accent)]/15 px-2 py-0.5 text-[11px] font-medium text-[var(--kde-accent)] transition hover:bg-[var(--kde-accent)]/25"
+                      title="点击解除像素锁定"
+                    >
+                      <span>📌 已锁定</span>
+                      <span className="text-[10px] opacity-70">✕</span>
+                    </button>
+                  ) : (
+                    <span className="inline-flex items-center rounded-[var(--kde-control-radius,0.35rem)] border border-[var(--kde-border)] bg-[var(--kde-panel)] px-2 py-0.5 text-[10px] text-[var(--kde-muted)]">
+                      实时悬停（点击画布格锁定）
+                    </span>
+                  )
+                }
+                footer={
+                  <div
+                    className="text-xs text-[var(--kde-muted)]"
+                    data-testid="pixel-winner-summary"
+                  >
+                    最终可见样本：
+                    {coverageState.triangles
+                      .map((triangle) => {
+                        const count =
+                          cellResult.winnerMasks
+                            .get(triangle.id)
+                            ?.filter(Boolean).length ?? 0;
+                        return count > 0
+                          ? " " +
+                              triangle.id +
+                              " " +
+                              count +
+                              "/" +
+                              coverageState.rate
+                          : "";
+                      })
+                      .filter(Boolean)
+                      .join(" · ") || " 无三角形覆盖"}
                   </div>
-                </KdeCard>
-              ) : null}
-            </div>
-          }
-        />
-      </ExpandableDemo>
-    </AutoMath>
+                }
+              >
+                <span className="hidden" data-testid="pixel-sample-count">
+                  {cellResult.offsets.length} 个样本
+                </span>
+                <p className="mb-2 text-xs leading-relaxed text-[var(--kde-muted)]">
+                  每个掩码按 s{cellResult.offsets.length - 1}…s0
+                  显示，最低位对应
+                  s0；“几何覆盖”不含深度遮挡，“最终可见”应用绘制顺序和深度测试。
+                </p>
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {coverageState.triangles.map((triangle) => {
+                    const geometricMask =
+                      cellResult.triangleMasks.get(triangle.id) ?? [];
+                    const visibleMask =
+                      cellResult.winnerMasks.get(triangle.id) ?? [];
+                    return (
+                      <div
+                        className="rounded-[var(--kde-control-radius,0.35rem)] border border-[var(--kde-border)] bg-[var(--kde-panel)] p-2.5"
+                        key={triangle.id}
+                        data-testid={"pixel-triangle-" + triangle.id}
+                      >
+                        <div className="text-xs font-semibold text-[var(--kde-ink)]">
+                          {triangle.id} · z={formatNumber(triangle.depth)}
+                        </div>
+                        <div
+                          className="mt-1 font-mono text-[11px] text-[var(--kde-muted)]"
+                          data-testid={"pixel-mask-" + triangle.id}
+                        >
+                          几何 {formatMask(geometricMask)}（
+                          {geometricMask.filter(Boolean).length}/
+                          {coverageState.rate}）
+                        </div>
+                        <div
+                          className="font-mono text-[11px] text-[var(--kde-muted)]"
+                          data-testid={"pixel-visible-mask-" + triangle.id}
+                        >
+                          可见 {formatMask(visibleMask)}（
+                          {visibleMask.filter(Boolean).length}/
+                          {coverageState.rate}）
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </KdeCard>
+            ) : null}
+          </div>
+        }
+      />
+    </ExpandableDemo>
   );
 }

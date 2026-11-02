@@ -14,9 +14,12 @@ import {
   drawAdaptiveAxes,
   drawPoint,
   drawPolyline,
+  type Plot2D,
+  type ThemeColors,
 } from "../../visualizations/core/2d/plot2d";
-import CanvasResizer from "../framework/CanvasResizer";
-import CanvasToolbar from "../framework/CanvasToolbar";
+import CanvasViewport, {
+  type CanvasViewportHandle,
+} from "../framework/CanvasViewport";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import { AutoMath } from "../framework/AutoMath";
 import InteractiveViewportGroup from "../framework/InteractiveViewportGroup";
@@ -28,7 +31,6 @@ import KdeTabs, { type KdeTabOption } from "../framework/KdeTabs";
 import KdeWindowShell from "../framework/KdeWindowShell";
 import ParamSlider from "../framework/ParamSlider";
 import PresetSelector from "../framework/PresetSelector";
-import { useCanvas2D } from "../framework/useCanvas2D";
 
 import "./BezierBasisDemo.css";
 import "./BezierSplineWorkspace.css";
@@ -330,340 +332,256 @@ export default function BSplineBasisStepDemo({
   const weightSum = sumBasisAt(u, degree, knots);
   const currentPoint = evaluateBSpline(points, degree, u, knots);
 
-  // Left Canvas: Basis Curves
-  const {
-    containerRef: basisContainerRef,
-    canvasRef: basisCanvasRef,
-    setBounds: setBasisBounds,
-    resetBounds: resetBasisBounds,
-  } = useCanvas2D(
-    {
-      initialBounds: {
-        xMin: -0.3,
-        xMax: knots[knots.length - 1] + 0.3,
-        yMin: -0.1,
-        yMax: 1.15,
-      },
-      margin: 34,
-      draw(ctx, plot, theme) {
-        drawAdaptiveAxes(ctx, plot, theme, "u", "N");
+  const basisVpRef = useRef<CanvasViewportHandle | null>(null);
+  const geomVpRef = useRef<CanvasViewportHandle | null>(null);
 
-        // 1. Horizontal unity line y = 1.0
-        ctx.save();
-        ctx.setLineDash([4, 4]);
-        ctx.strokeStyle = theme.border;
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.moveTo(plot.toScreenX(knots[0]), plot.toScreenY(1));
-        ctx.lineTo(plot.toScreenX(knots[knots.length - 1]), plot.toScreenY(1));
-        ctx.stroke();
-        ctx.restore();
+  const drawBasis = (
+    ctx: CanvasRenderingContext2D,
+    plot: Plot2D,
+    theme: ThemeColors,
+  ) => {
+    drawAdaptiveAxes(ctx, plot, theme, "u", "N");
 
-        ctx.fillStyle = theme.muted;
-        ctx.font = "600 10px ui-monospace, monospace";
-        ctx.textAlign = "right";
+    // 1. Horizontal unity line y = 1.0
+    ctx.save();
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = theme.border;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(plot.toScreenX(knots[0]), plot.toScreenY(1));
+    ctx.lineTo(plot.toScreenX(knots[knots.length - 1]), plot.toScreenY(1));
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.fillStyle = theme.muted;
+    ctx.font = "600 10px ui-monospace, monospace";
+    ctx.textAlign = "right";
+    ctx.fillText(
+      "∑ = 1.00",
+      plot.toScreenX(knots[knots.length - 1]) - 4,
+      plot.toScreenY(1) - 4,
+    );
+
+    // 2. Draw vertical knot lines
+    knots.forEach((knotVal) => {
+      const kx = plot.toScreenX(knotVal);
+      ctx.save();
+      ctx.setLineDash([2, 4]);
+      ctx.strokeStyle = theme.border;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(kx, plot.toScreenY(-0.05));
+      ctx.lineTo(kx, plot.toScreenY(1.05));
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.fillStyle = theme.muted;
+      ctx.font = "10px ui-monospace, monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(`u=${knotVal}`, kx, plot.toScreenY(-0.06));
+    });
+
+    // 3. Highlight current span region
+    if (currentSpan) {
+      const spanX1 = plot.toScreenX(currentSpan.start);
+      const spanX2 = plot.toScreenX(currentSpan.end);
+      ctx.fillStyle = "rgba(61, 174, 233, 0.08)";
+      ctx.fillRect(
+        spanX1,
+        plot.toScreenY(1.1),
+        spanX2 - spanX1,
+        plot.toScreenY(-0.05) - plot.toScreenY(1.1),
+      );
+    }
+
+    // 4. Draw all basis functions N_{i,p}(u)
+    const basisCount = points.length;
+    for (let i = 0; i < basisCount; i++) {
+      const color = BASIS_PALETTE[i % BASIS_PALETTE.length];
+      const isActive = activeBasisIndices.includes(i);
+      const isHovered = hoveredBasis === i;
+
+      const polyline: Point2[] = [];
+      const startK = knots[i];
+      const endK = knots[i + degree + 1] ?? knots[knots.length - 1];
+
+      if (degree === 0) {
+        // Draw step function
+        polyline.push([startK, 0]);
+        polyline.push([startK, 1]);
+        polyline.push([endK, 1]);
+        polyline.push([endK, 0]);
+      } else {
+        // Sample smooth/triangular basis
+        const steps = Math.max(16, (degree + 1) * 12);
+        const dt = (endK - startK) / steps;
+        for (let s = 0; s <= steps; s++) {
+          const curU = startK + s * dt;
+          const val = bsplineBasis(i, degree, curU, knots);
+          polyline.push([curU, val]);
+        }
+      }
+
+      drawPolyline(ctx, plot, polyline, {
+        color: isHovered ? "#e74c3c" : color,
+        width: isHovered ? 3.5 : isActive ? 2.6 : 1.2,
+      });
+
+      // Draw peak label
+      const midU = (startK + endK) / 2;
+      const peakVal = degree === 0 ? 1.0 : bsplineBasis(i, degree, midU, knots);
+      if (peakVal > 0.05) {
+        ctx.fillStyle = color;
+        ctx.font = isActive
+          ? "bold 11px ui-monospace, monospace"
+          : "10px ui-monospace, monospace";
+        ctx.textAlign = "center";
         ctx.fillText(
-          "∑ = 1.00",
-          plot.toScreenX(knots[knots.length - 1]) - 4,
-          plot.toScreenY(1) - 4,
+          `N${i},${degree}`,
+          plot.toScreenX(midU),
+          plot.toScreenY(peakVal) - 6,
         );
+      }
+    }
 
-        // 2. Draw vertical knot lines
-        knots.forEach((knotVal) => {
-          const kx = plot.toScreenX(knotVal);
-          ctx.save();
-          ctx.setLineDash([2, 4]);
-          ctx.strokeStyle = theme.border;
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(kx, plot.toScreenY(-0.05));
-          ctx.lineTo(kx, plot.toScreenY(1.05));
-          ctx.stroke();
-          ctx.restore();
+    // 5. Draw vertical probe line at u
+    const probeX = plot.toScreenX(u);
+    ctx.save();
+    ctx.setLineDash([3, 3]);
+    ctx.strokeStyle = "#e74c3c";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(probeX, plot.toScreenY(-0.05));
+    ctx.lineTo(probeX, plot.toScreenY(1.1));
+    ctx.stroke();
+    ctx.restore();
 
-          ctx.fillStyle = theme.muted;
-          ctx.font = "10px ui-monospace, monospace";
-          ctx.textAlign = "center";
-          ctx.fillText(`u=${knotVal}`, kx, plot.toScreenY(-0.06));
-        });
-
-        // 3. Highlight current span region
-        if (currentSpan) {
-          const spanX1 = plot.toScreenX(currentSpan.start);
-          const spanX2 = plot.toScreenX(currentSpan.end);
-          ctx.fillStyle = "rgba(61, 174, 233, 0.08)";
-          ctx.fillRect(
-            spanX1,
-            plot.toScreenY(1.1),
-            spanX2 - spanX1,
-            plot.toScreenY(-0.05) - plot.toScreenY(1.1),
-          );
-        }
-
-        // 4. Draw all basis functions N_{i,p}(u)
-        const basisCount = points.length;
-        for (let i = 0; i < basisCount; i++) {
-          const color = BASIS_PALETTE[i % BASIS_PALETTE.length];
-          const isActive = activeBasisIndices.includes(i);
-          const isHovered = hoveredBasis === i;
-
-          const polyline: Point2[] = [];
-          const startK = knots[i];
-          const endK = knots[i + degree + 1] ?? knots[knots.length - 1];
-
-          if (degree === 0) {
-            // Draw step function
-            polyline.push([startK, 0]);
-            polyline.push([startK, 1]);
-            polyline.push([endK, 1]);
-            polyline.push([endK, 0]);
-          } else {
-            // Sample smooth/triangular basis
-            const steps = Math.max(16, (degree + 1) * 12);
-            const dt = (endK - startK) / steps;
-            for (let s = 0; s <= steps; s++) {
-              const curU = startK + s * dt;
-              const val = bsplineBasis(i, degree, curU, knots);
-              polyline.push([curU, val]);
-            }
-          }
-
-          drawPolyline(ctx, plot, polyline, {
-            color: isHovered ? "#e74c3c" : color,
-            width: isHovered ? 3.5 : isActive ? 2.6 : 1.2,
-          });
-
-          // Draw peak label
-          const midU = (startK + endK) / 2;
-          const peakVal =
-            degree === 0 ? 1.0 : bsplineBasis(i, degree, midU, knots);
-          if (peakVal > 0.05) {
-            ctx.fillStyle = color;
-            ctx.font = isActive
-              ? "bold 11px ui-monospace, monospace"
-              : "10px ui-monospace, monospace";
-            ctx.textAlign = "center";
-            ctx.fillText(
-              `N${i},${degree}`,
-              plot.toScreenX(midU),
-              plot.toScreenY(peakVal) - 6,
-            );
-          }
-        }
-
-        // 5. Draw vertical probe line at u
-        const probeX = plot.toScreenX(u);
-        ctx.save();
-        ctx.setLineDash([3, 3]);
-        ctx.strokeStyle = "#e74c3c";
-        ctx.lineWidth = 1.8;
-        ctx.beginPath();
-        ctx.moveTo(probeX, plot.toScreenY(-0.05));
-        ctx.lineTo(probeX, plot.toScreenY(1.1));
-        ctx.stroke();
-        ctx.restore();
-
-        // 6. Draw active weight dots at intersection
-        activeWeights.forEach(({ weight, color }) => {
-          drawPoint(ctx, plot, u, weight, {
-            color,
-            radius: 5,
-            filled: true,
-            width: 1.5,
-          });
-        });
-      },
-      onLeftDown(event, plot) {
-        const target = event.currentTarget as HTMLElement | null;
-        const rect = target?.getBoundingClientRect();
-        if (!rect) return false;
-        const clickU = plot.toWorldX(event.clientX - rect.left);
-        const clampedU = Math.max(minU, Math.min(maxU, clickU));
-        setU(clampedU);
-        return true;
-      },
-      onLeftMove(event, plot) {
-        const target = event.currentTarget as HTMLElement | null;
-        const rect = target?.getBoundingClientRect();
-        if (!rect) return;
-        const moveU = plot.toWorldX(event.clientX - rect.left);
-        const clampedU = Math.max(minU, Math.min(maxU, moveU));
-        setU(clampedU);
-      },
-    },
-    [
-      degree,
-      u,
-      knots,
-      currentSpan?.index,
-      activeBasisIndices.join(","),
-      hoveredBasis,
-      minU,
-      maxU,
-    ],
-  );
-
+    // 6. Draw active weight dots at intersection
+    activeWeights.forEach(({ weight, color }) => {
+      drawPoint(ctx, plot, u, weight, {
+        color,
+        radius: 5,
+        filled: true,
+        width: 1.5,
+      });
+    });
+  };
   // Update Left basis canvas bounds when degree/knots change
   useEffect(() => {
-    setBasisBounds({
+    basisVpRef.current?.setBounds({
       xMin: -0.3,
       xMax: knots[knots.length - 1] + 0.3,
       yMin: -0.1,
       yMax: 1.15,
     });
-  }, [knots, setBasisBounds]);
+  }, [knots]);
 
-  // Right Canvas: Geometry & Control Points
-  const {
-    containerRef: geomContainerRef,
-    canvasRef: geomCanvasRef,
-    resetBounds: resetGeomBounds,
-  } = useCanvas2D(
-    {
-      initialBounds: {
-        xMin: -5.5,
-        xMax: 5.5,
-        yMin: -4.0,
-        yMax: 4.5,
-      },
-      margin: 34,
-      draw(ctx, plot, theme) {
-        drawAdaptiveAxes(ctx, plot, theme, "x", "y");
+  const drawGeom = (
+    ctx: CanvasRenderingContext2D,
+    plot: Plot2D,
+    theme: ThemeColors,
+  ) => {
+    drawAdaptiveAxes(ctx, plot, theme, "x", "y");
 
-        // 1. Control polygon / scaffolding
-        drawPolyline(ctx, plot, points, {
-          color: theme.border,
-          width: 1.2,
-          dash: [4, 4],
-        });
+    // 1. Control polygon / scaffolding
+    drawPolyline(ctx, plot, points, {
+      color: theme.border,
+      width: 1.2,
+      dash: [4, 4],
+    });
 
-        // 2. Evaluated B-Spline curve / geometry
-        if (degree === 0) {
-          // Degree 0: discrete piecewise points
-          spans.forEach((span) => {
-            const spanBasis = getBasisIndicesForSpan(span.index, 0, knots);
-            if (spanBasis.length > 0) {
-              const pt = points[spanBasis[0]];
-              if (pt) {
-                drawPoint(ctx, plot, pt[0], pt[1], {
-                  color: BASIS_PALETTE[spanBasis[0] % BASIS_PALETTE.length],
-                  radius: 6,
-                  filled: true,
-                  width: 1.5,
-                });
-              }
-            }
-          });
-        } else if (degree === 1) {
-          // Degree 1: polyline directly through control points
-          drawPolyline(ctx, plot, points, {
-            color: "#3daee9",
-            width: 2.8,
-          });
-        } else {
-          // Degree 2 or 3: smooth curve
-          const curvePoints = sampleBSpline(points, degree, knots, 36);
-          if (curvePoints.length > 1) {
-            drawPolyline(ctx, plot, curvePoints, {
-              color: "#3daee9",
-              width: 3.0,
+    // 2. Evaluated B-Spline curve / geometry
+    if (degree === 0) {
+      // Degree 0: discrete piecewise points
+      spans.forEach((span) => {
+        const spanBasis = getBasisIndicesForSpan(span.index, 0, knots);
+        if (spanBasis.length > 0) {
+          const pt = points[spanBasis[0]];
+          if (pt) {
+            drawPoint(ctx, plot, pt[0], pt[1], {
+              color: BASIS_PALETTE[spanBasis[0] % BASIS_PALETTE.length],
+              radius: 6,
+              filled: true,
+              width: 1.5,
             });
           }
         }
-
-        // 3. Control points
-        points.forEach((pt, idx) => {
-          const isActive = activeBasisIndices.includes(idx);
-          const isHovered = hoveredBasis === idx;
-          const color = BASIS_PALETTE[idx % BASIS_PALETTE.length];
-
-          drawPoint(ctx, plot, pt[0], pt[1], {
-            color: isHovered ? "#e74c3c" : isActive ? color : theme.muted,
-            radius: isActive || isHovered ? 6.5 : 4.5,
-            filled: true,
-            width: 1.5,
-          });
-
-          // Label
-          ctx.fillStyle = isActive ? color : theme.muted;
-          ctx.font = isActive
-            ? "bold 11px ui-monospace, monospace"
-            : "10px ui-monospace, monospace";
-          ctx.textAlign = "center";
-          ctx.fillText(
-            `P${idx}`,
-            plot.toScreenX(pt[0]),
-            plot.toScreenY(pt[1]) - 10,
-          );
+      });
+    } else if (degree === 1) {
+      // Degree 1: polyline directly through control points
+      drawPolyline(ctx, plot, points, {
+        color: "#3daee9",
+        width: 2.8,
+      });
+    } else {
+      // Degree 2 or 3: smooth curve
+      const curvePoints = sampleBSpline(points, degree, knots, 36);
+      if (curvePoints.length > 1) {
+        drawPolyline(ctx, plot, curvePoints, {
+          color: "#3daee9",
+          width: 3.0,
         });
+      }
+    }
 
-        // 4. Current evaluated point C(u)
-        if (currentPoint) {
-          drawPoint(ctx, plot, currentPoint[0], currentPoint[1], {
-            color: "#e74c3c",
-            radius: 7,
-            filled: true,
-            width: 2,
-          });
+    // 3. Control points
+    points.forEach((pt, idx) => {
+      const isActive = activeBasisIndices.includes(idx);
+      const isHovered = hoveredBasis === idx;
+      const color = BASIS_PALETTE[idx % BASIS_PALETTE.length];
 
-          ctx.fillStyle = theme.ink;
-          ctx.font = "bold 11px ui-monospace, monospace";
-          ctx.textAlign = "left";
-          ctx.fillText(
-            `C(u=${u.toFixed(2)})`,
-            plot.toScreenX(currentPoint[0]) + 10,
-            plot.toScreenY(currentPoint[1]) - 6,
-          );
-        }
-      },
-      onLeftDown(event, plot) {
-        const target = event.currentTarget as HTMLElement | null;
-        const rect = target?.getBoundingClientRect();
-        if (!rect) return false;
-        const px = event.clientX - rect.left;
-        const py = event.clientY - rect.top;
-        let nearest: number | null = null;
-        let minDistance = 24;
-        pointsRef.current.forEach(([x, y], index) => {
-          const dist = Math.hypot(
-            plot.toScreenX(x) - px,
-            plot.toScreenY(y) - py,
-          );
-          if (dist < minDistance) {
-            minDistance = dist;
-            nearest = index;
-          }
-        });
-        dragIndexRef.current = nearest;
-        return nearest !== null;
-      },
-      onLeftMove(event, plot) {
-        const index = dragIndexRef.current;
-        if (index === null) return;
-        const target = event.currentTarget as HTMLElement | null;
-        const rect = target?.getBoundingClientRect();
-        if (!rect) return;
-        const nextX = plot.toWorldX(event.clientX - rect.left);
-        const nextY = plot.toWorldY(event.clientY - rect.top);
-        setPoints((prev) =>
-          prev.map((pt, i) => (i === index ? [nextX, nextY] : pt)),
-        );
-      },
-      onLeftUp() {
-        dragIndexRef.current = null;
-      },
-    },
-    [
-      degree,
-      u,
-      points,
-      knots,
-      currentPoint[0],
-      currentPoint[1],
-      activeBasisIndices.join(","),
-      hoveredBasis,
-    ],
-  );
+      drawPoint(ctx, plot, pt[0], pt[1], {
+        color: isHovered ? "#e74c3c" : isActive ? color : theme.muted,
+        radius: isActive || isHovered ? 6.5 : 4.5,
+        filled: true,
+        width: 1.5,
+      });
+
+      // Label
+      ctx.fillStyle = isActive ? color : theme.muted;
+      ctx.font = isActive
+        ? "bold 11px ui-monospace, monospace"
+        : "10px ui-monospace, monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(
+        `P${idx}`,
+        plot.toScreenX(pt[0]),
+        plot.toScreenY(pt[1]) - 10,
+      );
+    });
+
+    // 4. Current evaluated point C(u)
+    if (currentPoint) {
+      drawPoint(ctx, plot, currentPoint[0], currentPoint[1], {
+        color: "#e74c3c",
+        radius: 7,
+        filled: true,
+        width: 2,
+      });
+
+      ctx.fillStyle = theme.ink;
+      ctx.font = "bold 11px ui-monospace, monospace";
+      ctx.textAlign = "left";
+      ctx.fillText(
+        `C(u=${u.toFixed(2)})`,
+        plot.toScreenX(currentPoint[0]) + 10,
+        plot.toScreenY(currentPoint[1]) - 6,
+      );
+    }
+  };
+
+  useEffect(() => {
+    basisVpRef.current?.redraw();
+    geomVpRef.current?.redraw();
+  }, [
+    degree,
+    u,
+    points,
+    knots,
+    currentPoint,
+    activeBasisIndices,
+    hoveredBasis,
+  ]);
 
   const handleDegreeChange = (newDegreeStr: DegreeTab) => {
     setDegreeStr(newDegreeStr);
@@ -672,8 +590,8 @@ export default function BSplineBasisStepDemo({
     setActivePresetId(firstPreset.id);
     setPoints(firstPreset.points.map(([x, y]) => [x, y]));
     setU(firstPreset.defaultU);
-    resetBasisBounds();
-    resetGeomBounds();
+    basisVpRef.current?.resetBounds();
+    geomVpRef.current?.resetBounds();
   };
 
   const handlePresetChange = (presetId: string) => {
@@ -682,8 +600,8 @@ export default function BSplineBasisStepDemo({
       setActivePresetId(target.id);
       setPoints(target.points.map(([x, y]) => [x, y]));
       setU(target.defaultU);
-      resetBasisBounds();
-      resetGeomBounds();
+      basisVpRef.current?.resetBounds();
+      geomVpRef.current?.resetBounds();
     }
   };
 
@@ -693,8 +611,8 @@ export default function BSplineBasisStepDemo({
       presetsForDegree[0];
     setPoints(current.points.map(([x, y]) => [x, y]));
     setU(current.defaultU);
-    resetBasisBounds();
-    resetGeomBounds();
+    basisVpRef.current?.resetBounds();
+    geomVpRef.current?.resetBounds();
   };
 
   const presetOptions = useMemo(
@@ -714,18 +632,37 @@ export default function BSplineBasisStepDemo({
           {`$N_{i,${degree}}(u)$ · 跨度 ${degree + 1} Spans`}
         </span>
       </div>
-      <div
-        ref={basisContainerRef}
+      <CanvasViewport
+        ref={basisVpRef}
         data-testid="bspline-basis-step-basis-canvas"
-        className="bezier-basis__canvas relative flex-1 min-h-[var(--demo-height,18rem)] h-full w-full overflow-hidden cursor-crosshair"
-      >
-        <CanvasToolbar onReset={resetBasisBounds} />
-        <canvas
-          ref={basisCanvasRef}
-          className="absolute inset-0 h-full w-full"
-        />
-        <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
-      </div>
+        initialBounds={{
+          xMin: -0.3,
+          xMax: knots[knots.length - 1] + 0.3,
+          yMin: -0.1,
+          yMax: 1.15,
+        }}
+        margin={34}
+        heightClass="min-h-[var(--demo-height,18rem)] h-full w-full"
+        onReset={() => basisVpRef.current?.resetBounds()}
+        onDraw={drawBasis}
+        onLeftDown={(event, plot) => {
+          const target = event.currentTarget as HTMLElement | null;
+          const rect = target?.getBoundingClientRect();
+          if (!rect) return false;
+          const clickU = plot.toWorldX(event.clientX - rect.left);
+          const clampedU = Math.max(minU, Math.min(maxU, clickU));
+          setU(clampedU);
+          return true;
+        }}
+        onLeftMove={(event, plot) => {
+          const target = event.currentTarget as HTMLElement | null;
+          const rect = target?.getBoundingClientRect();
+          if (!rect) return;
+          const moveU = plot.toWorldX(event.clientX - rect.left);
+          const clampedU = Math.max(minU, Math.min(maxU, moveU));
+          setU(clampedU);
+        }}
+      />
     </div>
   );
 
@@ -737,18 +674,58 @@ export default function BSplineBasisStepDemo({
           {`$\\mathbf{C}(u) = \\sum N_{i,${degree}} \\mathbf{P}_i$`}
         </span>
       </div>
-      <div
-        ref={geomContainerRef}
+      <CanvasViewport
+        ref={geomVpRef}
         data-testid="bspline-basis-step-curve-canvas"
-        className="bezier-basis__canvas relative flex-1 min-h-[var(--demo-height,18rem)] h-full w-full overflow-hidden"
-      >
-        <CanvasToolbar onReset={resetGeomBounds} />
-        <canvas
-          ref={geomCanvasRef}
-          className="absolute inset-0 h-full w-full"
-        />
-        <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
-      </div>
+        initialBounds={{
+          xMin: -5.5,
+          xMax: 5.5,
+          yMin: -4.0,
+          yMax: 4.5,
+        }}
+        margin={34}
+        heightClass="min-h-[var(--demo-height,18rem)] h-full w-full"
+        onReset={() => geomVpRef.current?.resetBounds()}
+        onDraw={drawGeom}
+        onLeftDown={(event, plot) => {
+          const target = event.currentTarget as HTMLElement | null;
+          const rect = target?.getBoundingClientRect();
+          if (!rect) return false;
+          const px = event.clientX - rect.left;
+          const py = event.clientY - rect.top;
+
+          let nearest: number | null = null;
+          let minDist = 20;
+
+          points.forEach(([x, y], idx) => {
+            const dist = Math.hypot(
+              plot.toScreenX(x) - px,
+              plot.toScreenY(y) - py,
+            );
+            if (dist < minDist) {
+              minDist = dist;
+              nearest = idx;
+            }
+          });
+          dragIndexRef.current = nearest;
+          return nearest !== null;
+        }}
+        onLeftMove={(event, plot) => {
+          const index = dragIndexRef.current;
+          if (index === null) return;
+          const target = event.currentTarget as HTMLElement | null;
+          const rect = target?.getBoundingClientRect();
+          if (!rect) return;
+          const nextX = plot.toWorldX(event.clientX - rect.left);
+          const nextY = plot.toWorldY(event.clientY - rect.top);
+          setPoints((prev) =>
+            prev.map((pt, i) => (i === index ? [nextX, nextY] : pt)),
+          );
+        }}
+        onLeftUp={() => {
+          dragIndexRef.current = null;
+        }}
+      />
     </div>
   );
 

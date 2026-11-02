@@ -1,4 +1,5 @@
 import { forwardRef, type ReactNode, type SelectHTMLAttributes } from "react";
+import AutoMath from "./AutoMath";
 
 export type KdeSelectSize = "xs" | "sm" | "md";
 
@@ -46,7 +47,9 @@ export const KdeSelect = forwardRef<HTMLSelectElement, KdeSelectProps>(
       <div className="flex w-full flex-col gap-1 text-left">
         {label && (
           <label className="flex items-center justify-between text-[11px] font-semibold text-[var(--kde-muted)]">
-            <span>{label}</span>
+            <span>
+              <AutoMath>{label}</AutoMath>
+            </span>
             {error && (
               <span className="font-normal text-rose-600 dark:text-rose-400">
                 {error}

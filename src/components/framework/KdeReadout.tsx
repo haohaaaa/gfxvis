@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import AutoMath from "./AutoMath";
 
 export type KdeReadoutVariant =
   | "default"
@@ -63,7 +64,7 @@ export default function KdeReadout({
     >
       <div className="flex items-center justify-between gap-1.5 border-b border-[var(--kde-border)]/40 pb-1">
         <span className="truncate text-[11px] font-medium text-[var(--kde-muted)]">
-          {label}
+          <AutoMath>{label}</AutoMath>
         </span>
         {badge}
       </div>
@@ -71,12 +72,12 @@ export default function KdeReadout({
       <div
         className={`mt-1 min-w-0 overflow-x-auto overflow-y-hidden py-1 leading-normal font-mono text-xs ${VARIANT_VALUE_CLASSES[variant]}`}
       >
-        {value}
+        <AutoMath>{value}</AutoMath>
       </div>
 
       {subValue && (
         <div className="mt-1 text-[10px] text-[var(--kde-muted)]">
-          {subValue}
+          <AutoMath>{subValue}</AutoMath>
         </div>
       )}
     </div>

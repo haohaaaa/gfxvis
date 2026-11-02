@@ -162,6 +162,7 @@ export function drawArrow(
   if (len < 1e-6) return;
   const ux = dx / len;
   const uy = dy / len;
+  ctx.save();
   ctx.strokeStyle = color;
   ctx.fillStyle = color;
   ctx.lineWidth = lineWidth;
@@ -183,6 +184,7 @@ export function drawArrow(
   );
   ctx.closePath();
   ctx.fill();
+  ctx.restore();
 }
 
 function arrowHead(
@@ -214,6 +216,7 @@ export function drawAxes(
   xLabel = "x",
   yLabel = "y",
 ): void {
+  ctx.save();
   const { margin, width, height } = plot;
   const left = margin;
   const right = width - margin;
@@ -274,6 +277,7 @@ export function drawAxes(
   ctx.font = "bold 12px ui-sans-serif, system-ui, sans-serif";
   ctx.fillText(xLabel, right + 14, sy0 - 8);
   ctx.fillText(yLabel, sx0 + 10, top - 12);
+  ctx.restore();
 }
 
 /** Draw automatically calculated adaptive axes with dynamic nice ticks and grid. */
@@ -410,6 +414,7 @@ export function drawPolyline(
 ): void {
   if (pts.length === 0) return;
   const { color = "#0f172a", width = 1.6, dash = [], alpha = 1 } = style;
+  ctx.save();
   ctx.globalAlpha = alpha;
   ctx.strokeStyle = color;
   ctx.lineWidth = width;
@@ -422,8 +427,7 @@ export function drawPolyline(
     else ctx.lineTo(sx, sy);
   });
   ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.globalAlpha = 1;
+  ctx.restore();
 }
 
 export interface PointStyle {
@@ -444,6 +448,7 @@ export function drawPoint(
   const { color = "#0f172a", filled = true, radius = 6, width = 2 } = style;
   const sx = plot.toScreenX(x);
   const sy = plot.toScreenY(y);
+  ctx.save();
   ctx.beginPath();
   ctx.arc(sx, sy, radius, 0, Math.PI * 2);
   ctx.fillStyle = filled ? color : readThemeColors().bg;
@@ -451,6 +456,7 @@ export function drawPoint(
   ctx.strokeStyle = color;
   ctx.lineWidth = width;
   ctx.stroke();
+  ctx.restore();
 }
 
 /** Draw a small solid dot in screen pixel coordinates. */
@@ -486,6 +492,7 @@ export function drawSegment(
   style: SegmentStyle = {},
 ): void {
   const { color = "#0f172a", width = 1.6, dash = [] } = style;
+  ctx.save();
   ctx.strokeStyle = color;
   ctx.lineWidth = width;
   ctx.setLineDash(dash);
@@ -493,7 +500,7 @@ export function drawSegment(
   ctx.moveTo(plot.toScreenX(x0), plot.toScreenY(y0));
   ctx.lineTo(plot.toScreenX(x1), plot.toScreenY(y1));
   ctx.stroke();
-  ctx.setLineDash([]);
+  ctx.restore();
 }
 
 export interface DragHandleOptions {

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { AutoMath } from "../framework/AutoMath";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import KdeWindowShell from "../framework/KdeWindowShell";
 import KdeCard from "../framework/KdeCard";
@@ -10,23 +9,23 @@ import PresetSelector, { type PresetOption } from "../framework/PresetSelector";
 const PRESETS: PresetOption[] = [
   {
     value: "stretch_x",
-    label: "水平单向拉伸 (Sx=2.2, Sy=0.8)",
-    description: "沿 x 轴大幅拉伸，导致原始法线向切向发生严重偏角",
+    label: "水平单向拉伸 ($S_x=2.2, S_y=0.8$)",
+    description: "沿 $x$ 轴大幅拉伸，导致原始法线向切向发生严重偏角",
   },
   {
     value: "shear_stretch",
-    label: "剪切与缩放结合 (Sx=1.8, kx=0.8)",
-    description: "引入剪切形变 kx，法线失真极其显著",
+    label: "剪切与缩放结合 ($S_x=1.8, k_x=0.8$)",
+    description: "引入剪切形变 $k_x$，法线失真极其显著",
   },
   {
     value: "uniform",
-    label: "等比缩放 (Sx=1.5, Sy=1.5)",
-    description: "正交各向同性缩放，直接用 M 变换法线恰好保角（特例）",
+    label: "等比缩放 ($S_x=1.5, S_y=1.5$)",
+    description: "正交各向同性缩放，直接用 $M$ 变换法线恰好保角（特例）",
   },
   {
     value: "compress_x",
-    label: "水平压缩 (Sx=0.6, Sy=1.6)",
-    description: "沿 x 轴挤压，表面坡度变陡峭",
+    label: "水平压缩 ($S_x=0.6, S_y=1.6$)",
+    description: "沿 $x$ 轴挤压，表面坡度变陡峭",
   },
 ];
 
@@ -118,446 +117,447 @@ export default function NormalMatrixTransformDiagram() {
   const scalePx = 45;
 
   return (
-    <AutoMath>
-      <ExpandableDemo id="normal-matrix-transform-diagram">
-        <KdeWindowShell
-          title="非等比几何变换下的表面法线矩阵纠偏模型"
-          eyebrow="3D 渲染管线与微分几何"
-          mark="NORM"
-          modeTag="逆转置对偶协变"
-          display={
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              {/* Panel 1: Original */}
-              <div className="flex flex-col rounded-xl border border-blue-500/30 bg-blue-500/5 p-3 text-center">
-                <div className="flex items-center justify-between border-b border-blue-500/20 pb-1.5">
-                  <span className="text-xs font-bold text-blue-500 uppercase tracking-wide">
-                    1. 原始几何表面
-                  </span>
-                  <span className="rounded bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-blue-500">
-                    θ = 90.0°
-                  </span>
-                </div>
-
-                {/* SVG Canvas */}
-                <div className="relative my-2 flex items-center justify-center">
-                  <svg
-                    viewBox={`0 0 ${svgW} ${svgH}`}
-                    className="h-36 w-full max-w-[200px]"
-                  >
-                    {/* Grid / Axes */}
-                    <line
-                      x1={15}
-                      y1={oy}
-                      x2={svgW - 15}
-                      y2={oy}
-                      stroke="currentColor"
-                      className="text-border"
-                      strokeDasharray="2 2"
-                    />
-                    <line
-                      x1={ox}
-                      y1={15}
-                      x2={ox}
-                      y2={svgH - 15}
-                      stroke="currentColor"
-                      className="text-border"
-                      strokeDasharray="2 2"
-                    />
-
-                    {/* Surface line */}
-                    <line
-                      x1={ox - t0.x * scalePx * 1.3}
-                      y1={oy + t0.y * scalePx * 1.3}
-                      x2={ox + t0.x * scalePx * 1.3}
-                      y2={oy - t0.y * scalePx * 1.3}
-                      stroke="#64748b"
-                      strokeWidth={2}
-                    />
-
-                    {/* Tangent vector t (Blue) */}
-                    <defs>
-                      <marker
-                        id="arrow-tangent"
-                        viewBox="0 0 10 10"
-                        refX="6"
-                        refY="5"
-                        markerWidth="5"
-                        markerHeight="5"
-                        orient="auto-start-reverse"
-                      >
-                        <path d="M 0 1 L 8 5 L 0 9 z" fill="#2563eb" />
-                      </marker>
-                      <marker
-                        id="arrow-normal-orig"
-                        viewBox="0 0 10 10"
-                        refX="6"
-                        refY="5"
-                        markerWidth="5"
-                        markerHeight="5"
-                        orient="auto-start-reverse"
-                      >
-                        <path d="M 0 1 L 8 5 L 0 9 z" fill="#059669" />
-                      </marker>
-                      <marker
-                        id="arrow-normal-wrong"
-                        viewBox="0 0 10 10"
-                        refX="6"
-                        refY="5"
-                        markerWidth="5"
-                        markerHeight="5"
-                        orient="auto-start-reverse"
-                      >
-                        <path d="M 0 1 L 8 5 L 0 9 z" fill="#dc2626" />
-                      </marker>
-                      <marker
-                        id="arrow-normal-correct"
-                        viewBox="0 0 10 10"
-                        refX="6"
-                        refY="5"
-                        markerWidth="5"
-                        markerHeight="5"
-                        orient="auto-start-reverse"
-                      >
-                        <path d="M 0 1 L 8 5 L 0 9 z" fill="#059669" />
-                      </marker>
-                    </defs>
-
-                    <line
-                      x1={ox}
-                      y1={oy}
-                      x2={ox + t0.x * scalePx}
-                      y2={oy - t0.y * scalePx}
-                      stroke="#2563eb"
-                      strokeWidth={2.5}
-                      markerEnd="url(#arrow-tangent)"
-                    />
-                    <text
-                      x={ox + t0.x * scalePx + 6}
-                      y={oy - t0.y * scalePx + 4}
-                      className="text-[10px] font-bold fill-blue-600 dark:fill-blue-400"
-                    >
-                      t
-                    </text>
-
-                    {/* Normal vector n (Emerald) */}
-                    <line
-                      x1={ox}
-                      y1={oy}
-                      x2={ox + n0.x * scalePx}
-                      y2={oy - n0.y * scalePx}
-                      stroke="#059669"
-                      strokeWidth={2.5}
-                      markerEnd="url(#arrow-normal-orig)"
-                    />
-                    <text
-                      x={ox + n0.x * scalePx - 10}
-                      y={oy - n0.y * scalePx - 4}
-                      className="text-[10px] font-bold fill-emerald-600 dark:fill-emerald-400"
-                    >
-                      n
-                    </text>
-
-                    {/* Orthogonal symbol */}
-                    <rect
-                      x={ox + 2}
-                      y={oy - 8}
-                      width={6}
-                      height={6}
-                      fill="none"
-                      stroke="#059669"
-                      strokeWidth={1}
-                      transform={`rotate(${-28}, ${ox}, ${oy})`}
-                    />
-                  </svg>
-                </div>
-
-                <div className="font-mono text-[11px] text-muted space-y-0.5">
-                  <p>切向量 {"$\\mathbf{t} = (0.88, 0.47)^\\top$"}</p>
-                  <p>法向量 {"$\\mathbf{n} = (-0.47, 0.88)^\\top$"}</p>
-                  <p className="font-semibold text-emerald-600 dark:text-emerald-400 pt-1 border-t border-border/40">
-                    点积检验：
-                    {"$\\mathbf{n}^\\top \\mathbf{t} = 0.00$"} (严格垂直)
-                  </p>
-                </div>
+    <ExpandableDemo id="normal-matrix-transform-diagram">
+      <KdeWindowShell
+        title="非等比几何变换下的表面法线矩阵纠偏模型"
+        eyebrow="3D 渲染管线与微分几何"
+        mark="NORM"
+        modeTag="逆转置对偶协变"
+        display={
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {/* Panel 1: Original */}
+            <div className="flex flex-col rounded-xl border border-blue-500/30 bg-blue-500/5 p-3 text-center">
+              <div className="flex items-center justify-between border-b border-blue-500/20 pb-1.5">
+                <span className="text-xs font-bold text-blue-500 uppercase tracking-wide">
+                  1. 原始几何表面
+                </span>
+                <span className="rounded bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-blue-500">
+                  θ = 90.0°
+                </span>
               </div>
 
-              {/* Panel 2: Incorrect M * n */}
-              <div className="flex flex-col rounded-xl border border-red-500/40 bg-red-500/5 p-3 text-center">
-                <div className="flex items-center justify-between border-b border-red-500/20 pb-1.5">
-                  <span className="text-xs font-bold text-red-500 uppercase tracking-wide">
-                    2. 错误: 直接用 M 变换法线
-                  </span>
-                  <span className="rounded bg-red-500/10 px-1.5 py-0.5 text-[10px] font-bold text-red-500">
-                    θ = {fmt(angleWrongDeg)}°
-                  </span>
-                </div>
+              {/* SVG Canvas */}
+              <div className="relative my-2 flex items-center justify-center">
+                <svg
+                  viewBox={`0 0 ${svgW} ${svgH}`}
+                  className="h-36 w-full max-w-[200px]"
+                >
+                  {/* Grid / Axes */}
+                  <line
+                    x1={15}
+                    y1={oy}
+                    x2={svgW - 15}
+                    y2={oy}
+                    stroke="currentColor"
+                    className="text-border"
+                    strokeDasharray="2 2"
+                  />
+                  <line
+                    x1={ox}
+                    y1={15}
+                    x2={ox}
+                    y2={svgH - 15}
+                    stroke="currentColor"
+                    className="text-border"
+                    strokeDasharray="2 2"
+                  />
 
-                {/* SVG Canvas */}
-                <div className="relative my-2 flex items-center justify-center">
-                  <svg
-                    viewBox={`0 0 ${svgW} ${svgH}`}
-                    className="h-36 w-full max-w-[200px]"
+                  {/* Surface line */}
+                  <line
+                    x1={ox - t0.x * scalePx * 1.3}
+                    y1={oy + t0.y * scalePx * 1.3}
+                    x2={ox + t0.x * scalePx * 1.3}
+                    y2={oy - t0.y * scalePx * 1.3}
+                    stroke="#64748b"
+                    strokeWidth={2}
+                  />
+
+                  {/* Tangent vector t (Blue) */}
+                  <defs>
+                    <marker
+                      id="arrow-tangent"
+                      viewBox="0 0 10 10"
+                      refX="6"
+                      refY="5"
+                      markerWidth="5"
+                      markerHeight="5"
+                      orient="auto-start-reverse"
+                    >
+                      <path d="M 0 1 L 8 5 L 0 9 z" fill="#2563eb" />
+                    </marker>
+                    <marker
+                      id="arrow-normal-orig"
+                      viewBox="0 0 10 10"
+                      refX="6"
+                      refY="5"
+                      markerWidth="5"
+                      markerHeight="5"
+                      orient="auto-start-reverse"
+                    >
+                      <path d="M 0 1 L 8 5 L 0 9 z" fill="#059669" />
+                    </marker>
+                    <marker
+                      id="arrow-normal-wrong"
+                      viewBox="0 0 10 10"
+                      refX="6"
+                      refY="5"
+                      markerWidth="5"
+                      markerHeight="5"
+                      orient="auto-start-reverse"
+                    >
+                      <path d="M 0 1 L 8 5 L 0 9 z" fill="#dc2626" />
+                    </marker>
+                    <marker
+                      id="arrow-normal-correct"
+                      viewBox="0 0 10 10"
+                      refX="6"
+                      refY="5"
+                      markerWidth="5"
+                      markerHeight="5"
+                      orient="auto-start-reverse"
+                    >
+                      <path d="M 0 1 L 8 5 L 0 9 z" fill="#059669" />
+                    </marker>
+                  </defs>
+
+                  <line
+                    x1={ox}
+                    y1={oy}
+                    x2={ox + t0.x * scalePx}
+                    y2={oy - t0.y * scalePx}
+                    stroke="#2563eb"
+                    strokeWidth={2.5}
+                    markerEnd="url(#arrow-tangent)"
+                  />
+                  <text
+                    x={ox + t0.x * scalePx + 6}
+                    y={oy - t0.y * scalePx + 4}
+                    className="text-[10px] font-bold fill-blue-600 dark:fill-blue-400"
                   >
-                    <line
-                      x1={15}
-                      y1={oy}
-                      x2={svgW - 15}
-                      y2={oy}
-                      stroke="currentColor"
-                      className="text-border"
-                      strokeDasharray="2 2"
-                    />
-                    <line
-                      x1={ox}
-                      y1={15}
-                      x2={ox}
-                      y2={svgH - 15}
-                      stroke="currentColor"
-                      className="text-border"
-                      strokeDasharray="2 2"
-                    />
+                    t
+                  </text>
 
-                    {/* Deformed surface line */}
-                    <line
-                      x1={ox - (tPrime.x / lenTPrime) * scalePx * 1.3}
-                      y1={oy + (tPrime.y / lenTPrime) * scalePx * 1.3}
-                      x2={ox + (tPrime.x / lenTPrime) * scalePx * 1.3}
-                      y2={oy - (tPrime.y / lenTPrime) * scalePx * 1.3}
-                      stroke="#64748b"
-                      strokeWidth={2}
-                    />
+                  {/* Normal vector n (Emerald) */}
+                  <line
+                    x1={ox}
+                    y1={oy}
+                    x2={ox + n0.x * scalePx}
+                    y2={oy - n0.y * scalePx}
+                    stroke="#059669"
+                    strokeWidth={2.5}
+                    markerEnd="url(#arrow-normal-orig)"
+                  />
+                  <text
+                    x={ox + n0.x * scalePx - 10}
+                    y={oy - n0.y * scalePx - 4}
+                    className="text-[10px] font-bold fill-emerald-600 dark:fill-emerald-400"
+                  >
+                    n
+                  </text>
 
-                    {/* Transformed Tangent t' (Blue) */}
-                    <line
-                      x1={ox}
-                      y1={oy}
-                      x2={ox + (tPrime.x / lenTPrime) * scalePx}
-                      y2={oy - (tPrime.y / lenTPrime) * scalePx}
-                      stroke="#2563eb"
-                      strokeWidth={2.5}
-                      markerEnd="url(#arrow-tangent)"
-                    />
-                    <text
-                      x={ox + (tPrime.x / lenTPrime) * scalePx + 6}
-                      y={oy - (tPrime.y / lenTPrime) * scalePx + 4}
-                      className="text-[10px] font-bold fill-blue-600 dark:fill-blue-400"
-                    >
-                      t' = Mt
-                    </text>
-
-                    {/* Wrong transformed normal (Red) */}
-                    <line
-                      x1={ox}
-                      y1={oy}
-                      x2={ox + (nWrong.x / lenNWrong) * scalePx}
-                      y2={oy - (nWrong.y / lenNWrong) * scalePx}
-                      stroke="#dc2626"
-                      strokeWidth={2.5}
-                      markerEnd="url(#arrow-normal-wrong)"
-                    />
-                    <text
-                      x={ox + (nWrong.x / lenNWrong) * scalePx - 16}
-                      y={oy - (nWrong.y / lenNWrong) * scalePx - 4}
-                      className="text-[10px] font-bold fill-red-600 dark:fill-red-400"
-                    >
-                      n' = Mn
-                    </text>
-                  </svg>
-                </div>
-
-                <div className="font-mono text-[11px] text-muted space-y-0.5">
-                  <p>
-                    变换切向{" "}
-                    {`$\\mathbf{t}' = (${fmt(tPrime.x)},\\, ${fmt(tPrime.y)})$`}
-                  </p>
-                  <p>
-                    错误法向{" "}
-                    {`$\\mathbf{n}' = (${fmt(nWrong.x)},\\, ${fmt(nWrong.y)})$`}
-                  </p>
-                  <p className="font-semibold text-red-600 dark:text-red-400 pt-1 border-t border-border/40">
-                    点积检验：
-                    {`$\\mathbf{n}'^\\top \\mathbf{t}' = ${fmt(dotWrong)}$`} (✕
-                    不再垂直!)
-                  </p>
-                </div>
+                  {/* Orthogonal symbol */}
+                  <rect
+                    x={ox + 2}
+                    y={oy - 8}
+                    width={6}
+                    height={6}
+                    fill="none"
+                    stroke="#059669"
+                    strokeWidth={1}
+                    transform={`rotate(${-28}, ${ox}, ${oy})`}
+                  />
+                </svg>
               </div>
 
-              {/* Panel 3: Correct (M^-1)^T * n */}
-              <div className="flex flex-col rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-3 text-center">
-                <div className="flex items-center justify-between border-b border-emerald-500/20 pb-1.5">
-                  <span className="text-xs font-bold text-emerald-500 uppercase tracking-wide">
-                    3. 正确: 用 (M⁻¹)ᵀ 变换法线
-                  </span>
-                  <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                    θ = {fmt(angleCorrectDeg)}°
-                  </span>
-                </div>
-
-                {/* SVG Canvas */}
-                <div className="relative my-2 flex items-center justify-center">
-                  <svg
-                    viewBox={`0 0 ${svgW} ${svgH}`}
-                    className="h-36 w-full max-w-[200px]"
-                  >
-                    <line
-                      x1={15}
-                      y1={oy}
-                      x2={svgW - 15}
-                      y2={oy}
-                      stroke="currentColor"
-                      className="text-border"
-                      strokeDasharray="2 2"
-                    />
-                    <line
-                      x1={ox}
-                      y1={15}
-                      x2={ox}
-                      y2={svgH - 15}
-                      stroke="currentColor"
-                      className="text-border"
-                      strokeDasharray="2 2"
-                    />
-
-                    {/* Deformed surface line */}
-                    <line
-                      x1={ox - (tPrime.x / lenTPrime) * scalePx * 1.3}
-                      y1={oy + (tPrime.y / lenTPrime) * scalePx * 1.3}
-                      x2={ox + (tPrime.x / lenTPrime) * scalePx * 1.3}
-                      y2={oy - (tPrime.y / lenTPrime) * scalePx * 1.3}
-                      stroke="#64748b"
-                      strokeWidth={2}
-                    />
-
-                    {/* Transformed Tangent t' (Blue) */}
-                    <line
-                      x1={ox}
-                      y1={oy}
-                      x2={ox + (tPrime.x / lenTPrime) * scalePx}
-                      y2={oy - (tPrime.y / lenTPrime) * scalePx}
-                      stroke="#2563eb"
-                      strokeWidth={2.5}
-                      markerEnd="url(#arrow-tangent)"
-                    />
-                    <text
-                      x={ox + (tPrime.x / lenTPrime) * scalePx + 6}
-                      y={oy - (tPrime.y / lenTPrime) * scalePx + 4}
-                      className="text-[10px] font-bold fill-blue-600 dark:fill-blue-400"
-                    >
-                      t' = Mt
-                    </text>
-
-                    {/* Correct transformed normal (Emerald) */}
-                    <line
-                      x1={ox}
-                      y1={oy}
-                      x2={ox + (nCorrect.x / lenNCorrect) * scalePx}
-                      y2={oy - (nCorrect.y / lenNCorrect) * scalePx}
-                      stroke="#059669"
-                      strokeWidth={2.5}
-                      markerEnd="url(#arrow-normal-correct)"
-                    />
-                    <text
-                      x={ox + (nCorrect.x / lenNCorrect) * scalePx - 24}
-                      y={oy - (nCorrect.y / lenNCorrect) * scalePx - 4}
-                      className="text-[10px] font-bold fill-emerald-600 dark:fill-emerald-400"
-                    >
-                      n' = M⁻ᵀn
-                    </text>
-                  </svg>
-                </div>
-
-                <div className="font-mono text-[11px] text-muted space-y-0.5">
-                  <p>
-                    变换切向{" "}
-                    {`$\\mathbf{t}' = (${fmt(tPrime.x)},\\, ${fmt(tPrime.y)})$`}
-                  </p>
-                  <p>
-                    逆转置法向{" "}
-                    {`$\\mathbf{n}' = (${fmt(nCorrect.x)},\\, ${fmt(nCorrect.y)})$`}
-                  </p>
-                  <p className="font-semibold text-emerald-600 dark:text-emerald-400 pt-1 border-t border-border/40">
-                    点积检验：
-                    {`$\\mathbf{n}'^\\top \\mathbf{t}' = ${fmt(dotCorrect)}$`}{" "}
-                    (✓ 恢复正交!)
-                  </p>
-                </div>
-              </div>
-            </div>
-          }
-          controls={
-            <div className="space-y-3">
-              <KdeCard title="模型变换矩阵 M 预设" variant="dense">
-                <PresetSelector
-                  options={PRESETS}
-                  value={presetKey}
-                  onChange={handlePreset}
-                  size="xs"
-                />
-                <p className="mt-2 text-[11px] text-muted leading-relaxed">
-                  {PRESETS.find((p) => p.value === presetKey)?.description}
+              <div className="font-mono text-[11px] text-muted space-y-0.5">
+                <p>切向量 {"$\\mathbf{t} = (0.88, 0.47)^\\top$"}</p>
+                <p>法向量 {"$\\mathbf{n} = (-0.47, 0.88)^\\top$"}</p>
+                <p className="font-semibold text-emerald-600 dark:text-emerald-400 pt-1 border-t border-border/40">
+                  点积检验：
+                  {"$\\mathbf{n}^\\top \\mathbf{t} = 0.00$"} (严格垂直)
                 </p>
-              </KdeCard>
-
-              <KdeCard title="变换参数调节" variant="dense">
-                <div className="grid gap-2 sm:grid-cols-3">
-                  <ParamSlider
-                    label="Sx (水平缩放)"
-                    value={sx}
-                    min={0.4}
-                    max={3.0}
-                    step={0.1}
-                    onChange={(val) => {
-                      setSx(val);
-                      setPresetKey("custom");
-                    }}
-                  />
-                  <ParamSlider
-                    label="Sy (垂直缩放)"
-                    value={sy}
-                    min={0.4}
-                    max={3.0}
-                    step={0.1}
-                    onChange={(val) => {
-                      setSy(val);
-                      setPresetKey("custom");
-                    }}
-                  />
-                  <ParamSlider
-                    label="kx (水平剪切)"
-                    value={kx}
-                    min={-1.2}
-                    max={1.2}
-                    step={0.1}
-                    onChange={(val) => {
-                      setKx(val);
-                      setPresetKey("custom");
-                    }}
-                  />
-                </div>
-              </KdeCard>
-
-              <KdeCard title="正交性与夹角检验" variant="dense">
-                <div className="grid grid-cols-2 gap-2">
-                  <KdeReadout
-                    label="错误法线点积 n' · t'"
-                    value={fmt(dotWrong)}
-                    subValue={`夹角: ${angleWrongDeg.toFixed(1)}°`}
-                    variant={Math.abs(dotWrong) > 0.05 ? "danger" : "default"}
-                    dense
-                  />
-                  <KdeReadout
-                    label="逆转置法线点积 n' · t'"
-                    value={fmt(dotCorrect)}
-                    subValue={`夹角: ${angleCorrectDeg.toFixed(1)}°`}
-                    variant="success"
-                    dense
-                  />
-                </div>
-              </KdeCard>
+              </div>
             </div>
-          }
-        />
-      </ExpandableDemo>
-    </AutoMath>
+
+            {/* Panel 2: Incorrect M * n */}
+            <div className="flex flex-col rounded-xl border border-red-500/40 bg-red-500/5 p-3 text-center">
+              <div className="flex items-center justify-between border-b border-red-500/20 pb-1.5">
+                <span className="text-xs font-bold text-red-500 uppercase tracking-wide">
+                  2. 错误: 直接用 M 变换法线
+                </span>
+                <span className="rounded bg-red-500/10 px-1.5 py-0.5 text-[10px] font-bold text-red-500">
+                  θ = {fmt(angleWrongDeg)}°
+                </span>
+              </div>
+
+              {/* SVG Canvas */}
+              <div className="relative my-2 flex items-center justify-center">
+                <svg
+                  viewBox={`0 0 ${svgW} ${svgH}`}
+                  className="h-36 w-full max-w-[200px]"
+                >
+                  <line
+                    x1={15}
+                    y1={oy}
+                    x2={svgW - 15}
+                    y2={oy}
+                    stroke="currentColor"
+                    className="text-border"
+                    strokeDasharray="2 2"
+                  />
+                  <line
+                    x1={ox}
+                    y1={15}
+                    x2={ox}
+                    y2={svgH - 15}
+                    stroke="currentColor"
+                    className="text-border"
+                    strokeDasharray="2 2"
+                  />
+
+                  {/* Deformed surface line */}
+                  <line
+                    x1={ox - (tPrime.x / lenTPrime) * scalePx * 1.3}
+                    y1={oy + (tPrime.y / lenTPrime) * scalePx * 1.3}
+                    x2={ox + (tPrime.x / lenTPrime) * scalePx * 1.3}
+                    y2={oy - (tPrime.y / lenTPrime) * scalePx * 1.3}
+                    stroke="#64748b"
+                    strokeWidth={2}
+                  />
+
+                  {/* Transformed Tangent t' (Blue) */}
+                  <line
+                    x1={ox}
+                    y1={oy}
+                    x2={ox + (tPrime.x / lenTPrime) * scalePx}
+                    y2={oy - (tPrime.y / lenTPrime) * scalePx}
+                    stroke="#2563eb"
+                    strokeWidth={2.5}
+                    markerEnd="url(#arrow-tangent)"
+                  />
+                  <text
+                    x={ox + (tPrime.x / lenTPrime) * scalePx + 6}
+                    y={oy - (tPrime.y / lenTPrime) * scalePx + 4}
+                    className="text-[10px] font-bold fill-blue-600 dark:fill-blue-400"
+                  >
+                    t' = Mt
+                  </text>
+
+                  {/* Wrong transformed normal (Red) */}
+                  <line
+                    x1={ox}
+                    y1={oy}
+                    x2={ox + (nWrong.x / lenNWrong) * scalePx}
+                    y2={oy - (nWrong.y / lenNWrong) * scalePx}
+                    stroke="#dc2626"
+                    strokeWidth={2.5}
+                    markerEnd="url(#arrow-normal-wrong)"
+                  />
+                  <text
+                    x={ox + (nWrong.x / lenNWrong) * scalePx - 16}
+                    y={oy - (nWrong.y / lenNWrong) * scalePx - 4}
+                    className="text-[10px] font-bold fill-red-600 dark:fill-red-400"
+                  >
+                    n' = Mn
+                  </text>
+                </svg>
+              </div>
+
+              <div className="font-mono text-[11px] text-muted space-y-0.5">
+                <p>
+                  变换切向{" "}
+                  {`$\\mathbf{t}' = (${fmt(tPrime.x)},\\, ${fmt(tPrime.y)})$`}
+                </p>
+                <p>
+                  错误法向{" "}
+                  {`$\\mathbf{n}' = (${fmt(nWrong.x)},\\, ${fmt(nWrong.y)})$`}
+                </p>
+                <p className="font-semibold text-red-600 dark:text-red-400 pt-1 border-t border-border/40">
+                  点积检验：
+                  {`$\\mathbf{n}'^\\top \\mathbf{t}' = ${fmt(dotWrong)}$`} (✕
+                  不再垂直!)
+                </p>
+              </div>
+            </div>
+
+            {/* Panel 3: Correct (M^-1)^T * n */}
+            <div className="flex flex-col rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-3 text-center">
+              <div className="flex items-center justify-between border-b border-emerald-500/20 pb-1.5">
+                <span className="text-xs font-bold text-emerald-500 uppercase tracking-wide">
+                  3. 正确: 用 (M⁻¹)ᵀ 变换法线
+                </span>
+                <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                  θ = {fmt(angleCorrectDeg)}°
+                </span>
+              </div>
+
+              {/* SVG Canvas */}
+              <div className="relative my-2 flex items-center justify-center">
+                <svg
+                  viewBox={`0 0 ${svgW} ${svgH}`}
+                  className="h-36 w-full max-w-[200px]"
+                >
+                  <line
+                    x1={15}
+                    y1={oy}
+                    x2={svgW - 15}
+                    y2={oy}
+                    stroke="currentColor"
+                    className="text-border"
+                    strokeDasharray="2 2"
+                  />
+                  <line
+                    x1={ox}
+                    y1={15}
+                    x2={ox}
+                    y2={svgH - 15}
+                    stroke="currentColor"
+                    className="text-border"
+                    strokeDasharray="2 2"
+                  />
+
+                  {/* Deformed surface line */}
+                  <line
+                    x1={ox - (tPrime.x / lenTPrime) * scalePx * 1.3}
+                    y1={oy + (tPrime.y / lenTPrime) * scalePx * 1.3}
+                    x2={ox + (tPrime.x / lenTPrime) * scalePx * 1.3}
+                    y2={oy - (tPrime.y / lenTPrime) * scalePx * 1.3}
+                    stroke="#64748b"
+                    strokeWidth={2}
+                  />
+
+                  {/* Transformed Tangent t' (Blue) */}
+                  <line
+                    x1={ox}
+                    y1={oy}
+                    x2={ox + (tPrime.x / lenTPrime) * scalePx}
+                    y2={oy - (tPrime.y / lenTPrime) * scalePx}
+                    stroke="#2563eb"
+                    strokeWidth={2.5}
+                    markerEnd="url(#arrow-tangent)"
+                  />
+                  <text
+                    x={ox + (tPrime.x / lenTPrime) * scalePx + 6}
+                    y={oy - (tPrime.y / lenTPrime) * scalePx + 4}
+                    className="text-[10px] font-bold fill-blue-600 dark:fill-blue-400"
+                  >
+                    t' = Mt
+                  </text>
+
+                  {/* Correct transformed normal (Emerald) */}
+                  <line
+                    x1={ox}
+                    y1={oy}
+                    x2={ox + (nCorrect.x / lenNCorrect) * scalePx}
+                    y2={oy - (nCorrect.y / lenNCorrect) * scalePx}
+                    stroke="#059669"
+                    strokeWidth={2.5}
+                    markerEnd="url(#arrow-normal-correct)"
+                  />
+                  <text
+                    x={ox + (nCorrect.x / lenNCorrect) * scalePx - 24}
+                    y={oy - (nCorrect.y / lenNCorrect) * scalePx - 4}
+                    className="text-[10px] font-bold fill-emerald-600 dark:fill-emerald-400"
+                  >
+                    n' = M⁻ᵀn
+                  </text>
+                </svg>
+              </div>
+
+              <div className="font-mono text-[11px] text-muted space-y-0.5">
+                <p>
+                  变换切向{" "}
+                  {`$\\mathbf{t}' = (${fmt(tPrime.x)},\\, ${fmt(tPrime.y)})$`}
+                </p>
+                <p>
+                  逆转置法向{" "}
+                  {`$\\mathbf{n}' = (${fmt(nCorrect.x)},\\, ${fmt(nCorrect.y)})$`}
+                </p>
+                <p className="font-semibold text-emerald-600 dark:text-emerald-400 pt-1 border-t border-border/40">
+                  点积检验：
+                  {`$\\mathbf{n}'^\\top \\mathbf{t}' = ${fmt(dotCorrect)}$`} (✓
+                  恢复正交!)
+                </p>
+              </div>
+            </div>
+          </div>
+        }
+        controls={
+          <div className="space-y-3">
+            <KdeCard title="模型变换矩阵 $M$ 预设" variant="dense">
+              <PresetSelector
+                options={PRESETS}
+                value={presetKey}
+                onChange={handlePreset}
+                size="xs"
+              />
+              <p className="mt-2 text-[11px] text-muted leading-relaxed">
+                {PRESETS.find((p) => p.value === presetKey)?.description}
+              </p>
+            </KdeCard>
+
+            <KdeCard title="变换参数调节" variant="dense">
+              <div className="space-y-2.5">
+                <ParamSlider
+                  labelMode="stacked"
+                  label="$S_x$ (水平缩放)"
+                  value={sx}
+                  min={0.4}
+                  max={3.0}
+                  step={0.1}
+                  onChange={(val) => {
+                    setSx(val);
+                    setPresetKey("custom");
+                  }}
+                />
+                <ParamSlider
+                  labelMode="stacked"
+                  label="$S_y$ (垂直缩放)"
+                  value={sy}
+                  min={0.4}
+                  max={3.0}
+                  step={0.1}
+                  onChange={(val) => {
+                    setSy(val);
+                    setPresetKey("custom");
+                  }}
+                />
+                <ParamSlider
+                  labelMode="stacked"
+                  label="$k_x$ (水平剪切)"
+                  value={kx}
+                  min={-1.2}
+                  max={1.2}
+                  step={0.1}
+                  onChange={(val) => {
+                    setKx(val);
+                    setPresetKey("custom");
+                  }}
+                />
+              </div>
+            </KdeCard>
+
+            <KdeCard title="正交性与夹角检验" variant="dense">
+              <div className="grid grid-cols-2 gap-2">
+                <KdeReadout
+                  label="错误法线点积 $\mathbf{n}' \cdot \mathbf{t}'$"
+                  value={fmt(dotWrong)}
+                  subValue={`夹角: ${angleWrongDeg.toFixed(1)}°`}
+                  variant={Math.abs(dotWrong) > 0.05 ? "danger" : "default"}
+                  dense
+                />
+                <KdeReadout
+                  label="逆转置法线点积 $\mathbf{n}' \cdot \mathbf{t}'$"
+                  value={fmt(dotCorrect)}
+                  subValue={`夹角: ${angleCorrectDeg.toFixed(1)}°`}
+                  variant="success"
+                  dense
+                />
+              </div>
+            </KdeCard>
+          </div>
+        }
+      />
+    </ExpandableDemo>
   );
 }

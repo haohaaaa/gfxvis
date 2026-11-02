@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { CSSProperties } from "react";
+import AutoMath from "./AutoMath";
 import "./InteractiveLayout.css";
 
 export type InteractiveLayoutPreset =
@@ -183,7 +184,7 @@ export default function InteractiveLayout({
             data-layout-region={region}
             aria-label={label}
           >
-            {value}
+            <AutoMath>{value}</AutoMath>
           </div>
         );
       })}

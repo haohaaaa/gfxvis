@@ -69,103 +69,113 @@ export default function KdeWindowShell({
   const finalDataFixedLayout = dataFixedLayoutKebab ?? dataFixedLayout;
 
   return (
-    <AutoMath>
-      <section
-        className={`kde-breeze-ui kde-window-shell ${className}`}
-        data-window-shell="kde"
-        data-style={finalDataStyle}
-        data-fixed-layout={finalDataFixedLayout}
-        data-instrument-console={channel}
-        data-testid={testId}
-      >
-        {/* Window Bar / Titlebar */}
-        <header className="kde-window-shell__windowbar">
-          <span className="kde-window-shell__mark" aria-hidden="true">
-            {mark}
+    <section
+      className={`kde-breeze-ui kde-window-shell ${className}`}
+      data-window-shell="kde"
+      data-style={finalDataStyle}
+      data-fixed-layout={finalDataFixedLayout}
+      data-instrument-console={channel}
+      data-testid={testId}
+    >
+      {/* Window Bar / Titlebar */}
+      <header className="kde-window-shell__windowbar">
+        <span className="kde-window-shell__mark" aria-hidden="true">
+          <AutoMath>{mark}</AutoMath>
+        </span>
+        <div className="kde-window-shell__heading">
+          <span
+            className="kde-window-shell__title"
+            role="heading"
+            aria-level={3}
+          >
+            <AutoMath>{title}</AutoMath>
           </span>
-          <div className="kde-window-shell__heading">
-            <h3 className="kde-window-shell__title">{title}</h3>
-            {eyebrow && (
-              <span className="kde-window-shell__context">{eyebrow}</span>
-            )}
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            <span className="kde-window-shell__mode" aria-hidden="true">
-              {modeTag}
+          {eyebrow && (
+            <span className="kde-window-shell__context">
+              <AutoMath>{eyebrow}</AutoMath>
             </span>
-            {canExpand && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  expandable?.toggleExpanded();
-                }}
-                onPointerDown={(e) => e.stopPropagation()}
-                className="cursor-pointer rounded-md border border-border/80 bg-surface/80 px-2 py-0.5 text-xs font-medium text-muted transition hover:border-accent hover:bg-accent/15 hover:text-accent active:scale-95"
-                aria-label="展开全屏演示"
-                title="展开全屏演示"
-              >
-                ⛶ 展开
-              </button>
-            )}
-          </div>
-        </header>
-
-        {/* Workspace Interior */}
-        <div className="kde-window-shell__workspace">
-          <InteractiveLayout
-            preset={layoutPreset}
-            top={
-              tabs ? (
-                <nav
-                  className="kde-window-shell__tabs-bar"
-                  aria-label={`${title} 模式`}
-                >
-                  {tabs}
-                </nav>
-              ) : undefined
-            }
-            navigation={navigation}
-            main={
-              children ??
-              (display ? (
-                <div
-                  className={`kde-window-shell__display ${displayClassName}`.trim()}
-                  aria-label={`${title} 显示区`}
-                >
-                  {display}
-                </div>
-              ) : (
-                <div
-                  className={`kde-window-shell__display ${displayClassName}`.trim()}
-                  aria-label={`${title} 显示区`}
-                />
-              ))
-            }
-            secondary={secondary}
-            side={
-              controls ? (
-                <aside
-                  className="kde-window-shell__controls-rack"
-                  aria-label={`${title} 控制面板`}
-                >
-                  {controls}
-                </aside>
-              ) : undefined
-            }
-            bottom={
-              bottomContent ? (
-                <div
-                  className="kde-window-shell__readouts"
-                  aria-label={`${title} 分析读数`}
-                >
-                  {bottomContent}
-                </div>
-              ) : undefined
-            }
-          />
+          )}
         </div>
-      </section>
-    </AutoMath>
+        <div className="ml-auto flex items-center gap-2">
+          <span className="kde-window-shell__mode" aria-hidden="true">
+            <AutoMath>{modeTag}</AutoMath>
+          </span>
+          {canExpand && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                expandable?.toggleExpanded();
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="cursor-pointer rounded-md border border-border/80 bg-surface/80 px-2 py-0.5 text-xs font-medium text-muted transition hover:border-accent hover:bg-accent/15 hover:text-accent active:scale-95"
+              aria-label="展开全屏演示"
+              title="展开全屏演示"
+            >
+              ⛶ 展开
+            </button>
+          )}
+        </div>
+      </header>
+
+      {/* Workspace Interior */}
+      <div className="kde-window-shell__workspace">
+        <InteractiveLayout
+          preset={layoutPreset}
+          top={
+            tabs ? (
+              <nav
+                className="kde-window-shell__tabs-bar"
+                aria-label={`${title} 模式`}
+              >
+                <AutoMath>{tabs}</AutoMath>
+              </nav>
+            ) : undefined
+          }
+          navigation={
+            navigation ? <AutoMath>{navigation}</AutoMath> : undefined
+          }
+          main={
+            <AutoMath>
+              {children ??
+                (display ? (
+                  <div
+                    className={`kde-window-shell__display ${displayClassName}`.trim()}
+                    aria-label={`${title} 显示区`}
+                  >
+                    {display}
+                  </div>
+                ) : (
+                  <div
+                    className={`kde-window-shell__display ${displayClassName}`.trim()}
+                    aria-label={`${title} 显示区`}
+                  />
+                ))}
+            </AutoMath>
+          }
+          secondary={secondary ? <AutoMath>{secondary}</AutoMath> : undefined}
+          side={
+            controls ? (
+              <aside
+                className="kde-window-shell__controls-rack"
+                aria-label={`${title} 控制面板`}
+              >
+                <AutoMath>{controls}</AutoMath>
+              </aside>
+            ) : undefined
+          }
+          bottom={
+            bottomContent ? (
+              <div
+                className="kde-window-shell__readouts"
+                aria-label={`${title} 分析读数`}
+              >
+                <AutoMath>{bottomContent}</AutoMath>
+              </div>
+            ) : undefined
+          }
+        />
+      </div>
+    </section>
   );
 }

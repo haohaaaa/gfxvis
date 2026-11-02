@@ -115,6 +115,21 @@ $$
 
 这个表达式最初可在 $w\ne0$ 时按除法理解。将多项式展开并消去分母后，它成为所有变量上的多项式，因此也能在 $w=0$ 时求值。
 
+当 $w\ne0$、$\lambda\ne0$ 时，直接计算可得
+
+$$
+\begin{aligned}
+F(\lambda x_1,\ldots,\lambda x_n,\lambda w)
+&=(\lambda w)^d
+f\left(\frac{\lambda x_1}{\lambda w},\ldots,\frac{\lambda x_n}{\lambda w}\right)\\
+&=\lambda^d w^d
+f\left(\frac{x_1}{w},\ldots,\frac{x_n}{w}\right)\\
+&=\lambda^d F(x_1,\ldots,x_n,w).
+\end{aligned}
+$$
+
+因此，$F$ 在 $w\ne0$ 时满足 $d$ 次齐次性。下面展开各项，说明分母如何消去，以及这一结论如何延伸到 $w=0$。
+
 具体地，一个总次数为 $k$ 的单项式
 
 $$
@@ -122,13 +137,28 @@ cX_1^{\alpha_1}\cdots X_n^{\alpha_n},
 \qquad \alpha_1+\cdots+\alpha_n=k,
 $$
 
-会变成
+代入比值并乘以 $w^d$ 后，逐步整理为
 
 $$
-cx_1^{\alpha_1}\cdots x_n^{\alpha_n}w^{d-k}.
+\begin{aligned}
+&c\left(\frac{x_1}{w}\right)^{\alpha_1}\cdots
+\left(\frac{x_n}{w}\right)^{\alpha_n}w^d\\
+&\quad=cx_1^{\alpha_1}\cdots x_n^{\alpha_n}
+w^{-\alpha_1}\cdots w^{-\alpha_n}w^d\\
+&\quad=cx_1^{\alpha_1}\cdots x_n^{\alpha_n}w^{-k}w^d\\
+&\quad=cx_1^{\alpha_1}\cdots x_n^{\alpha_n}w^{d-k}.
+\end{aligned}
 $$
 
-各项总次数现在都等于 $d$，并且
+由于 $d$ 是原多项式的总次数，每一项都满足 $k\le d$，所以 $w$ 的指数 $d-k$ 非负，分母全部消去，结果确实是一个多项式。这一项的总次数为
+
+$$
+\alpha_1+\cdots+\alpha_n+(d-k)
+=k+d-k
+=d.
+$$
+
+因此，展开后的各项总次数都等于 $d$，$F$ 是 $d$ 次齐次多项式，齐次性在 $w=0$ 时也成立，并且
 
 $$
 F(X_1,\ldots,X_n,1)=f(X_1,\ldots,X_n).
@@ -296,7 +326,7 @@ $$
 [2:4:6]=[1:2:3].
 $$
 
-因此，“齐次坐标”指的是<strong>尺度等价的坐标表示</strong>，不能简单理解成“在普通坐标后面补一个 $1$”。
+因此，“齐次坐标”指的是<strong>尺度等价的坐标表示</strong>，只在整体比例意义下有定义。
 
 ### 2.4 为什么齐次方程能定义射影对象
 
@@ -480,32 +510,55 @@ $$
 
 ### 3.5 一般射影空间与多张仿射图
 
-在 $\mathbb P^n$ 中采用坐标 $[x_1:\cdots:x_n:w]$，定义
+更一般地，在 $\mathbb P^n$ 中采用齐次坐标 $[x_0:\cdots:x_n]$，任取一个坐标 $x_i$，定义
 
 $$
-U_w=\{[x_1:\cdots:x_n:w]:w\ne0\}.
+U_i=\{[x_0:\cdots:x_n]:x_i\ne0\}.
 $$
 
-映射
+对应的坐标映射为
 
 $$
-\chi_w:U_w\longrightarrow\mathbb R^n,\qquad
-[x_1:\cdots:x_n:w]\longmapsto
-\left(\frac{x_1}{w},\ldots,\frac{x_n}{w}\right)
+\chi_i:U_i\longrightarrow\mathbb R^n,\qquad
+[x_0:\cdots:x_n]\longmapsto
+\left(\frac{x_j}{x_i}\right)_{j\ne i},
 $$
 
-是一一对应，其逆映射为
+其中分量按 $j$ 递增排列，并略去第 $i$ 个坐标。它的逆映射是
 
 $$
-(X_1,\ldots,X_n)\longmapsto[X_1:\cdots:X_n:1].
+\chi_i^{-1}:\mathbb R^n\longrightarrow U_i,\qquad
+(X_j)_{j\ne i}\longmapsto[Z_0:\cdots:Z_n],\qquad
+Z_i=1,\quad Z_j=X_j\ (j\ne i).
 $$
 
-这称为一张<strong>仿射图（affine chart）</strong>。其补集 $H_\infty=\{w=0\}$ 是无穷远超平面。当 $n\ge1$ 时，
+由于齐次坐标只确定到共同的非零比例，$x_i\ne0$ 时总能且只能缩放到 $x_i=1$。在齐次坐标向量所在的 $\mathbb R^{n+1}$ 中，$\Sigma_i=\{(x_0,\ldots,x_n):x_i=1\}$ 是一张仿射超平面。每个射影点 $p\in U_i$ 对应一条过原点的一维线性子空间 $\ell_p\subset\mathbb R^{n+1}$；由于 $p\in U_i$，这条子空间与 $\Sigma_i$ 恰好相交于一点。因此，$U_i$ 中的点与 $\mathbb R^n$ 中的有限坐标可以通过 $\chi_i$ 和 $\chi_i^{-1}$ 双向且唯一地转换。这里的“有限”相对于所选的图 $U_i$：补集 $x_i=0$ 中的点在这张仿射图里没有有限坐标，改用另一张仿射图后，有限与无穷远的判断也可能改变。
+
+这样的坐标区域连同坐标映射称为一张<strong>仿射图（affine chart）</strong>。例如，采用常见坐标 $[x_1:\cdots:x_n:w]$ 并选最后一个坐标 $w$ 时，
+
+$$
+U_w=\{[x_1:\cdots:x_n:w]:w\ne0\},
+$$
+
+$$
+\chi_w([x_1:\cdots:x_n:w])=\left(\frac{x_1}{w},\ldots,\frac{x_n}{w}\right),\qquad
+\chi_w^{-1}(X_1,\ldots,X_n)=[X_1:\cdots:X_n:1].
+$$
+
+在此记法下，代表元中的 $w=1$ 正是仿射超平面 $\Sigma_w=\{(x_1,\ldots,x_n,w)\in\mathbb R^{n+1}:w=1\}$；它为 $U_w$ 中每个射影点选出唯一代表。其补集 $H_\infty=\{w=0\}$ 是无穷远超平面。当 $n\ge1$ 时，
 
 $$
 H_\infty\cong\mathbb P^{n-1},\qquad
 \mathbb P^n=U_w\sqcup H_\infty.
 $$
+
+所有这些仿射图共同覆盖 $\mathbb P^n$：
+
+$$
+\mathbb P^n=U_0\cup\cdots\cup U_n,
+$$
+
+因为合法齐次坐标至少有一个非零分量。
 
 $w$ 并不天生特殊。在 $\mathbb P^2$ 中，还可以选
 
@@ -1082,7 +1135,38 @@ $$
 \boxed{\dim\mathbb P(W)=k=\dim W-1.}
 $$
 
-可以用局部坐标理解这个减少的自由度：取 $W$ 的一组基 $\mathbf u_0,\ldots,\mathbf u_k$，非零向量有 $k+1$ 个基坐标；在某个坐标不为零的区域，将它归一化为 $1$，其余 $k$ 个比值就描述了该区域的所有射影点。整体尺度不再是独立自由度。
+这个维数关系可以从抽象的自由度与具体的坐标两方面理解。
+
+<strong>第一种解释：尺度等价关系消去一个自由度。</strong>$W$ 中的非零向量原本有 $k+1$ 个自由度。构造射影空间时，要求所有相差整体非零倍数的向量表示同一个点：
+
+$$
+\mathbf w\sim\lambda\mathbf w,
+\qquad\lambda\ne0.
+$$
+
+等价关系将这一整族代表识别为同一个射影点，因此整体尺度不再计入射影点的自由度，剩下
+
+$$
+(k+1)-1=k
+$$
+
+个自由度。
+
+<strong>第二种解释：归一化后只剩 $k$ 个独立坐标。</strong>取 $W$ 的一组基 $\mathbf u_0,\ldots,\mathbf u_k$，将非零向量写成
+
+$$
+\mathbf w=a_0\mathbf u_0+\cdots+a_k\mathbf u_k,
+\qquad(a_0,\ldots,a_k)\ne\mathbf0.
+$$
+
+在 $a_0\ne0$ 的区域，选择 $\lambda=1/a_0$，将代表归一化为
+
+$$
+\frac{\mathbf w}{a_0}
+=\mathbf u_0+\frac{a_1}{a_0}\mathbf u_1+\cdots+\frac{a_k}{a_0}\mathbf u_k.
+$$
+
+此时，代表的第一个坐标被固定为 $1$，其余 $k$ 个坐标 $a_1/a_0,\ldots,a_k/a_0$ 可以自由变化，并且唯一确定该区域中的射影点。这样，<strong>一个独立的归一化条件，从 $k+1$ 个代表坐标中固定一个，明确留下 $k$ 个独立坐标。</strong>若 $a_0=0$，则选取其他非零坐标做同样的归一化；这些区域覆盖整个射影空间。
 
 特别地，一维线性空间的射影化只有一个点，维数为 $0$；二维线性空间的射影化是一条射影直线；三维线性空间的射影化是射影平面。
 
@@ -1095,67 +1179,396 @@ $$
 
 所以 $\mathbb P^3$ 中的直线依然来自二维线性子空间，变化的是环境空间已经从 $\mathbb R^3$ 换成 $\mathbb R^4$。
 
-### 5.2 射影直线的参数与仿射部分
-
-给定两个不同点 $[\mathbf p_1]$、$[\mathbf p_2]$，连接它们的射影直线为
+<strong>射影点的射影张成，也可以完全通过底层线性张成来理解。</strong>给定 $m\ge1$ 个射影点 $P_i=[\mathbf p_i]\in\mathbb P(V)$，每个点对应一个一维线性子空间 $U_i=\operatorname{span}(\mathbf p_i)$。这些一维子空间共同张成
 
 $$
-L=\mathbb P(\operatorname{span}(\mathbf p_1,\mathbf p_2)).
+W=U_1+\cdots+U_m
+=\operatorname{span}(\mathbf p_1,\ldots,\mathbf p_m).
 $$
 
-线上所有点都能表示为
+将 $W$ 射影化，就得到包含这些点的<strong>最小射影子空间</strong>，称为它们的射影张成，记为
 
 $$
-[\alpha\mathbf p_1+\beta\mathbf p_2],
-\qquad(\alpha,\beta)\ne(0,0).
+\boxed{
+\langle P_1,\ldots,P_m\rangle
+=\mathbb P\bigl(\operatorname{span}(\mathbf p_1,\ldots,\mathbf p_m)\bigr).
+}
 $$
 
-由于 $\mathbf p_1,\mathbf p_2$ 线性无关，上式代表不会为零；参数 $[\alpha:\beta]$ 本身是一组 $\mathbb P^1$ 坐标。
-
-例如取
+结合维数减少一的规律，得到
 
 $$
-\mathbf p_1=(1,0,1)^{\mathsf T},\qquad
-\mathbf p_2=(0,1,1)^{\mathsf T}.
+\boxed{
+\begin{aligned}
+\dim\langle P_1,\ldots,P_m\rangle
+&=\dim\operatorname{span}(\mathbf p_1,\ldots,\mathbf p_m)-1\\
+&=\operatorname{rank}[\mathbf p_1\ \cdots\ \mathbf p_m]-1.
+\end{aligned}
+}
 $$
 
-线性组合为 $(\alpha,\beta,\alpha+\beta)^{\mathsf T}$，射影点为
+因此，经典几何中关于点确定直线、平面的直觉，在射影空间中仍然成立：
+
+- <strong>两个不同的射影点确定唯一的射影直线。</strong>它们的代表线性无关，对应的两个一维线性子空间张成二维线性子空间，射影化后维数为 $1$。
+- <strong>三个不共线的射影点确定唯一的射影平面。</strong>它们的代表线性无关，对应的三个一维线性子空间张成三维线性子空间，射影化后维数为 $2$。
+- <strong>一般地，$m$ 个代表线性无关的射影点确定唯一的 $m-1$ 维射影子空间。</strong>这要求环境空间维数足够，即 $m\le\dim V=n+1$。例如，四个不共面的射影点张成三维射影子空间。
+
+这里的“确定”指它们张成的最小射影子空间；若环境空间更大，也可以有更高维的射影子空间包含这些点。<strong>每加入一个位于已有射影张成之外的点，底层线性张成的维数增加一，射影维数也随之增加一；若新点已经在其中，维数就保持不变。</strong>
+
+特别要注意，三个射影点两两不同，并不足以保证它们张成射影平面。例如
 
 $$
-[\alpha:\beta:\alpha+\beta].
+\mathbf p_1=(1,0,0)^{\mathsf T},
+\qquad
+\mathbf p_2=(0,1,0)^{\mathsf T},
+\qquad
+\mathbf p_3=(1,1,0)^{\mathsf T}
 $$
 
-若 $\alpha+\beta\ne0$，归一化得到
+代表三个不同的射影点，但 $\mathbf p_3=\mathbf p_1+\mathbf p_2$。它们只张成二维线性子空间 $W=\{(x,y,0)^{\mathsf T}:x,y\in\mathbb R\}$，因此三个点都位于同一条射影直线 $\mathbb P(W)$ 上。一般情形下，应使用上面的<strong>秩减一</strong>公式判断维数。
+
+### 5.2 仿射子空间与射影子空间的双向转换
+
+第三章已经建立了点的坐标对应：
 
 $$
-X=\frac{\alpha}{\alpha+\beta},\qquad
-Y=\frac{\beta}{\alpha+\beta},\qquad X+Y=1.
+(X_1,\ldots,X_n)
+\longleftrightarrow
+[X_1:\cdots:X_n:1],
+\qquad
+[x_1:\cdots:x_n:w]
+\longmapsto
+\left(\frac{x_1}{w},\ldots,\frac{x_n}{w}\right)
+\quad(w\ne0).
 $$
 
-若 $\alpha+\beta=0$，则 $\beta=-\alpha$ 且 $\alpha\ne0$，得到唯一的无穷远点
+现在将它推广到直线、平面和一般子空间。固定底层空间 $V=\mathbb R^{n+1}$，将向量写成 $(\mathbf x,w)$，其中 $\mathbf x\in\mathbb R^n$；选择仿射图 $U_w=\{w\ne0\}$，并记其补集为 $H_\infty=\{w=0\}$。以下所有“有限部分”和“无穷远部分”都相对于这个选择。
+
+沿用 3.5 节的记号，将上面“除以 $w$、读取仿射坐标”的映射记为 $\chi_w$：
 
 $$
-[1:-1:0].
+\chi_w:U_w\longrightarrow\mathbb R^n,
+\qquad
+\chi_w([x_1:\cdots:x_n:w])
+=\left(\frac{x_1}{w},\ldots,\frac{x_n}{w}\right).
 $$
 
-因此这条射影直线的有限部分是 $X+Y=1$，增加的方向点与其方向向量 $(1,-1)$ 相符。
+因此，对点集使用 $\chi_w$，就是把集合中的每个射影点都转换成仿射坐标。
 
-一般地，若将 $\mathbb P(W)$ 与仿射图 $U_w$ 相交，再通过 $\chi_w$ 转为仿射坐标，得到的集合是一个仿射子空间或空集。在底层向量空间中，这等价于考察超平面 $w=1$ 与子空间 $W$ 相交所得的切片集合（即满足非齐次线性约束的解集）：
+<strong>从射影到仿射：取仿射图中的部分。</strong>设 $L=\mathbb P(W)$ 是 $k$ 维射影子空间，因此 $\dim W=k+1$。为了区分仿射坐标与高一维空间中的代表向量，先约定两个集合的记号：
 
-$$
-S=\{\mathbf v\in W:w(\mathbf v)=1\}.
-$$
+- $S\subseteq\mathbb R^n$：将 $L$ 的有限部分转换成仿射坐标后得到的集合，其元素是 $n$ 维坐标 $\mathbf x$。
+- $\widehat S\subseteq W\subseteq\mathbb R^{n+1}$：为这些有限点选取最后一个坐标为 $1$ 的代表向量后得到的集合，其元素是 $n+1$ 维向量 $(\mathbf x,1)$，称为<strong>代表切片</strong>。
 
-这是关于向量 $\mathbf v\in W$ 的非齐次线性约束条件，分为两种情况：
-
-1. 如果 $w$ 在 $W$ 上恒为零，则方程无解，$S=\emptyset$，整个射影子空间 $\mathbb P(W)$ 完全落在无穷远超平面 $H_\infty$ 中；
-2. 否则方程必有解。类比非齐次线性方程组“通解 = 特解 + 齐次解空间”的结构，可在 $W$ 中任取一个满足 $w(\mathbf v_0)=1$ 的特解 $\mathbf v_0$。此时对应的齐次方程为 $w(\mathbf u)=0$（即 $\mathbf u\in\ker w$），其在 $W$ 中的解空间为 $W\cap\ker w$。因此该切片解集 $S$ 可显式展开为：
+按照 $S$ 的含义，定义
 
 $$
-S=\mathbf v_0+(W\cap\ker w).
+S=\chi_w(L\cap U_w)
+=\{\mathbf x\in\mathbb R^n:(\mathbf x,1)\in W\}.
 $$
 
-这种“基准点 $+$ 方向线性子空间”的形式，正是<strong>仿射子空间（affine subspace）</strong>的标准定义。由秩-零度定理，方向子空间 $W\cap\ker w$ 的维数恰为 $\dim W-1$。这准确刻画了高维线性子空间、其射影化对象与截面仿射切片之间的对应关系。
+这里先取交集 $L\cap U_w$，保留 $L$ 中 $w\ne0$ 的点，再通过 $\chi_w$ 将这些点转换成仿射坐标，所得集合就是 $S$。
+
+对应的代表切片 $\widehat S$ 定义为
+
+$$
+\widehat S=\{\mathbf v\in W:w(\mathbf v)=1\}.
+$$
+
+这里 $w(\mathbf v)$ 表示提取向量 $\mathbf v$ 的最后一个坐标。两个集合的对应关系是
+
+$$
+\widehat S=\{(\mathbf x,1):\mathbf x\in S\},
+\qquad
+\mathbf x\in S\longleftrightarrow(\mathbf x,1)\in\widehat S.
+$$
+
+也就是说，给 $S$ 中的坐标追加一个 $1$，就得到 $\widehat S$ 中的代表；去掉代表的最后一个坐标，则回到 $S$。
+
+如果 $w$ 在 $W$ 上恒为零，则 $\widehat S=S=\emptyset$：整个 $L$ 都位于无穷远超平面中，在这张仿射图里没有有限部分。否则，$W$ 中存在最后一个坐标非零的向量，将它缩放即可得到一个满足 $w(\mathbf v_0)=1$ 的特解，写成 $\mathbf v_0=(\mathbf X_0,1)$。此时
+
+$$
+\boxed{\widehat S=\mathbf v_0+(W\cap\ker w).}
+$$
+
+这里可以采用非齐次线性方程组<strong>“通解 $=$ 特解 $+$ 齐次解”</strong>的思路：我们是在 $W$ 中求解方程 $w(\mathbf v)=1$，$\mathbf v_0$ 是一个特解，对应的齐次方程为 $w(\mathbf d)=0$，其在 $W$ 中的解空间就是 $W\cap\ker w$。下面从两个方向证明上述集合等式。
+
+1. <strong>每个解都能拆成“特解 $+$ 齐次解”。</strong>任取 $\mathbf v\in\widehat S$，则 $\mathbf v,\mathbf v_0\in W$，并且 $w(\mathbf v)=w(\mathbf v_0)=1$。由于 $W$ 是线性子空间，两者的差仍在 $W$ 中；由 $w$ 的线性性，
+
+   $$
+   w(\mathbf v-\mathbf v_0)
+   =w(\mathbf v)-w(\mathbf v_0)
+   =1-1=0.
+   $$
+
+   因此 $\mathbf v-\mathbf v_0\in W\cap\ker w$，是对应齐次方程的一个解。将 $\mathbf v$ 写成
+
+   $$
+   \mathbf v
+   =\underbrace{\mathbf v_0}_{\text{特解}}
+   +\underbrace{(\mathbf v-\mathbf v_0)}_{\text{齐次解}},
+   $$
+
+   就得到 $\widehat S\subseteq\mathbf v_0+(W\cap\ker w)$。
+
+2. <strong>特解加上任意齐次解，仍是原方程的解。</strong>任取 $\mathbf d\in W\cap\ker w$，则 $\mathbf d\in W$ 且 $w(\mathbf d)=0$。因为 $\mathbf v_0\in W$，所以 $\mathbf v_0+\mathbf d\in W$，并且
+
+   $$
+   w(\mathbf v_0+\mathbf d)
+   =w(\mathbf v_0)+w(\mathbf d)
+   =1+0=1.
+   $$
+
+   因此 $\mathbf v_0+\mathbf d\in\widehat S$，得到反向包含 $\mathbf v_0+(W\cap\ker w)\subseteq\widehat S$。
+
+两边互相包含，便证明了 $\widehat S=\mathbf v_0+(W\cap\ker w)$：整个代表切片由一个固定的特解，加上所有齐次解得到。
+
+将核中的向量写成 $(\mathbf u,0)$，定义方向子空间
+
+$$
+U=\{\mathbf u\in\mathbb R^n:(\mathbf u,0)\in W\}.
+$$
+
+去掉最后一个坐标分量后，$\widehat S=\mathbf v_0+(W\cap\ker w)$ 就变成
+
+$$
+\boxed{S=\mathbf X_0+U.}
+$$
+
+这正是仿射子空间的形式。由于 $w$ 在 $W$ 上是非零线性泛函，由秩-零度定理，
+
+$$
+\dim S=\dim U=\dim(W\cap\ker w)
+=\dim W-1=k.
+$$
+
+因此，<strong>一个 $k$ 维射影子空间，只要不完全位于无穷远超平面中，其有限部分就是 $k$ 维仿射子空间。</strong>关于“特解 $+$ 齐次解空间”的完整推导，参见 [《线性方程组的几何全景》](/posts/linear-algebra/linear-systems-row-column-and-solution-manifolds#四解集流形齐次约束与非齐次约束的本质分野)。
+
+<strong>从仿射到射影：将方向一起补全。</strong>反过来，给定非空的 $k$ 维仿射子空间
+
+$$
+S=\mathbf X_0+U,
+\qquad\dim U=k,
+$$
+
+取 $U$ 的一组基 $\mathbf u_1,\ldots,\mathbf u_k$，构造底层线性子空间
+
+$$
+W_S=\operatorname{span}\bigl(
+(\mathbf X_0,1),
+(\mathbf u_1,0),\ldots,(\mathbf u_k,0)
+\bigr).
+$$
+
+证明这 $k+1$ 个生成向量线性无关：如果
+
+$$
+t(\mathbf X_0,1)+\sum_{i=1}^k b_i(\mathbf u_i,0)=\mathbf0,
+$$
+
+则最后一个坐标分量给出 $t=0$，其余坐标再由 $\mathbf u_i$ 线性无关给出所有 $b_i=0$。因此 $\dim W_S=k+1$，它的射影化
+
+$$
+\boxed{\overline S=\mathbb P(W_S)}
+$$
+
+是一个 $k$ 维射影子空间，称为 $S$ 的<strong>射影补全</strong>。当 $k=0$ 时，上面的方向基为空，$W_S$ 只由 $(\mathbf X_0,1)$ 张成。
+
+具体地，将生成向量的线性组合展开：
+
+$$
+\begin{aligned}
+t(\mathbf X_0,1)+\sum_{i=1}^k b_i(\mathbf u_i,0)
+&=\left(t\mathbf X_0+\sum_{i=1}^k b_i\mathbf u_i,t\right)\\
+&=(t\mathbf X_0+\mathbf u,t),
+\qquad\mathbf u=\sum_{i=1}^k b_i\mathbf u_i\in U.
+\end{aligned}
+$$
+
+因此 $W_S$ 中的向量恰好可以写成
+
+$$
+(t\mathbf X_0+\mathbf u,t),
+\qquad t\in\mathbb R,\quad\mathbf u\in U.
+$$
+
+下面证明：将 $S$ 做射影补全后，再取有限部分并转换成仿射坐标，得到的恰好是原来的 $S$。这需要验证两个方向的包含。
+
+1. <strong>补全后的每个有限点，都映回 $S$ 中。</strong>任取 $P\in\overline S\cap U_w$，它可以表示为 $P=[t\mathbf X_0+\mathbf u:t]$。由于 $P\in U_w$，最后一个坐标 $t\ne0$，可以将整个代表向量乘以 $1/t$：
+
+   $$
+   \frac1t(t\mathbf X_0+\mathbf u,t)
+   =\left(\mathbf X_0+\frac{\mathbf u}{t},1\right).
+   $$
+
+   所以同一个射影点可写成
+
+   $$
+   P=[t\mathbf X_0+\mathbf u:t]
+   =\left[\mathbf X_0+\frac{\mathbf u}{t}:1\right].
+   $$
+
+   再应用坐标映射 $\chi_w$，读取仿射坐标，得到
+
+   $$
+   \chi_w(P)=\mathbf X_0+\frac{\mathbf u}{t}.
+   $$
+
+   因为 $U$ 是线性子空间，$\mathbf u\in U$ 蕴含 $\mathbf u/t\in U$，所以 $\chi_w(P)\in\mathbf X_0+U=S$。这证明了 $\chi_w(\overline S\cap U_w)\subseteq S$。
+
+2. <strong>$S$ 中的每个点，都能由补全后的有限点映回。</strong>任取 $\mathbf X\in S$，由 $S=\mathbf X_0+U$，存在 $\mathbf u\in U$ 使得 $\mathbf X=\mathbf X_0+\mathbf u$。它的增广向量满足
+
+   $$
+   (\mathbf X,1)
+   =(\mathbf X_0,1)+(\mathbf u,0)
+   \in W_S.
+   $$
+
+   因此 $P=[\mathbf X:1]\in\mathbb P(W_S)=\overline S$。它的最后一个坐标为 $1\ne0$，所以也属于 $U_w$，并且 $\chi_w(P)=\mathbf X$。这证明了 $S\subseteq\chi_w(\overline S\cap U_w)$。
+
+两个方向合起来，得到
+
+$$
+\chi_w(\overline S\cap U_w)=S.
+$$
+
+<strong>无穷远部分由方向空间决定。</strong>有限部分对应 $t\ne0$，也就是 $\overline S\cap U_w$；现在考察补全后最后一个齐次坐标分量为 $0$ 的点，也就是 $\overline S\cap H_\infty$。由于 $W_S$ 中的向量具有形式 $(t\mathbf X_0+\mathbf u,t)$，令 $t=0$，得到
+
+$$
+(t\mathbf X_0+\mathbf u,t)\big|_{t=0}
+=(\mathbf u,0).
+$$
+
+此时基准点 $\mathbf X_0$ 所在的项消失，只剩下方向向量 $\mathbf u\in U$。为了代表合法的射影点，还要求 $(\mathbf u,0)\ne\mathbf0$，也就是 $\mathbf u\ne\mathbf0$。因此，无穷远部分恰好由这些点组成：
+
+$$
+\overline S\cap H_\infty
+=\{[\mathbf u:0]:\mathbf u\in U\setminus\{\mathbf0\}\}.
+$$
+
+原方向空间 $U$ 位于 $\mathbb R^n$ 中。为了在底层齐次空间 $\mathbb R^{n+1}$ 中描述它，给每个方向向量追加一个 $0$，将所得的线性子空间记为
+
+$$
+\widetilde U=\{(\mathbf u,0):\mathbf u\in U\}.
+$$
+
+这里 $\widetilde U$ 中的元素是增广后的方向向量；将其中的非零向量按整体非零倍数识别，得到的射影点正是上面的 $[\mathbf u:0]$。所以
+
+$$
+\boxed{
+\overline S\cap H_\infty
+=\{[\mathbf u:0]:\mathbf u\in U\setminus\{\mathbf0\}\}
+=\mathbb P(\widetilde U).
+}
+$$
+
+追加固定的最后一个坐标 $0$ 不增加自由度，映射 $\mathbf u\mapsto(\mathbf u,0)$ 是 $U$ 与 $\widetilde U$ 之间的线性同构，因此 $\dim\widetilde U=\dim U=k$。若 $k\ge1$，再应用“射影化使维数减少一”，得到
+
+$$
+\dim(\overline S\cap H_\infty)
+=\dim\mathbb P(\widetilde U)
+=\dim\widetilde U-1
+=k-1.
+$$
+
+例如，若仿射直线的方向空间为 $U=\operatorname{span}\{(1,2)\}$，则 $\widetilde U=\operatorname{span}\{(1,2,0)\}$。其中每个非零向量都形如 $a(1,2,0)$，$a\ne0$，它们都代表同一个射影点 $[1:2:0]$，所以这条直线只增加一个无穷远点。仿射平面的方向空间则有二维，射影化后得到一维的无穷远直线。
+
+若 $k=0$，原仿射对象只是一个点，$U=\{\mathbf0\}$，因而 $\widetilde U=\{\mathbf0\}$。其中没有非零向量可以代表射影点，所以无穷远部分为空。各维数下的对应关系如下：
+
+| 原来的仿射对象 | 射影补全 | 新增的无穷远部分 |
+| --- | --- | --- |
+| 仿射点 | 射影点 | 无 |
+| 仿射直线 | 射影直线 | 一个方向点 |
+| 仿射平面 | 射影平面 | 一条无穷远直线 |
+| $k$ 维仿射子空间，$k\ge1$ | $k$ 维射影子空间 | $k-1$ 维射影子空间 |
+
+<strong>两个方向互相恢复，且保持维数。</strong>从仿射子空间 $S$ 出发，先做射影补全，再取有限部分，上面已经证明会恢复 $S$：
+
+$$
+S\longmapsto\overline S\longmapsto\chi_w(\overline S\cap U_w)=S.
+$$
+
+还需要证明另一个方向：从不完全位于 $H_\infty$ 中的射影子空间 $L=\mathbb P(W)$ 出发，先取有限部分 $S$，再做射影补全，也会恢复整个 $L$，包括它的无穷远部分。证明的目标是：<strong>重新补全时构造的底层线性空间，与原来的 $W$ 相等。</strong>
+
+1. <strong>从有限部分找回基准点与方向空间。</strong>因为 $L$ 不完全位于 $H_\infty$ 中，可以选取 $\mathbf v_0=(\mathbf X_0,1)\in W$。将 $W$ 中最后一个坐标分量为 $0$ 的向量组成的空间暂记为
+
+   $$
+   K=W\cap\ker w.
+   $$
+
+   前面已经证明，代表切片满足 $\widehat S=\mathbf v_0+K$。因此，将切片中的所有代表减去固定代表 $\mathbf v_0$，恰好得到整个 $K$：
+
+   $$
+   \{\mathbf v-\mathbf v_0:\mathbf v\in\widehat S\}=K.
+   $$
+
+   在仿射坐标中，这对应于 $S=\mathbf X_0+U$，方向空间可以从点的差恢复为 $U=\{\mathbf X-\mathbf X_0:\mathbf X\in S\}$。给这些方向向量的分量追加一个 $0$，就恢复 $K=\{(\mathbf u,0):\mathbf u\in U\}$。所以，取有限部分后仍然可以找回补全所需的基准点与全部方向。
+
+2. <strong>重新补全，定义待比较的线性空间。</strong>按照射影补全的构造，用基准点代表 $\mathbf v_0$ 与方向空间 $K$ 重新张成
+
+   $$
+   W'=\operatorname{span}\bigl(\{\mathbf v_0\}\cup K\bigr)
+   =\{a\mathbf v_0+\mathbf d:a\in\mathbb R,\ \mathbf d\in K\}.
+   $$
+
+   由于 $\mathbf v_0\in W$ 且 $K\subseteq W$，这些线性组合都在 $W$ 中，因此 $W'\subseteq W$。
+
+3. <strong>证明原来的每个向量都能重新生成。</strong>任取 $\mathbf v\in W$，记它的最后一个坐标为 $a=w(\mathbf v)$，并令
+
+   $$
+   \mathbf d=\mathbf v-a\mathbf v_0.
+   $$
+
+   因为 $\mathbf v,\mathbf v_0\in W$，所以 $\mathbf d\in W$。又因为 $w(\mathbf v_0)=1$，
+
+   $$
+   w(\mathbf d)
+   =w(\mathbf v)-a\,w(\mathbf v_0)
+   =a-a\cdot1
+   =0.
+   $$
+
+   所以 $\mathbf d\in W\cap\ker w=K$，从而
+
+   $$
+   \mathbf v
+   =\underbrace{a\mathbf v_0}_{\text{基准点代表的倍数}}
+   +\underbrace{\mathbf d}_{\text{方向向量}}
+   \in W'.
+   $$
+
+   这证明了 $W\subseteq W'$。结合上一步的反向包含，得到
+
+   $$
+   W'=W,
+   \qquad
+   \mathbb P(W')=\mathbb P(W)=L.
+   $$
+
+因此，从 $L$ 取有限部分再做射影补全，会恢复原来的整个射影子空间。
+
+<strong>补全结果与基准点和方向基的选择无关。</strong>若在同一切片中改选另一个基准点代表 $\mathbf v_1$，则 $\mathbf v_1-\mathbf v_0\in K$。于是 $\mathbf v_1$ 可以由 $\mathbf v_0$ 和 $K$ 生成，而 $\mathbf v_0$ 也可以由 $\mathbf v_1$ 和 $K$ 生成，因此
+
+$$
+\operatorname{span}\bigl(\{\mathbf v_0\}\cup K\bigr)
+=\operatorname{span}\bigl(\{\mathbf v_1\}\cup K\bigr).
+$$
+
+换取方向空间的另一组基，也只是改变生成向量的选择，它们张成的方向空间不变，所以补全结果仍然相同。
+
+两个转换方向互相恢复，并且都保持维数。因此，固定仿射图后得到一一对应：
+
+$$
+\boxed{
+\begin{gathered}
+\text{非空的 }k\text{ 维仿射子空间}\\
+\updownarrow\\
+\text{不完全包含于 }H_\infty\text{ 的 }k\text{ 维射影子空间}.
+\end{gathered}
+}
+$$
+
+这个对应依赖于仿射图的选择；完全位于当前 $H_\infty$ 中的射影子空间，其当前仿射部分为空。5.6 节将用直线的参数表示与方程表示，具体展示这两个方向。
 
 ### 5.3 超平面、核与余维数
 
@@ -1195,7 +1608,32 @@ $$
 
 在 $\mathbb P^3$ 中定义一个射影平面，在 $w=1$ 图中变成仿射平面 $X+2Y-Z+3=0$。
 
-三种“平面”应分别理解：$\mathbb R^3$ 中 $ax+by+cz=0$ 是线性平面；三维仿射空间中 $aX+bY+cZ+d=0$ 是仿射平面；$\mathbb P^3$ 中 $ax+by+cz+dw=0$ 是射影平面。最后一个方程的底层解空间在 $\mathbb R^4$ 中有三维。
+<strong>线性、仿射与射影超平面的定义和方程形式，可以统一对照如下。</strong>以下各行的环境维数都记为 $n\ge1$。其中 $\varphi$ 是 $n$ 维向量空间上的非零线性泛函，$\ell$ 则是底层 $n+1$ 维向量空间 $V$ 上的非零线性泛函；仿射情形先选定原点与坐标。
+
+| 类型 | 所在环境 | 定义与方程形式 | 超平面维数 |
+| --- | --- | --- | --- |
+| 线性超平面 | $n$ 维向量空间 | $H=\ker\varphi=\{\mathbf v:\varphi(\mathbf v)=0\}$ | $n-1$ |
+| 仿射超平面 | $n$ 维仿射空间 | $H=\{\mathbf x:\varphi(\mathbf x)=c\}$，$c\in\mathbb R$ | $n-1$ |
+| 射影超平面 | $n$ 维射影空间 $\mathbb P(V)$ | $H=\{[\mathbf p]:\ell(\mathbf p)=0\}=\mathbb P(\ker\ell)$，$\mathbf p\ne\mathbf0$ | $n-1$ |
+
+这三种形式中的维数，都可以从一个非零线性泛函施加一个独立线性约束来理解：
+
+1. <strong>线性情形。</strong>非零泛函 $\varphi$ 的秩为 $1$，所以 $\dim\ker\varphi=n-1$。方程 $\varphi(\mathbf v)=0$ 的解集包含零向量，是一个线性子空间。
+2. <strong>仿射情形。</strong>选取满足 $\varphi(\mathbf x_0)=c$ 的一个特解，则
+
+   $$
+   \varphi(\mathbf x)=c
+   \iff\varphi(\mathbf x-\mathbf x_0)=0,
+   \qquad
+   H=\mathbf x_0+\ker\varphi.
+   $$
+
+   因而它是线性超平面 $\ker\varphi$ 的平移，维数仍为 $n-1$。由于 $\varphi\ne0$，它可以取遍所有实数，所以任意 $c\in\mathbb R$ 都有这样的特解。$c=0$ 时超平面经过所选原点，$c\ne0$ 时不经过所选原点。
+3. <strong>射影情形。</strong>底层向量空间 $V$ 有 $n+1$ 维，因此 $\ker\ell$ 有 $n$ 维；射影化后再减少一维，得到 $\dim H=n-1$。这里方程中的 $\mathbf p$ 是非零代表，实际的点是等价类 $[\mathbf p]$。因为 $\ell(\lambda\mathbf p)=\lambda\ell(\mathbf p)$，零点条件与非零代表的选择无关。
+
+例如，$\mathbb R^3$ 中 $ax+by+cz=0$ 是线性平面；三维仿射空间中 $aX+bY+cZ+d=0$ 是仿射平面，这两种情形都要求 $(a,b,c)\ne\mathbf0$。$\mathbb P^3$ 中 $ax+by+cz+dw=0$ 则是射影平面，要求 $(a,b,c,d)\ne\mathbf0$，底层解空间在 $\mathbb R^4$ 中有三维。特别地，$a=b=c=0$、$d\ne0$ 时，射影方程给出合法的无穷远平面 $w=0$。
+
+关于仿射超平面作为平移子空间的定义，参见 [《仿射空间与仿射变换》](/posts/linear-algebra/affine-spaces-and-affine-maps)；关于 $\varphi(\mathbf x)=c$ 所形成的平行等值超平面族，参见 [《对偶空间、对偶基与线性泛函》](/posts/linear-algebra/dual-spaces-and-linear-functionals)。
 
 ### 5.4 独立约束与交集维数
 
@@ -1261,9 +1699,57 @@ $$
 
 这就是异面直线可以在射影空间中继续存在的原因。仿射平行直线共享方向，射影延拓后交于无穷远点；异面直线既不共享有限点也不共享方向点，射影延拓后仍不相交。<strong>任意两条不同射影直线必相交的结论属于射影平面，不能直接推广到所有维度。</strong>
 
-### 5.6 线性、射影与仿射描述的统一例子
+### 5.6 双向转换的直线算例：参数与方程
 
-取仿射直线 $Y=2X+3$，齐次化为
+<strong>从射影参数读出仿射直线与方向点。</strong>给定两个不同点 $[\mathbf p_1]$、$[\mathbf p_2]$，连接它们的射影直线为
+
+$$
+L=\mathbb P(\operatorname{span}(\mathbf p_1,\mathbf p_2)).
+$$
+
+线上所有点都能表示为
+
+$$
+[\alpha\mathbf p_1+\beta\mathbf p_2],
+\qquad(\alpha,\beta)\ne(0,0).
+$$
+
+由于 $\mathbf p_1,\mathbf p_2$ 线性无关，上式代表不会为零；参数 $[\alpha:\beta]$ 本身是一组 $\mathbb P^1$ 坐标。例如取
+
+$$
+\mathbf p_1=(1,0,1)^{\mathsf T},\qquad
+\mathbf p_2=(0,1,1)^{\mathsf T}.
+$$
+
+线性组合为 $(\alpha,\beta,\alpha+\beta)^{\mathsf T}$，射影点为
+
+$$
+[\alpha:\beta:\alpha+\beta].
+$$
+
+若 $\alpha+\beta\ne0$，归一化得到
+
+$$
+X=\frac{\alpha}{\alpha+\beta},\qquad
+Y=\frac{\beta}{\alpha+\beta},\qquad X+Y=1.
+$$
+
+若 $\alpha+\beta=0$，则 $\beta=-\alpha$ 且 $\alpha\ne0$，得到唯一的无穷远点
+
+$$
+[1:-1:0].
+$$
+
+因此这条射影直线的有限部分是 $X+Y=1$，方向子空间由 $(1,-1)^{\mathsf T}$ 张成。反过来，从仿射直线选取基准点 $(1,0)$ 与方向向量 $(1,-1)$，就构造出
+
+$$
+W_S=\operatorname{span}\bigl((1,0,1)^{\mathsf T},(1,-1,0)^{\mathsf T}\bigr)
+=\operatorname{span}(\mathbf p_1,\mathbf p_2),
+$$
+
+因为 $(1,-1,0)^{\mathsf T}=\mathbf p_1-\mathbf p_2$。射影补全因此恢复原来的 $L$。
+
+<strong>从仿射方程构造射影补全。</strong>取另一条仿射直线 $Y=2X+3$，齐次化为
 
 $$
 2x-y+3w=0.
@@ -1275,7 +1761,23 @@ $$
 W=\{(x,y,w)^{\mathsf T}:2x-y+3w=0\}
 $$
 
-是二维线性子空间，包含原点；$\mathbb P(W)$ 是一维射影直线；取 $w=1$ 的代表并读取前两个坐标，则恢复仿射直线 $Y=2X+3$。取 $w=0$ 得到方向点 $[1:2:0]$。
+是二维线性子空间。将方程整理为 $y=2x+3w$，可以写出它的通用向量：
+
+$$
+(x,y,w)^{\mathsf T}
+=(x,2x+3w,w)^{\mathsf T}
+=w(0,3,1)^{\mathsf T}+x(1,2,0)^{\mathsf T}.
+$$
+
+因此
+
+$$
+W=\operatorname{span}\bigl((0,3,1)^{\mathsf T},(1,2,0)^{\mathsf T}\bigr).
+$$
+
+这恰好是将仿射基准点 $(0,3)$ 增广为 $(0,3,1)^{\mathsf T}$，将方向向量 $(1,2)^{\mathsf T}$ 增广为 $(1,2,0)^{\mathsf T}$，再取线性张成的构造。由此，方程齐次化与 5.2 节的射影补全得到同一个对象 $\mathbb P(W)$。
+
+取 $w=1$，得到代表 $(x,2x+3,1)^{\mathsf T}$，读取前两个坐标就恢复仿射直线 $Y=2X+3$；取 $w=0$，非零解为 $x(1,2,0)^{\mathsf T}$，得到唯一的方向点 $[1:2:0]$。
 
 一般射影子空间也可以用张成描述或线性方程描述：前者指定生成向量，后者指定其应满足的泛函约束。下面的零化子正好连接这两种描述。
 

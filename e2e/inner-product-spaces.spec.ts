@@ -18,7 +18,9 @@ test.describe("Inner Product Spaces 文章与 InnerProductSpaceDemo E2E 冒烟�
     await canvas.scrollIntoViewIfNeeded();
     await expect(canvas).toBeVisible();
 
-    const funcTab = page.getByRole("button", { name: /函数空间积分内积/ });
+    const funcTab = page
+      .getByRole("tab", { name: /函数空间积分内积/ })
+      .or(page.getByRole("button", { name: /函数空间积分内积/ }));
     await funcTab.scrollIntoViewIfNeeded();
     await funcTab.click({ force: true });
     await expect(page.getByText("积分内积结果").first()).toBeVisible({

@@ -1,23 +1,18 @@
-import React, { useState, useRef, useEffect } from "react";
-import { useCanvas2D } from "../framework/useCanvas2D";
-import CanvasResizer from "../framework/CanvasResizer";
-import CanvasToolbar from "../framework/CanvasToolbar";
+import { useState } from "react";
 import ExpandableDemo from "../framework/ExpandableDemo";
-import { AutoMath } from "../framework/AutoMath";
+import CanvasViewport from "../framework/CanvasViewport";
+import CanvasOverlay from "../framework/CanvasOverlay";
 import KdeCard from "../framework/KdeCard";
 import KdeReadout from "../framework/KdeReadout";
-import KdeTabs from "../framework/KdeTabs";
+import KdeTabs, { type KdeTabOption } from "../framework/KdeTabs";
 import KdeWindowShell from "../framework/KdeWindowShell";
 import PresetSelector from "../framework/PresetSelector";
 import ParamSlider from "../framework/ParamSlider";
-import {
-  drawDragHandle,
-  type Bounds2,
-} from "../../visualizations/core/2d/plot2d";
+import type { Bounds2 } from "../../visualizations/core/2d/plot2d";
 
 type ModeType = "weighted" | "func" | "theorems";
 
-const MODES: Array<{ id: ModeType; label: string }> = [
+const MODES: Array<KdeTabOption<ModeType>> = [
   { id: "weighted", label: "加权内积与度规椭圆" },
   { id: "func", label: "函数空间积分内积 ⟨f,g⟩" },
   { id: "theorems", label: "柯西-施瓦茨与平行四边形恒等式" },
@@ -69,770 +64,403 @@ const FUNC_PRESETS: FuncPreset[] = [
   },
 ];
 
-function drawPixelSegment(
-  ctx: CanvasRenderingContext2D,
-  x0: number,
-  y0: number,
-  x1: number,
-  y1: number,
-  color: string,
-  width = 2,
-  dash: number[] = [],
-) {
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = width;
-  ctx.setLineDash(dash);
-  ctx.beginPath();
-  ctx.moveTo(x0, y0);
-  ctx.lineTo(x1, y1);
-  ctx.stroke();
-  ctx.restore();
-}
-
-function drawPixelPoint(
-  ctx: CanvasRenderingContext2D,
-  px: number,
-  py: number,
-  color: string,
-  radius = 6,
-) {
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(px, py, radius, 0, Math.PI * 2);
-  ctx.fillStyle = color;
-  ctx.fill();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-  ctx.restore();
-}
-
-export const InnerProductSpaceDemo: React.FC<{ height?: string }> = ({
-  height,
-}) => {
+export function InnerProductSpaceDemo({ height }: { height?: string }) {
   const [mode, setMode] = useState<ModeType>("weighted");
-  const showAxes = true;
 
-  // Mode 1: Weighted inner product parameters
-  const [w11, setW11] = useState<number>(1.5);
-  const [w22, setW22] = useState<number>(0.6);
+  // Mode 1: Weighted
+  const [w11, setW11] = useState(1.0);
+  const [w22, setW22] = useState(2.25);
   const [uVec, setUVec] = useState<{ x: number; y: number }>({
     x: 1.0,
-    y: 1.2,
+    y: 0.8,
   });
+  const [vWeighted] = useState<{ x: number; y: number }>({ x: 0.6, y: -0.6 });
 
-  // Mode 2: Function space preset
-  const [funcIdx, setFuncIdx] = useState<number>(0);
+  // Mode 2: Function Space
+  const [activeFuncIdx, setActiveFuncIdx] = useState(0);
+  const activeFunc = FUNC_PRESETS[activeFuncIdx];
 
-  // Mode 3: Theorems vectors u, v
+  // Mode 3: Theorems
   const [uThem, setUThem] = useState<{ x: number; y: number }>({
     x: 2.0,
-    y: 1.0,
+    y: 0.8,
   });
   const [vThem, setVThem] = useState<{ x: number; y: number }>({
     x: 0.8,
     y: 1.8,
   });
 
-  const activeFunc = FUNC_PRESETS[funcIdx];
+  // Calculations for Mode 1
+  const normUSq = w11 * uVec.x * uVec.x + w22 * uVec.y * uVec.y;
+  const normU = Math.sqrt(Math.max(0, normUSq));
+  const normVSq =
+    w11 * vWeighted.x * vWeighted.x + w22 * vWeighted.y * vWeighted.y;
+  const _normV = Math.sqrt(Math.max(0, normVSq));
+  const innerUV = w11 * uVec.x * vWeighted.x + w22 * uVec.y * vWeighted.y;
 
-  // Weighted inner product computations
-  // <u, v>_W = w11*u1*v1 + w22*u2*v2
-  // Vector v chosen to be weighted orthogonal to u: w11*u1*v1 + w22*u2*v2 = 0 => v = (-w22*u2, w11*u1)
-  const normUWeighted = Math.sqrt(
-    w11 * uVec.x * uVec.x + w22 * uVec.y * uVec.y,
-  );
-  const vWeightedRaw = { x: -w22 * uVec.y, y: w11 * uVec.x };
-  const vLen = Math.hypot(vWeightedRaw.x, vWeightedRaw.y) || 1;
-  const vWeighted = {
-    x: (vWeightedRaw.x / vLen) * 1.5,
-    y: (vWeightedRaw.y / vLen) * 1.5,
-  };
-  const innerProdWeighted =
-    w11 * uVec.x * vWeighted.x + w22 * uVec.y * vWeighted.y;
-
-  // Theorems computations (Mode 3)
-  const innerProdUV = uThem.x * vThem.x + uThem.y * vThem.y;
-  const normU = Math.hypot(uThem.x, uThem.y);
-  const normV = Math.hypot(vThem.x, vThem.y);
-  const csLHS = Math.abs(innerProdUV);
-  const csRHS = normU * normV;
+  // Calculations for Mode 3
+  const dotThem = uThem.x * vThem.x + uThem.y * vThem.y;
+  const normUThemSq = uThem.x * uThem.x + uThem.y * uThem.y;
+  const normVThemSq = vThem.x * vThem.x + vThem.y * vThem.y;
+  const normUThem = Math.sqrt(normUThemSq);
+  const normVThem = Math.sqrt(normVThemSq);
 
   const sumUV = { x: uThem.x + vThem.x, y: uThem.y + vThem.y };
   const diffUV = { x: uThem.x - vThem.x, y: uThem.y - vThem.y };
   const normSumSq = sumUV.x * sumUV.x + sumUV.y * sumUV.y;
   const normDiffSq = diffUV.x * diffUV.x + diffUV.y * diffUV.y;
-  const paraLHS = normSumSq + normDiffSq;
-  const paraRHS = 2 * (normU * normU + normV * normV);
-
-  const stateRef = useRef({
-    mode,
-    showAxes,
-    w11,
-    w22,
-    uVec,
-    vWeighted,
-    activeFunc,
-    uThem,
-    vThem,
-    sumUV,
-    diffUV,
-  });
-
-  useEffect(() => {
-    stateRef.current = {
-      mode,
-      showAxes,
-      w11,
-      w22,
-      uVec,
-      vWeighted,
-      activeFunc,
-      uThem,
-      vThem,
-      sumUV,
-      diffUV,
-    };
-  }, [
-    mode,
-    showAxes,
-    w11,
-    w22,
-    uVec,
-    vWeighted,
-    activeFunc,
-    uThem,
-    vThem,
-    sumUV,
-    diffUV,
-  ]);
-
-  const dragTargetRef = useRef<"uVec" | "uThem" | "vThem" | null>(null);
-  const hoveredTargetRef = useRef<"uVec" | "uThem" | "vThem" | null>(null);
-
-  const { containerRef, canvasRef, redraw, resetBounds } = useCanvas2D({
-    initialBounds: BOUNDS,
-    onHover(e, plot) {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      const px = e.clientX - rect.left;
-      const py = e.clientY - rect.top;
-      const st = stateRef.current;
-      const center = { x: plot.width / 2, y: plot.height / 2 };
-      const scale = Math.min(plot.width, plot.height) / 8;
-
-      if (st.mode === "weighted") {
-        const pU = {
-          x: center.x + st.uVec.x * scale,
-          y: center.y - st.uVec.y * scale,
-        };
-        const distU = Math.hypot(px - pU.x, py - pU.y);
-        if (distU <= 24) {
-          hoveredTargetRef.current = "uVec";
-          canvas.style.cursor = dragTargetRef.current ? "grabbing" : "grab";
-          return;
-        }
-      } else if (st.mode === "theorems") {
-        const pU = {
-          x: center.x + st.uThem.x * scale,
-          y: center.y - st.uThem.y * scale,
-        };
-        const pV = {
-          x: center.x + st.vThem.x * scale,
-          y: center.y - st.vThem.y * scale,
-        };
-        const distU = Math.hypot(px - pU.x, py - pU.y);
-        const distV = Math.hypot(px - pV.x, py - pV.y);
-        if (distU <= 24) {
-          hoveredTargetRef.current = "uThem";
-          canvas.style.cursor = dragTargetRef.current ? "grabbing" : "grab";
-          return;
-        }
-        if (distV <= 24) {
-          hoveredTargetRef.current = "vThem";
-          canvas.style.cursor = dragTargetRef.current ? "grabbing" : "grab";
-          return;
-        }
-      }
-      hoveredTargetRef.current = null;
-      if (!dragTargetRef.current) canvas.style.cursor = "";
-    },
-    onLeftDown(e, plot) {
-      const canvas = canvasRef.current;
-      if (!canvas) return false;
-      const rect = canvas.getBoundingClientRect();
-      const px = e.clientX - rect.left;
-      const py = e.clientY - rect.top;
-
-      const st = stateRef.current;
-      const center = { x: plot.width / 2, y: plot.height / 2 };
-      const scale = Math.min(plot.width, plot.height) / 8;
-
-      if (st.mode === "weighted") {
-        const pU = {
-          x: center.x + st.uVec.x * scale,
-          y: center.y - st.uVec.y * scale,
-        };
-        const distU = Math.hypot(px - pU.x, py - pU.y);
-        if (distU <= 24) {
-          dragTargetRef.current = "uVec";
-          hoveredTargetRef.current = "uVec";
-          canvas.style.cursor = "grabbing";
-          return true;
-        }
-      } else if (st.mode === "theorems") {
-        const pU = {
-          x: center.x + st.uThem.x * scale,
-          y: center.y - st.uThem.y * scale,
-        };
-        const pV = {
-          x: center.x + st.vThem.x * scale,
-          y: center.y - st.vThem.y * scale,
-        };
-
-        const distU = Math.hypot(px - pU.x, py - pU.y);
-        const distV = Math.hypot(px - pV.x, py - pV.y);
-
-        if (distU <= 24 && distU <= distV) {
-          dragTargetRef.current = "uThem";
-          hoveredTargetRef.current = "uThem";
-          canvas.style.cursor = "grabbing";
-          return true;
-        } else if (distV <= 24) {
-          dragTargetRef.current = "vThem";
-          hoveredTargetRef.current = "vThem";
-          canvas.style.cursor = "grabbing";
-          return true;
-        }
-      }
-      return false;
-    },
-    onLeftMove(e, plot) {
-      if (!dragTargetRef.current) return;
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      const px = e.clientX - rect.left;
-      const py = e.clientY - rect.top;
-      updateVectorFromMouse(
-        px,
-        py,
-        plot.width,
-        plot.height,
-        dragTargetRef.current,
-      );
-    },
-    onLeftUp() {
-      dragTargetRef.current = null;
-      const canvas = canvasRef.current;
-      if (canvas) {
-        canvas.style.cursor = hoveredTargetRef.current ? "grab" : "";
-      }
-    },
-    draw(ctx, plot, theme) {
-      const { width, height } = plot;
-
-      ctx.clearRect(0, 0, width, height);
-      const st = stateRef.current;
-
-      const center = { x: width / 2, y: height / 2 };
-      const scale = Math.min(width, height) / 8;
-
-      const toCanvas = (wx: number, wy: number) => ({
-        x: center.x + wx * scale,
-        y: center.y - wy * scale,
-      });
-
-      // Background Grid & Axes
-      if (st.showAxes) {
-        ctx.save();
-        ctx.strokeStyle = theme.border;
-        ctx.lineWidth = 1;
-        ctx.setLineDash([2, 3]);
-        for (let x = -3; x <= 3; x++) {
-          if (x === 0) continue;
-          const sx = center.x + x * scale;
-          ctx.beginPath();
-          ctx.moveTo(sx, 0);
-          ctx.lineTo(sx, height);
-          ctx.stroke();
-        }
-        for (let y = -3; y <= 3; y++) {
-          if (y === 0) continue;
-          const sy = center.y - y * scale;
-          ctx.beginPath();
-          ctx.moveTo(0, sy);
-          ctx.lineTo(width, sy);
-          ctx.stroke();
-        }
-        ctx.setLineDash([]);
-        ctx.strokeStyle = theme.muted;
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.moveTo(0, center.y);
-        ctx.lineTo(width, center.y);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(center.x, 0);
-        ctx.lineTo(center.x, height);
-        ctx.stroke();
-        ctx.restore();
-      }
-
-      // MODE 1: Weighted Inner Product & Metric Ellipse
-      if (st.mode === "weighted") {
-        // Draw Weighted Unit Ellipse: w11*x^2 + w22*y^2 = 1 => a = 1/sqrt(w11), b = 1/sqrt(w22)
-        const rx = (1 / Math.sqrt(st.w11)) * scale;
-        const ry = (1 / Math.sqrt(st.w22)) * scale;
-
-        ctx.save();
-        ctx.strokeStyle = "#2563eb"; // blue-600
-        ctx.lineWidth = 2;
-        ctx.fillStyle = "rgba(37, 99, 235, 0.06)";
-        ctx.beginPath();
-        ctx.ellipse(center.x, center.y, rx, ry, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.font = "bold 11px system-ui, sans-serif";
-        ctx.fillStyle = "#2563eb";
-        ctx.fillText(
-          "单位度规椭圆 ⟨v,v⟩_W = 1",
-          center.x + rx + 8,
-          center.y - 8,
-        );
-        ctx.restore();
-
-        const pOrigin = toCanvas(0, 0);
-        const pU = toCanvas(st.uVec.x, st.uVec.y);
-        const pV = toCanvas(st.vWeighted.x, st.vWeighted.y);
-
-        // Vector u (Amber) & handle
-        drawPixelSegment(ctx, pOrigin.x, pOrigin.y, pU.x, pU.y, "#d97706", 3);
-        drawDragHandle(ctx, pU.x, pU.y, {
-          color: "#d97706",
-          isHovered: hoveredTargetRef.current === "uVec",
-          isDragging: dragTargetRef.current === "uVec",
-        });
-
-        ctx.save();
-        ctx.font = "bold 12px system-ui, sans-serif";
-        ctx.fillStyle = "#d97706";
-        ctx.fillText(
-          `u (${st.uVec.x.toFixed(1)}, ${st.uVec.y.toFixed(1)})`,
-          pU.x + 8,
-          pU.y - 8,
-        );
-        ctx.restore();
-
-        // Vector v (Purple)
-        drawPixelSegment(ctx, pOrigin.x, pOrigin.y, pV.x, pV.y, "#9333ea", 3);
-        drawPixelPoint(ctx, pV.x, pV.y, "#9333ea", 5);
-
-        ctx.save();
-        ctx.font = "bold 12px system-ui, sans-serif";
-        ctx.fillStyle = "#9333ea";
-        ctx.fillText(`v (加权正交 ⟨u,v⟩_W = 0)`, pV.x + 8, pV.y - 8);
-        ctx.restore();
-      }
-
-      // MODE 2: Function Space Inner Product <f, g>
-      else if (st.mode === "func") {
-        const steps = 200;
-        const xMin = -1;
-        const xMax = 1;
-
-        // Draw integral range [-1, 1] vertical bounds
-        const pLeft = toCanvas(xMin, 0);
-        const pRight = toCanvas(xMax, 0);
-
-        ctx.save();
-        ctx.strokeStyle = theme.muted;
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.moveTo(pLeft.x, 0);
-        ctx.lineTo(pLeft.x, height);
-        ctx.moveTo(pRight.x, 0);
-        ctx.lineTo(pRight.x, height);
-        ctx.stroke();
-        ctx.restore();
-
-        // Draw Product Curve f(x)*g(x) with filled area (Amber)
-        ctx.save();
-        ctx.fillStyle = "rgba(217, 119, 6, 0.15)";
-        ctx.beginPath();
-        ctx.moveTo(toCanvas(xMin, 0).x, toCanvas(xMin, 0).y);
-        for (let i = 0; i <= steps; i++) {
-          const x = xMin + ((xMax - xMin) * i) / steps;
-          const y = st.activeFunc.f(x) * st.activeFunc.g(x);
-          const p = toCanvas(x, y * 0.8);
-          ctx.lineTo(p.x, p.y);
-        }
-        ctx.lineTo(toCanvas(xMax, 0).x, toCanvas(xMax, 0).y);
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
-
-        // Draw f(x) Curve (Blue)
-        ctx.save();
-        ctx.strokeStyle = "#2563eb";
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        for (let i = 0; i <= steps; i++) {
-          const x = xMin + ((xMax - xMin) * i) / steps;
-          const y = st.activeFunc.f(x);
-          const p = toCanvas(x, y * 0.8);
-          if (i === 0) ctx.moveTo(p.x, p.y);
-          else ctx.lineTo(p.x, p.y);
-        }
-        ctx.stroke();
-        ctx.font = "bold 12px system-ui, sans-serif";
-        ctx.fillStyle = "#2563eb";
-        ctx.fillText(
-          `f(x)`,
-          pRight.x + 8,
-          toCanvas(1, st.activeFunc.f(1) * 0.8).y,
-        );
-        ctx.restore();
-
-        // Draw g(x) Curve (Purple)
-        ctx.save();
-        ctx.strokeStyle = "#9333ea";
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        for (let i = 0; i <= steps; i++) {
-          const x = xMin + ((xMax - xMin) * i) / steps;
-          const y = st.activeFunc.g(x);
-          const p = toCanvas(x, y * 0.8);
-          if (i === 0) ctx.moveTo(p.x, p.y);
-          else ctx.lineTo(p.x, p.y);
-        }
-        ctx.stroke();
-        ctx.font = "bold 12px system-ui, sans-serif";
-        ctx.fillStyle = "#9333ea";
-        ctx.fillText(
-          `g(x)`,
-          pRight.x + 8,
-          toCanvas(1, st.activeFunc.g(1) * 0.8).y + 16,
-        );
-        ctx.restore();
-
-        // Draw f(x)g(x) Curve (Amber)
-        ctx.save();
-        ctx.strokeStyle = "#d97706";
-        ctx.lineWidth = 2;
-        ctx.setLineDash([3, 3]);
-        ctx.beginPath();
-        for (let i = 0; i <= steps; i++) {
-          const x = xMin + ((xMax - xMin) * i) / steps;
-          const y = st.activeFunc.f(x) * st.activeFunc.g(x);
-          const p = toCanvas(x, y * 0.8);
-          if (i === 0) ctx.moveTo(p.x, p.y);
-          else ctx.lineTo(p.x, p.y);
-        }
-        ctx.stroke();
-        ctx.restore();
-      }
-
-      // MODE 3: Cauchy-Schwarz & Parallelogram Law
-      else if (st.mode === "theorems") {
-        const pOrigin = toCanvas(0, 0);
-        const pU = toCanvas(st.uThem.x, st.uThem.y);
-        const pV = toCanvas(st.vThem.x, st.vThem.y);
-        const pSum = toCanvas(st.sumUV.x, st.sumUV.y);
-
-        // Draw Parallelogram dashed lines
-        ctx.save();
-        ctx.strokeStyle = theme.border;
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([4, 4]);
-
-        ctx.beginPath();
-        ctx.moveTo(pU.x, pU.y);
-        ctx.lineTo(pSum.x, pSum.y);
-        ctx.lineTo(pV.x, pV.y);
-        ctx.stroke();
-
-        // Diagonal u - v (Diff, Red)
-        drawPixelSegment(ctx, pV.x, pV.y, pU.x, pU.y, "#dc2626", 1.8, [3, 3]);
-        // Diagonal u + v (Sum, Emerald)
-        drawPixelSegment(
-          ctx,
-          pOrigin.x,
-          pOrigin.y,
-          pSum.x,
-          pSum.y,
-          "#059669",
-          2,
-          [4, 4],
-        );
-        ctx.restore();
-
-        const isHoveredU = hoveredTargetRef.current === "uThem";
-        const isDraggingU = dragTargetRef.current === "uThem";
-        const isHoveredV = hoveredTargetRef.current === "vThem";
-        const isDraggingV = dragTargetRef.current === "vThem";
-
-        // Vector u (Blue) & handle
-        drawPixelSegment(ctx, pOrigin.x, pOrigin.y, pU.x, pU.y, "#2563eb", 3);
-        drawDragHandle(ctx, pU.x, pU.y, {
-          color: "#2563eb",
-          isHovered: isHoveredU,
-          isDragging: isDraggingU,
-        });
-
-        ctx.save();
-        ctx.font = "bold 12px system-ui, sans-serif";
-        ctx.fillStyle = "#2563eb";
-        ctx.fillText(
-          `u (${st.uThem.x.toFixed(1)}, ${st.uThem.y.toFixed(1)})`,
-          pU.x + 8,
-          pU.y - 8,
-        );
-        ctx.restore();
-
-        // Vector v (Purple) & handle
-        drawPixelSegment(ctx, pOrigin.x, pOrigin.y, pV.x, pV.y, "#9333ea", 3);
-        drawDragHandle(ctx, pV.x, pV.y, {
-          color: "#9333ea",
-          isHovered: isHoveredV,
-          isDragging: isDraggingV,
-        });
-
-        ctx.save();
-        ctx.font = "bold 12px system-ui, sans-serif";
-        ctx.fillStyle = "#9333ea";
-        ctx.fillText(
-          `v (${st.vThem.x.toFixed(1)}, ${st.vThem.y.toFixed(1)})`,
-          pV.x + 8,
-          pV.y - 8,
-        );
-        ctx.restore();
-      }
-    },
-  });
-
-  useEffect(() => {
-    redraw();
-  }, [mode, showAxes, w11, w22, uVec, funcIdx, uThem, vThem, redraw]);
-
-  const updateVectorFromMouse = (
-    px: number,
-    py: number,
-    width: number,
-    height: number,
-    target: "uVec" | "uThem" | "vThem",
-  ) => {
-    const scale = Math.min(width, height) / 8;
-    const center = { x: width / 2, y: height / 2 };
-    const wx = (px - center.x) / scale;
-    const wy = (center.y - py) / scale;
-
-    const clampedX = Math.max(-2.8, Math.min(2.8, wx));
-    const clampedY = Math.max(-2.8, Math.min(2.8, wy));
-
-    if (target === "uVec") {
-      setUVec({ x: clampedX, y: clampedY });
-    } else if (target === "uThem") {
-      setUThem({ x: clampedX, y: clampedY });
-    } else if (target === "vThem") {
-      setVThem({ x: clampedX, y: clampedY });
-    }
-  };
+  const leftParallelogram = normSumSq + normDiffSq;
+  const rightParallelogram = 2 * (normUThemSq + normVThemSq);
 
   return (
-    <AutoMath>
-      <ExpandableDemo id="inner-product-space" height={height}>
-        <KdeWindowShell
-          title="内积空间与几何度规工作台"
-          eyebrow="BREEZE WORKSPACE · INNER PRODUCT SPACES"
-          mark="I"
-          modeTag="INNER PRODUCT"
-          testId="inner-product-space-demo"
-          tabs={
+    <ExpandableDemo id="inner-product-space" height={height}>
+      <KdeWindowShell
+        title="内积空间几何：度规、函数空间与基本几何定理"
+        eyebrow="Linear Algebra · Inner Product Spaces"
+        mark="⟨u, v⟩"
+        modeTag={
+          mode === "weighted"
+            ? "加权度规椭圆"
+            : mode === "func"
+              ? "L²[-1,1] 积分内积"
+              : "几何不等式与恒等式"
+        }
+        display={
+          <CanvasViewport
+            initialBounds={BOUNDS}
+            className="h-[var(--demo-height,22rem)]"
+            onDraw={(ctx, plot, theme, scene) => {
+              scene.addAxes();
+
+              if (mode === "weighted") {
+                // Unit ellipse for weighted metric: w11 * x^2 + w22 * y^2 = 1
+                const rx = 1 / Math.sqrt(w11);
+                const ry = 1 / Math.sqrt(w22);
+                const ellipsePts: Array<[number, number]> = [];
+                for (let i = 0; i <= 80; i++) {
+                  const th = (i / 80) * Math.PI * 2;
+                  ellipsePts.push([rx * Math.cos(th), ry * Math.sin(th)]);
+                }
+                scene.addPolyline({
+                  points: ellipsePts,
+                  color: "#2563eb",
+                  fillColor: "rgba(37, 99, 235, 0.08)",
+                  closed: true,
+                  width: 2.0,
+                });
+
+                // Fixed vector v
+                scene.addVector({
+                  to: [vWeighted.x, vWeighted.y],
+                  color: "#059669",
+                  width: 2.5,
+                  label: `v (${vWeighted.x.toFixed(2)}, ${vWeighted.y.toFixed(2)})`,
+                });
+
+                // Draggable vector u
+                scene.addVector({
+                  to: [uVec.x, uVec.y],
+                  color: "#d97706",
+                  width: 3.5,
+                  label: `u (${uVec.x.toFixed(2)}, ${uVec.y.toFixed(2)})`,
+                  draggable: true,
+                  handleRadius: 6,
+                  handleRing: true,
+                  hitRadiusPx: 24,
+                  onDrag: (tip) => setUVec({ x: tip[0], y: tip[1] }),
+                });
+              } else if (mode === "func") {
+                // Curves f(x), g(x), and integrand f(x)*g(x) on [-1, 1]
+                const fPts: Array<[number, number]> = [];
+                const gPts: Array<[number, number]> = [];
+                const prodPts: Array<[number, number]> = [];
+
+                for (let x = -1; x <= 1.001; x += 0.02) {
+                  const fx = activeFunc.f(x);
+                  const gx = activeFunc.g(x);
+                  fPts.push([x, fx]);
+                  gPts.push([x, gx]);
+                  prodPts.push([x, fx * gx]);
+                }
+
+                // Shaded integral area under product f(x)*g(x)
+                scene.addPolyline({
+                  points: [[-1, 0], ...prodPts, [1, 0]],
+                  color: "rgba(168, 85, 247, 0.4)",
+                  fillColor: "rgba(168, 85, 247, 0.15)",
+                  closed: true,
+                  width: 1.5,
+                });
+
+                scene.addPolyline({
+                  points: fPts,
+                  color: "#2563eb",
+                  width: 2.5,
+                });
+
+                scene.addPolyline({
+                  points: gPts,
+                  color: "#059669",
+                  width: 2.5,
+                });
+              } else {
+                // Mode: Theorems (u, v, parallelogram u+v, diagonal u-v)
+                scene.addPolyline({
+                  points: [
+                    [0, 0],
+                    [uThem.x, uThem.y],
+                    [sumUV.x, sumUV.y],
+                    [vThem.x, vThem.y],
+                  ],
+                  closed: true,
+                  fillColor: "rgba(59, 130, 246, 0.08)",
+                  color: "rgba(59, 130, 246, 0.3)",
+                  width: 1.5,
+                  dash: [4, 4],
+                });
+
+                // Diagonal u - v from v to u
+                scene.addVector({
+                  from: [vThem.x, vThem.y],
+                  to: [uThem.x, uThem.y],
+                  color: "#dc2626",
+                  width: 2.0,
+                  dash: [4, 3],
+                  label: "u - v",
+                });
+
+                // Diagonal sum u + v
+                scene.addVector({
+                  to: [sumUV.x, sumUV.y],
+                  color: "#7c3aed",
+                  width: 2.5,
+                  label: "u + v",
+                });
+
+                // Vector u (draggable)
+                scene.addVector({
+                  to: [uThem.x, uThem.y],
+                  color: "#2563eb",
+                  width: 3.5,
+                  label: "u",
+                  draggable: true,
+                  handleRadius: 6,
+                  handleRing: true,
+                  hitRadiusPx: 24,
+                  onDrag: (tip) => setUThem({ x: tip[0], y: tip[1] }),
+                });
+
+                // Vector v (draggable)
+                scene.addVector({
+                  to: [vThem.x, vThem.y],
+                  color: "#059669",
+                  width: 3.5,
+                  label: "v",
+                  draggable: true,
+                  handleRadius: 6,
+                  handleRing: true,
+                  hitRadiusPx: 24,
+                  onDrag: (tip) => setVThem({ x: tip[0], y: tip[1] }),
+                });
+              }
+
+              scene.render(ctx, plot, theme);
+            }}
+          >
+            <CanvasOverlay position="top-left">
+              <CanvasOverlay.Title>内积空间结构</CanvasOverlay.Title>
+              <CanvasOverlay.Subtitle>
+                {mode === "weighted"
+                  ? "度规矩阵 G 诱导的赋范空间与单位球"
+                  : mode === "func"
+                    ? "连续函数空间积分正交性"
+                    : "柯西-施瓦茨不等式与平行四边形恒等式"}
+              </CanvasOverlay.Subtitle>
+            </CanvasOverlay>
+
+            <CanvasOverlay position="bottom-left">
+              {mode === "weighted" ? (
+                <>
+                  <CanvasOverlay.Item
+                    color="#d97706"
+                    label={`‖u‖_G = ${normU.toFixed(2)}`}
+                  />
+                  <CanvasOverlay.Item
+                    color="#2563eb"
+                    label={`⟨u, v⟩_G = ${innerUV.toFixed(2)}`}
+                  />
+                </>
+              ) : mode === "func" ? (
+                <CanvasOverlay.Item
+                  color="#7c3aed"
+                  label={`⟨f, g⟩ = ${activeFunc.exactIntegral.toFixed(3)}`}
+                />
+              ) : (
+                <>
+                  <CanvasOverlay.Item
+                    color="#2563eb"
+                    label={`|⟨u, v⟩| = ${Math.abs(dotThem).toFixed(2)} ≤ ‖u‖‖v‖ = ${(normUThem * normVThem).toFixed(2)}`}
+                  />
+                  <CanvasOverlay.Item
+                    color="#7c3aed"
+                    label={`‖u+v‖² + ‖u-v‖² = ${leftParallelogram.toFixed(2)} = 2(‖u‖²+‖v‖²)`}
+                  />
+                </>
+              )}
+            </CanvasOverlay>
+          </CanvasViewport>
+        }
+        controls={
+          <div className="space-y-3">
             <KdeTabs
               options={MODES}
               value={mode}
-              onChange={(val) => setMode(val as ModeType)}
-              size="sm"
+              onChange={(m) => setMode(m as ModeType)}
             />
-          }
-          display={
-            <div
-              ref={containerRef}
-              className="relative h-[var(--demo-height,22rem)] w-full overflow-hidden"
-            >
-              <CanvasToolbar onReset={resetBounds} />
-              <canvas
-                ref={canvasRef}
-                className="absolute inset-0 h-full w-full cursor-crosshair"
-              />
-              <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
-            </div>
-          }
-          controls={
-            <div className="space-y-3">
-              {mode === "weighted" && (
-                <>
-                  <KdeCard title="度规权重参数" variant="dense">
-                    <div className="space-y-3">
-                      <ParamSlider
-                        label="$w_{11}$ (x 轴权重)"
-                        value={w11}
-                        min={0.2}
-                        max={3.0}
-                        step={0.1}
-                        onChange={setW11}
-                        widthClass="w-full"
-                        labelMode="adaptive"
-                      />
-                      <ParamSlider
-                        label="$w_{22}$ (y 轴权重)"
-                        value={w22}
-                        min={0.2}
-                        max={3.0}
-                        step={0.1}
-                        onChange={setW22}
-                        widthClass="w-full"
-                        labelMode="adaptive"
-                      />
-                    </div>
-                  </KdeCard>
 
-                  <KdeCard title="加权度规状态监视" variant="dense">
-                    <div className="space-y-2">
-                      <KdeReadout
-                        label="诱导范数 ‖u‖_W"
-                        value={normUWeighted.toFixed(3)}
-                        subValue="√(w₁₁u₁² + w₂₂u₂²)"
-                        variant="accent"
-                        dense
-                      />
-                      <KdeReadout
-                        label="加权正交性 ⟨u, v⟩_W"
-                        value={
-                          Math.abs(innerProdWeighted) < 1e-4
-                            ? "0.000 (精确正交!)"
-                            : innerProdWeighted.toFixed(3)
-                        }
-                        variant={
-                          Math.abs(innerProdWeighted) < 1e-4
-                            ? "success"
-                            : "default"
-                        }
-                        dense
-                      />
-                    </div>
-                  </KdeCard>
-                </>
-              )}
-
-              {mode === "func" && (
-                <>
-                  <KdeCard title="连续函数空间预设" variant="dense">
-                    <PresetSelector
-                      label="基函数对:"
-                      options={FUNC_PRESETS.map((presetItem, idx) => ({
-                        id: String(idx),
-                        label: presetItem.name,
-                      }))}
-                      value={String(funcIdx)}
-                      onChange={(val) => setFuncIdx(Number(val))}
-                      size="xs"
-                      layout="vertical"
+            {mode === "weighted" && (
+              <>
+                <KdeCard title="度规矩阵对角权重" variant="dense">
+                  <div className="space-y-2">
+                    <ParamSlider
+                      label="权重 $w_{11}$ (X 轴主向权重)"
+                      labelMode="adaptive"
+                      widthClass="w-full"
+                      value={w11}
+                      min={0.25}
+                      max={4.0}
+                      step={0.25}
+                      onChange={setW11}
                     />
-                  </KdeCard>
+                    <ParamSlider
+                      label="权重 $w_{22}$ (Y 轴主向权重)"
+                      labelMode="adaptive"
+                      widthClass="w-full"
+                      value={w22}
+                      min={0.25}
+                      max={4.0}
+                      step={0.25}
+                      onChange={setW22}
+                    />
+                  </div>
+                </KdeCard>
 
-                  <KdeCard title="积分内积结果 ⟨f, g⟩" variant="dense">
-                    <div className="space-y-2">
-                      <KdeReadout
-                        label="基函数 f(x) 与 g(x)"
-                        value={`$${activeFunc.fName}$ 与 $${activeFunc.gName}$`}
-                        variant="default"
-                        dense
-                      />
-                      <KdeReadout
-                        label="区间 [-1, 1] 积分内积"
-                        value={activeFunc.exactIntegral.toFixed(3)}
-                        subValue={
-                          activeFunc.exactIntegral === 0
-                            ? "正交函数对 ⟨f,g⟩ = 0"
-                            : undefined
-                        }
-                        variant={
-                          activeFunc.exactIntegral === 0 ? "success" : "accent"
-                        }
-                        dense
-                      />
+                <div className="grid grid-cols-2 gap-1.5">
+                  <KdeReadout
+                    label="加权内积 ⟨u, v⟩_G"
+                    value={innerUV.toFixed(3)}
+                    variant={Math.abs(innerUV) < 0.05 ? "success" : "default"}
+                    dense
+                  />
+                  <KdeReadout
+                    label="诱导范数 ‖u‖_G"
+                    value={normU.toFixed(3)}
+                    variant="accent"
+                    dense
+                  />
+                </div>
+              </>
+            )}
+
+            {mode === "func" && (
+              <>
+                <KdeCard title="典型正交/非正交函数对" variant="dense">
+                  <PresetSelector
+                    label="选择函数对:"
+                    options={FUNC_PRESETS.map((p, idx) => ({
+                      id: String(idx),
+                      label: p.name,
+                    }))}
+                    value={String(activeFuncIdx)}
+                    onChange={(id) => setActiveFuncIdx(Number.parseInt(id, 10))}
+                  />
+                </KdeCard>
+
+                <div className="grid grid-cols-2 gap-1.5">
+                  <KdeReadout
+                    label="积分内积结果 ⟨f, g⟩"
+                    value={activeFunc.exactIntegral.toFixed(3)}
+                    variant={
+                      activeFunc.exactIntegral === 0 ? "success" : "default"
+                    }
+                    dense
+                  />
+                  <KdeReadout
+                    label="正交判定"
+                    value={
+                      activeFunc.exactIntegral === 0 ? "严格正交 (0)" : "非正交"
+                    }
+                    variant={
+                      activeFunc.exactIntegral === 0 ? "success" : "default"
+                    }
+                    dense
+                  />
+                </div>
+              </>
+            )}
+
+            {mode === "theorems" && (
+              <div className="space-y-2">
+                <KdeCard
+                  title="柯西-施瓦茨不等式 |⟨u,v⟩| ≤ ‖u‖‖v‖"
+                  variant="dense"
+                >
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between font-mono">
+                      <span className="text-muted-foreground">
+                        左侧 |⟨u, v⟩|：
+                      </span>
+                      <span className="text-primary font-bold">
+                        {Math.abs(dotThem).toFixed(3)}
+                      </span>
                     </div>
-                  </KdeCard>
-                </>
-              )}
-
-              {mode === "theorems" && (
-                <>
-                  <KdeCard title="柯西-施瓦茨不等式" variant="dense">
-                    <div className="space-y-2">
-                      <KdeReadout
-                        label="左式 |⟨u, v⟩|"
-                        value={csLHS.toFixed(3)}
-                        variant="default"
-                        dense
-                      />
-                      <KdeReadout
-                        label="右式 ‖u‖ ‖v‖"
-                        value={csRHS.toFixed(3)}
-                        subValue={
-                          csLHS <= csRHS + 1e-4
-                            ? "✓ 不等式严格成立"
-                            : "✕ 校验异常"
-                        }
-                        variant="success"
-                        dense
-                      />
+                    <div className="flex justify-between font-mono">
+                      <span className="text-muted-foreground">
+                        右侧 ‖u‖ ‖v‖：
+                      </span>
+                      <span className="text-emerald-500 font-bold">
+                        {(normUThem * normVThem).toFixed(3)}
+                      </span>
                     </div>
-                  </KdeCard>
+                    <p className="text-[11px] text-muted-foreground pt-1 border-t border-[var(--kde-border,#bec5cc)]/60">
+                      {Math.abs(Math.abs(dotThem) - normUThem * normVThem) <
+                      0.05
+                        ? "等号严格成立：两向量共线！"
+                        : "严格小于：两向量不共线。"}
+                    </p>
+                  </div>
+                </KdeCard>
 
-                  <KdeCard title="平行四边形恒等式" variant="dense">
-                    <div className="space-y-2">
-                      <KdeReadout
-                        label="‖u+v‖² + ‖u-v‖²"
-                        value={paraLHS.toFixed(2)}
-                        variant="default"
-                        dense
-                      />
-                      <KdeReadout
-                        label="2‖u‖² + 2‖v‖²"
-                        value={paraRHS.toFixed(2)}
-                        subValue={
-                          Math.abs(paraLHS - paraRHS) < 1e-3
-                            ? "✓ 恒等式精确相等"
-                            : "✕ 校验异常"
-                        }
-                        variant="success"
-                        dense
-                      />
+                <KdeCard
+                  title="平行四边形恒等式 ‖u+v‖² + ‖u-v‖² = 2(‖u‖² + ‖v‖²)"
+                  variant="dense"
+                >
+                  <div className="space-y-1 text-xs font-mono">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">
+                        对角线平方和：
+                      </span>
+                      <span className="text-purple-400 font-bold">
+                        {leftParallelogram.toFixed(3)}
+                      </span>
                     </div>
-                  </KdeCard>
-                </>
-              )}
-
-              <p className="text-xs text-muted leading-relaxed">
-                提示：
-                {mode === "weighted" &&
-                  "调节权重滑块或在画布上拖拽向量 u 端点，观察度规椭圆与加权正交向量联动。"}
-                {mode === "func" &&
-                  "选择不同基函数对，观察函数乘积围成的积分正负面积及正交性质。"}
-                {mode === "theorems" &&
-                  "在画布上自由拖拽向量 u 或 v，实时验证几何不等式与模长守恒。"}
-              </p>
-            </div>
-          }
-        />
-      </ExpandableDemo>
-    </AutoMath>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">
+                        2 × (边长平方和)：
+                      </span>
+                      <span className="text-purple-400 font-bold">
+                        {rightParallelogram.toFixed(3)}
+                      </span>
+                    </div>
+                  </div>
+                </KdeCard>
+              </div>
+            )}
+          </div>
+        }
+      />
+    </ExpandableDemo>
   );
-};
+}
+
+export default InnerProductSpaceDemo;

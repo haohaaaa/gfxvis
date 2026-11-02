@@ -95,10 +95,16 @@ test.describe("交互式可视化 UI 风格试验场 E2E 冒烟测试", () => {
     const canvas = sample.locator("canvas").first();
     await expect.poll(() => hasPaintedPixels(canvas)).toBe(true);
 
-    await sample.getByRole("button", { name: /代数矩阵/ }).click();
+    await sample
+      .getByRole("tab", { name: /代数矩阵/ })
+      .or(sample.getByRole("button", { name: /代数矩阵/ }))
+      .click();
     await expect(sample.locator("canvas").first()).toBeHidden();
 
-    await sample.getByRole("button", { name: /几何投影/ }).click();
+    await sample
+      .getByRole("tab", { name: /几何投影/ })
+      .or(sample.getByRole("button", { name: /几何投影/ }))
+      .click();
     await expect(canvas).toBeVisible();
     await expect.poll(() => hasPaintedPixels(canvas)).toBe(true);
   });

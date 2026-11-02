@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import AutoMath from "./AutoMath";
 
 export type KdeProgressBarVariant =
   | "accent"
@@ -80,12 +81,14 @@ export default function KdeProgressBar({
         <div className="flex items-center justify-between text-xs">
           {hasLabel && (
             <span className="font-medium text-[var(--kde-ink,#232629)]">
-              {label}
+              <AutoMath>{label}</AutoMath>
             </span>
           )}
           {(showValue || valueDisplay) && (
             <span className="font-mono text-[11px] text-[var(--kde-muted,#626b73)]">
-              {valueDisplay ?? `${Math.round(percentage)}%`}
+              <AutoMath>
+                {valueDisplay ?? `${Math.round(percentage)}%`}
+              </AutoMath>
             </span>
           )}
         </div>

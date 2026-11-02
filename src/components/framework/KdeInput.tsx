@@ -1,4 +1,5 @@
 import { forwardRef, type InputHTMLAttributes, type ReactNode } from "react";
+import AutoMath from "./AutoMath";
 
 export type KdeInputSize = "xs" | "sm" | "md";
 
@@ -46,10 +47,12 @@ export const KdeInput = forwardRef<HTMLInputElement, KdeInputProps>(
       <div className="flex w-full flex-col gap-1 text-left">
         {label && (
           <label className="flex items-center justify-between text-[11px] font-semibold text-[var(--kde-muted)]">
-            <span>{label}</span>
+            <span>
+              <AutoMath>{label}</AutoMath>
+            </span>
             {error && (
               <span className="font-normal text-rose-600 dark:text-rose-400">
-                {error}
+                <AutoMath>{error}</AutoMath>
               </span>
             )}
           </label>
@@ -58,7 +61,7 @@ export const KdeInput = forwardRef<HTMLInputElement, KdeInputProps>(
         <div className="relative flex w-full items-center">
           {addonLeft && (
             <span className="absolute left-2.5 inline-flex items-center text-[var(--kde-muted)] pointer-events-none">
-              {addonLeft}
+              <AutoMath>{addonLeft}</AutoMath>
             </span>
           )}
 
@@ -91,20 +94,20 @@ export const KdeInput = forwardRef<HTMLInputElement, KdeInputProps>(
 
           {addonRight && !clearable && (
             <span className="absolute right-2.5 inline-flex items-center text-[var(--kde-muted)] pointer-events-none">
-              {addonRight}
+              <AutoMath>{addonRight}</AutoMath>
             </span>
           )}
         </div>
 
         {!label && error && (
           <span className="text-[11px] text-rose-600 dark:text-rose-400">
-            {error}
+            <AutoMath>{error}</AutoMath>
           </span>
         )}
 
         {!error && helperText && (
           <span className="text-[11px] text-[var(--kde-muted)]">
-            {helperText}
+            <AutoMath>{helperText}</AutoMath>
           </span>
         )}
       </div>

@@ -16,17 +16,14 @@ import {
   type ProjectionModeId,
   type ProjectionTargetId,
 } from "../../visualizations/scenes/linear-algebra/projection2d";
-import CanvasToolbar from "../framework/CanvasToolbar";
-import CanvasResizer from "../framework/CanvasResizer";
+import CanvasViewport from "../framework/CanvasViewport";
 import ExpandableDemo from "../framework/ExpandableDemo";
-import { AutoMath } from "../framework/AutoMath";
 import ParamSlider from "../framework/ParamSlider";
 import KdeWindowShell from "../framework/KdeWindowShell";
 import KdeCard from "../framework/KdeCard";
 import KdeTabs from "../framework/KdeTabs";
 import KdeReadout from "../framework/KdeReadout";
 import { clamp } from "@math";
-import { useCanvas2D } from "../framework/useCanvas2D";
 import { useVectorDrag } from "../framework/useVectorDrag";
 
 const MARGIN = 24;
@@ -128,309 +125,280 @@ export default function ProjectionDemo({ height }: { height?: string }) {
     },
   });
 
-  const { containerRef, canvasRef, resetBounds } = useCanvas2D(
-    {
-      initialBounds: PROJECTION_BOUNDS,
-      margin: MARGIN,
-      onLeftDown: dragHandlers.onLeftDown,
-      onLeftMove: dragHandlers.onLeftMove,
-      onLeftUp: dragHandlers.onLeftUp,
-      onHover: dragHandlers.onHover,
-      onPointerLeave: dragHandlers.onPointerLeave,
-      draw(ctx, plot, theme) {
-        const target = PROJECTION_TARGETS[targetId];
-        const m = target.modes[modeId];
-        drawAdaptiveAxes(ctx, plot, theme);
-
-        const activeTrack = dragHandlers.getActiveTrack();
-        if (activeTrack) {
-          drawDragGuideTrack(ctx, plot, activeTrack);
-        }
-
-        const { x, y } = probe;
-        const [px, py] = m.project(x, y);
-        const rx = x - px;
-        const ry = y - py;
-
-        // Target subspace: emphasize the target line across the visible viewport
-        const visible = getVisibleBounds(plot);
-        if (target.id === "x-axis") {
-          drawSegment(ctx, plot, visible.xMin, 0, visible.xMax, 0, {
-            color: theme.border,
-            width: 3,
-          });
-        } else {
-          const minVal = Math.min(visible.xMin, visible.yMin);
-          const maxVal = Math.max(visible.xMax, visible.yMax);
-          drawSegment(ctx, plot, minVal, minVal, maxVal, maxVal, {
-            color: theme.border,
-            width: 3,
-          });
-        }
-
-        const ox = plot.toScreenX(0);
-        const oy = plot.toScreenY(0);
-        const xTipX = plot.toScreenX(x);
-        const xTipY = plot.toScreenY(y);
-        const pxTipX = plot.toScreenX(px);
-        const pxTipY = plot.toScreenY(py);
-
-        // Residual (I - P)x: dashed segment from Px to x.
-        drawSegment(ctx, plot, px, py, x, y, {
-          color: theme.muted,
-          width: 1.8,
-          dash: [5, 4],
-        });
-
-        // Right-angle marker for orthogonal projection
-        if (modeId === "orthogonal" && Math.hypot(rx, ry) > 0.3) {
-          // Line direction in screen space
-          const lineDirX = targetId === "x-axis" ? 1 : 1 / Math.SQRT2;
-          const lineDirY = targetId === "x-axis" ? 0 : -1 / Math.SQRT2; // y inverted in screen space
-          // Dot with residual to face the corner toward x
-          const resDx = xTipX - pxTipX;
-          const resDy = xTipY - pxTipY;
-          const resLen = Math.hypot(resDx, resDy) || 1;
-          const resNormX = resDx / resLen;
-          const resNormY = resDy / resLen;
-
-          // Line orientation facing toward origin or away depending on dot
-          const lineSign =
-            (pxTipX - ox) * lineDirX + (pxTipY - oy) * lineDirY >= 0 ? 1 : -1;
-          const uX = lineDirX * lineSign;
-          const uY = lineDirY * lineSign;
-
-          const cornerSize = 10;
-          ctx.save();
-          ctx.strokeStyle = theme.muted;
-          ctx.lineWidth = 1.4;
-          ctx.beginPath();
-          ctx.moveTo(pxTipX + uX * cornerSize, pxTipY + uY * cornerSize);
-          ctx.lineTo(
-            pxTipX + uX * cornerSize + resNormX * cornerSize,
-            pxTipY + uY * cornerSize + resNormY * cornerSize,
-          );
-          ctx.lineTo(
-            pxTipX + resNormX * cornerSize,
-            pxTipY + resNormY * cornerSize,
-          );
-          ctx.stroke();
-          ctx.restore();
-        }
-
-        // x arrow (ink) and Px arrow (accent).
-        drawArrow(ctx, ox, oy, xTipX - ox, xTipY - oy, theme.ink, 10, 7, 2.4);
-        drawArrow(
-          ctx,
-          ox,
-          oy,
-          pxTipX - ox,
-          pxTipY - oy,
-          theme.accent,
-          10,
-          7,
-          2.6,
-        );
-
-        // Hollow ring at Px: projecting again lands on the same point (P^2 x = Px).
-        drawPoint(ctx, plot, px, py, {
-          color: theme.accent,
-          filled: false,
-          radius: 6,
-          width: 2,
-        });
-
-        // Interactive Transform Gizmo at tip x
-        drawDragGizmo(ctx, plot, x, y, {
-          color: theme.ink,
-          isHoveredCenter: dragHandlers.isCenterHovered("probe"),
-          isDraggingCenter: dragHandlers.isCenterDragging("probe"),
-          hoveredArrowId: dragHandlers.getHoveredArrowId("probe"),
-          draggingArrowId: dragHandlers.getDraggingArrowId("probe"),
-          arrows: gizmoArrows,
-          opacity: dragHandlers.getOpacity("probe"),
-        });
-
-        // 1. Badge for input vector x: x = (x, y)
-        const angleX = Math.atan2(xTipY - oy, xTipX - ox);
-        const xBadgeDist = 20;
-        drawPillBadge(
-          ctx,
-          xTipX + Math.cos(angleX) * xBadgeDist,
-          xTipY + Math.sin(angleX) * xBadgeDist,
-          `x = (${x.toFixed(2)}, ${y.toFixed(2)})`,
-          "rgba(15, 23, 42, 0.9)",
-          "#ffffff",
-          "rgba(255, 255, 255, 0.2)",
-        );
-
-        // 2. Badge for projected vector Px: Px = (px, py)
-        const anglePx = Math.atan2(pxTipY - oy, pxTipX - ox);
-        const pxBadgeDist = 22;
-        drawPillBadge(
-          ctx,
-          pxTipX + Math.cos(anglePx + Math.PI / 4) * pxBadgeDist,
-          pxTipY + Math.sin(anglePx + Math.PI / 4) * pxBadgeDist,
-          `Px = (${px.toFixed(2)}, ${py.toFixed(2)})`,
-          "rgba(37, 99, 235, 0.92)",
-          "#ffffff",
-          "rgba(255, 255, 255, 0.25)",
-        );
-
-        // 3. Badge for residual vector (I - P)x: (I - P)x = (rx, ry)
-        const midResX = (xTipX + pxTipX) / 2;
-        const midResY = (xTipY + pxTipY) / 2;
-        const resDx = xTipX - pxTipX;
-        const resDy = xTipY - pxTipY;
-        const resLen = Math.hypot(resDx, resDy) || 1;
-        const perpX = -resDy / resLen;
-        const perpY = resDx / resLen;
-        const resBadgeDist = 16;
-
-        drawPillBadge(
-          ctx,
-          midResX + perpX * resBadgeDist,
-          midResY + perpY * resBadgeDist,
-          `e = (${rx.toFixed(2)}, ${ry.toFixed(2)})`,
-          "rgba(100, 116, 139, 0.9)",
-          "#ffffff",
-          "rgba(255, 255, 255, 0.2)",
-        );
-      },
-    },
-    [probe, targetId, modeId],
-  );
-
-  const [px, py] = mode.project(probe.x, probe.y);
-  const rx = probe.x - px;
-  const ry = probe.y - py;
+  const { x, y } = probe;
+  const [px, py] = mode.project(x, y);
+  const rx = x - px;
+  const ry = y - py;
 
   return (
-    <AutoMath>
-      <ExpandableDemo id="projection-2d" height={height}>
-        <KdeWindowShell
-          title="投影算子与空间正交分解 (Projection Operator)"
-          eyebrow="Linear Algebra · Idempotent Operators"
-          mark="P² = P"
-          modeTag={
-            modeId === "orthogonal"
-              ? "正交投影 (Orthogonal)"
-              : "斜投影 (Oblique)"
-          }
-          display={
-            <div
-              ref={containerRef}
-              className="relative h-[var(--demo-height,20rem)] w-full overflow-hidden rounded-xl border border-border bg-slate-950"
-            >
-              <CanvasToolbar onReset={resetBounds} />
-              <canvas
-                ref={canvasRef}
-                className="absolute inset-0 h-full w-full"
-              />
-              <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
-            </div>
-          }
-          controls={
-            <div className="space-y-3">
-              <KdeCard title="投影模式与目标子空间" variant="dense">
-                <div className="space-y-2">
-                  <div>
-                    <div className="text-[11px] text-muted mb-1 font-medium">
-                      投影目标子空间 L：
-                    </div>
-                    <KdeTabs
-                      options={TARGET_OPTIONS}
-                      value={targetId}
-                      onChange={(id: string) =>
-                        setTargetId(id as ProjectionTargetId)
-                      }
-                      size="xs"
-                    />
-                  </div>
-                  <div className="pt-2 border-t border-border/40">
-                    <div className="text-[11px] text-muted mb-1 font-medium">
-                      投影类型：
-                    </div>
-                    <KdeTabs
-                      options={MODE_OPTIONS}
-                      value={modeId}
-                      onChange={(id: string) =>
-                        setModeId(id as ProjectionModeId)
-                      }
-                      size="xs"
-                    />
-                  </div>
-                </div>
-              </KdeCard>
+    <ExpandableDemo id="projection" height={height}>
+      <KdeWindowShell
+        title="2D 投影变换与幂等分解"
+        eyebrow="Linear Algebra · 2D Projection"
+        mark="P² = P"
+        modeTag={`${PROJECTION_TARGETS[targetId].label} · ${mode.label}`}
+        display={
+          <CanvasViewport
+            initialBounds={PROJECTION_BOUNDS}
+            margin={MARGIN}
+            className="h-[var(--demo-height,20rem)]"
+            onLeftDown={dragHandlers.onLeftDown}
+            onLeftMove={dragHandlers.onLeftMove}
+            onLeftUp={dragHandlers.onLeftUp}
+            onHover={dragHandlers.onHover}
+            onPointerLeave={dragHandlers.onPointerLeave}
+            onDraw={(ctx, plot, theme) => {
+              const target = PROJECTION_TARGETS[targetId];
+              const m = target.modes[modeId];
+              drawAdaptiveAxes(ctx, plot, theme);
 
-              <KdeCard title="探测向量坐标 (x, y)" variant="dense">
-                <div className="space-y-2">
-                  <ParamSlider
-                    label="$x$"
-                    min={PROBE_CLAMP.xMin}
-                    max={PROBE_CLAMP.xMax}
-                    step={0.05}
-                    value={probe.x}
-                    onChange={(v: number) => setProbe((s) => ({ ...s, x: v }))}
-                    widthClass="w-full"
-                  />
-                  <ParamSlider
-                    label="$y$"
-                    min={PROBE_CLAMP.yMin}
-                    max={PROBE_CLAMP.yMax}
-                    step={0.05}
-                    value={probe.y}
-                    onChange={(v: number) => setProbe((s) => ({ ...s, y: v }))}
-                    widthClass="w-full"
+              const activeTrack = dragHandlers.getActiveTrack();
+              if (activeTrack) {
+                drawDragGuideTrack(ctx, plot, activeTrack);
+              }
+
+              const [curPx, curPy] = m.project(probe.x, probe.y);
+              const curRx = probe.x - curPx;
+              const curRy = probe.y - curPy;
+
+              // Target subspace: emphasize the target line across the visible viewport
+              const visible = getVisibleBounds(plot);
+              if (target.id === "x-axis") {
+                drawSegment(ctx, plot, visible.xMin, 0, visible.xMax, 0, {
+                  color: theme.border,
+                  width: 3,
+                });
+              } else {
+                const minVal = Math.min(visible.xMin, visible.yMin);
+                const maxVal = Math.max(visible.xMax, visible.yMax);
+                drawSegment(ctx, plot, minVal, minVal, maxVal, maxVal, {
+                  color: theme.border,
+                  width: 3,
+                });
+              }
+
+              const ox = plot.toScreenX(0);
+              const oy = plot.toScreenY(0);
+              const xTipX = plot.toScreenX(probe.x);
+              const xTipY = plot.toScreenY(probe.y);
+              const pxTipX = plot.toScreenX(curPx);
+              const pxTipY = plot.toScreenY(curPy);
+
+              // Residual (I - P)x: dashed segment from Px to x.
+              drawSegment(ctx, plot, curPx, curPy, probe.x, probe.y, {
+                color: theme.muted,
+                width: 1.8,
+                dash: [5, 4],
+              });
+
+              // Right-angle marker for orthogonal projection
+              if (modeId === "orthogonal" && Math.hypot(curRx, curRy) > 0.3) {
+                const lineDirX = targetId === "x-axis" ? 1 : 1 / Math.SQRT2;
+                const lineDirY = targetId === "x-axis" ? 0 : -1 / Math.SQRT2;
+                const resDx = xTipX - pxTipX;
+                const resDy = xTipY - pxTipY;
+                const resLen = Math.hypot(resDx, resDy) || 1;
+                const resNormX = resDx / resLen;
+                const resNormY = resDy / resLen;
+
+                const lineSign =
+                  (pxTipX - ox) * lineDirX + (pxTipY - oy) * lineDirY >= 0
+                    ? 1
+                    : -1;
+                const uX = lineDirX * lineSign;
+                const uY = lineDirY * lineSign;
+
+                const cornerSize = 10;
+                ctx.save();
+                ctx.strokeStyle = theme.muted;
+                ctx.lineWidth = 1.4;
+                ctx.beginPath();
+                ctx.moveTo(pxTipX + uX * cornerSize, pxTipY + uY * cornerSize);
+                ctx.lineTo(
+                  pxTipX + uX * cornerSize + resNormX * cornerSize,
+                  pxTipY + uY * cornerSize + resNormY * cornerSize,
+                );
+                ctx.lineTo(
+                  pxTipX + resNormX * cornerSize,
+                  pxTipY + resNormY * cornerSize,
+                );
+                ctx.stroke();
+                ctx.restore();
+              }
+
+              // x arrow (ink) and Px arrow (accent).
+              drawArrow(
+                ctx,
+                ox,
+                oy,
+                xTipX - ox,
+                xTipY - oy,
+                theme.ink,
+                10,
+                7,
+                2.4,
+              );
+              drawArrow(
+                ctx,
+                ox,
+                oy,
+                pxTipX - ox,
+                pxTipY - oy,
+                theme.accent,
+                10,
+                7,
+                2.6,
+              );
+
+              // Hollow ring at Px: projecting again lands on the same point (P^2 x = Px).
+              drawPoint(ctx, plot, curPx, curPy, {
+                color: theme.accent,
+                filled: false,
+                radius: 6,
+                width: 2,
+              });
+
+              // Interactive Transform Gizmo at tip x
+              drawDragGizmo(ctx, plot, probe.x, probe.y, {
+                color: theme.ink,
+                isHoveredCenter: dragHandlers.isCenterHovered("probe"),
+                isDraggingCenter: dragHandlers.isCenterDragging("probe"),
+                hoveredArrowId: dragHandlers.getHoveredArrowId("probe"),
+                draggingArrowId: dragHandlers.getDraggingArrowId("probe"),
+                arrows: gizmoArrows,
+              });
+
+              // Badges
+              const midResX = plot.toScreenX((curPx + probe.x) / 2);
+              const midResY = plot.toScreenY((curPy + probe.y) / 2);
+              drawPillBadge(
+                ctx,
+                midResX + 32,
+                midResY - 14,
+                "(I - P)x",
+                "rgba(15, 23, 42, 0.85)",
+                "#94a3b8",
+                "rgba(148, 163, 184, 0.3)",
+              );
+              drawPillBadge(
+                ctx,
+                pxTipX,
+                pxTipY + 22,
+                "Px",
+                "rgba(15, 23, 42, 0.85)",
+                theme.accent,
+                "rgba(37, 99, 235, 0.4)",
+              );
+              drawPillBadge(
+                ctx,
+                xTipX + 18,
+                xTipY - 18,
+                "x",
+                "rgba(15, 23, 42, 0.85)",
+                theme.ink,
+                "rgba(255, 255, 255, 0.3)",
+              );
+            }}
+          />
+        }
+        controls={
+          <div className="space-y-3">
+            <KdeCard title="目标子空间与投影类型" variant="dense">
+              <div className="space-y-2.5">
+                <div>
+                  <div className="text-[11px] text-muted mb-1 font-medium">
+                    目标子空间：
+                  </div>
+                  <KdeTabs
+                    options={TARGET_OPTIONS}
+                    value={targetId}
+                    onChange={(id: string) =>
+                      setTargetId(id as ProjectionTargetId)
+                    }
+                    size="xs"
                   />
                 </div>
-              </KdeCard>
+                <div className="pt-2 border-t border-border/40">
+                  <div className="text-[11px] text-muted mb-1 font-medium">
+                    投影类型：
+                  </div>
+                  <KdeTabs
+                    options={MODE_OPTIONS}
+                    value={modeId}
+                    onChange={(id: string) => setModeId(id as ProjectionModeId)}
+                    size="xs"
+                  />
+                </div>
+              </div>
+            </KdeCard>
 
-              <div className="grid grid-cols-2 gap-1.5">
-                <KdeReadout
-                  label="原向量 x"
-                  value={`(${probe.x.toFixed(2)}, ${probe.y.toFixed(2)})`}
-                  dense
+            <KdeCard title="探测向量坐标 (x, y)" variant="dense">
+              <div className="space-y-2">
+                <ParamSlider
+                  label="$x$"
+                  min={PROBE_CLAMP.xMin}
+                  max={PROBE_CLAMP.xMax}
+                  step={0.05}
+                  value={probe.x}
+                  onChange={(v: number) => setProbe((s) => ({ ...s, x: v }))}
+                  widthClass="w-full"
                 />
-                <KdeReadout
-                  label="投影向量 Px"
-                  value={`(${px.toFixed(2)}, ${py.toFixed(2)})`}
-                  variant="accent"
-                  dense
-                />
-                <KdeReadout
-                  label="残差向量 (I-P)x"
-                  value={`(${rx.toFixed(2)}, ${ry.toFixed(2)})`}
-                  dense
-                />
-                <KdeReadout
-                  label="幂等性质 P²x = Px"
-                  value="P² = P 成立"
-                  variant="success"
-                  dense
+                <ParamSlider
+                  label="$y$"
+                  min={PROBE_CLAMP.yMin}
+                  max={PROBE_CLAMP.yMax}
+                  step={0.05}
+                  value={probe.y}
+                  onChange={(v: number) => setProbe((s) => ({ ...s, y: v }))}
+                  widthClass="w-full"
                 />
               </div>
+            </KdeCard>
 
-              <KdeCard title="投影矩阵与代数表达式" variant="dense">
-                <div className="space-y-1.5 text-xs">
-                  <div className="font-mono text-primary bg-surface p-2 rounded border border-border/40 overflow-x-auto">
-                    {`$P = ${mode.tex}$`}
-                  </div>
-                  <div className="text-[11px] text-muted font-mono">
-                    {`$Px = ${mode.texPx}$`}
-                  </div>
-                </div>
-              </KdeCard>
-
-              <p className="text-xs text-muted leading-relaxed">
-                {
-                  "提示：拖动端点黑心圆点进行 2D 自由移动；拖动蓝色箭头沿子空间 $L$ 滑动；拖动灰色箭头沿残差法向 $L^\\perp$ 滑动（落点 $Px$ 保持恒定不变！）。"
-                }
-              </p>
+            <div className="grid grid-cols-2 gap-1.5">
+              <KdeReadout
+                label="原向量 x"
+                value={`(${probe.x.toFixed(2)}, ${probe.y.toFixed(2)})`}
+                dense
+              />
+              <KdeReadout
+                label="投影向量 Px"
+                value={`(${px.toFixed(2)}, ${py.toFixed(2)})`}
+                variant="accent"
+                dense
+              />
+              <KdeReadout
+                label="残差向量 (I-P)x"
+                value={`(${rx.toFixed(2)}, ${ry.toFixed(2)})`}
+                dense
+              />
+              <KdeReadout
+                label="幂等性质 P²x = Px"
+                value="P² = P 成立"
+                variant="success"
+                dense
+              />
             </div>
-          }
-        />
-      </ExpandableDemo>
-    </AutoMath>
+
+            <KdeCard title="投影矩阵与代数表达式" variant="dense">
+              <div className="space-y-1.5 text-xs">
+                <div className="font-mono text-primary bg-surface p-2 rounded border border-border/40 overflow-x-auto">
+                  {`$P = ${mode.tex}$`}
+                </div>
+                <div className="text-[11px] text-muted font-mono">
+                  {`$Px = ${mode.texPx}$`}
+                </div>
+              </div>
+            </KdeCard>
+
+            <p className="text-xs text-muted leading-relaxed">
+              {
+                "提示：拖动端点黑心圆点进行 2D 自由移动；拖动蓝色箭头沿子空间 $L$ 滑动；拖动灰色箭头沿残差法向 $L^\\perp$ 滑动（落点 $Px$ 保持恒定不变！）。"
+              }
+            </p>
+          </div>
+        }
+      />
+    </ExpandableDemo>
   );
 }

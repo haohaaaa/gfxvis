@@ -1,5 +1,4 @@
 import { useState, useRef } from "react";
-import AutoMath from "../framework/AutoMath";
 import ParamSlider from "../framework/ParamSlider";
 import KdeTabs from "../framework/KdeTabs";
 import ExpandableDemo from "../framework/ExpandableDemo";
@@ -1383,52 +1382,50 @@ export default function AffineSpaceDiagram() {
   );
 
   return (
-    <AutoMath>
-      <ExpandableDemo id="affine-space-diagram">
-        <KdeWindowShell
-          channel="CH 01"
-          title="仿射几何公理与代数结构交互探针"
-          eyebrow="BREEZE WORKSPACE · AFFINE AXIOMS"
-          mark="B"
-          modeTag="AFFINE"
-          tabs={modeSelector}
-          testId="affine-space-diagram-console"
-          display={
-            <div className="relative flex h-full min-h-[20rem] w-full flex-1 items-center justify-center overflow-hidden">
-              <CanvasToolbar onReset={handleReset} />
-              {mode === "point_vector" && pointVectorSvg}
-              {mode === "frame_barycentric" && frameSvg}
-              {mode === "homogenization" && homogenizationSvg}
-            </div>
-          }
-          controls={
-            <div className="flex flex-col gap-3">
-              {mode === "point_vector" && pointVectorControls}
-              {mode === "frame_barycentric" && frameControls}
-              {mode === "homogenization" && homogenizationControls}
-            </div>
-          }
-          footer={
-            <div className="w-full">
-              {mode === "point_vector" && (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {pointVectorReadouts}
-                </div>
-              )}
-              {mode === "frame_barycentric" && (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {frameReadouts}
-                </div>
-              )}
-              {mode === "homogenization" && (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {homogenizationReadouts}
-                </div>
-              )}
-            </div>
-          }
-        />
-      </ExpandableDemo>
-    </AutoMath>
+    <ExpandableDemo id="affine-space-diagram">
+      <KdeWindowShell
+        channel="CH 01"
+        title="仿射几何公理与代数结构交互探针"
+        eyebrow="BREEZE WORKSPACE · AFFINE AXIOMS"
+        mark="B"
+        modeTag="AFFINE"
+        tabs={modeSelector}
+        testId="affine-space-diagram-console"
+        display={
+          <div className="relative flex h-full min-h-[20rem] w-full flex-1 items-center justify-center overflow-hidden">
+            <CanvasToolbar onReset={handleReset} />
+            {mode === "point_vector" && pointVectorSvg}
+            {mode === "frame_barycentric" && frameSvg}
+            {mode === "homogenization" && homogenizationSvg}
+          </div>
+        }
+        controls={
+          <div className="flex flex-col gap-3">
+            {mode === "point_vector" && pointVectorControls}
+            {mode === "frame_barycentric" && frameControls}
+            {mode === "homogenization" && homogenizationControls}
+          </div>
+        }
+        footer={
+          <div className="w-full">
+            {mode === "point_vector" && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {pointVectorReadouts}
+              </div>
+            )}
+            {mode === "frame_barycentric" && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {frameReadouts}
+              </div>
+            )}
+            {mode === "homogenization" && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {homogenizationReadouts}
+              </div>
+            )}
+          </div>
+        }
+      />
+    </ExpandableDemo>
   );
 }

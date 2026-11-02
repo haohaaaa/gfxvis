@@ -254,6 +254,75 @@ function checkFile(file: string, content: string): Issue[] {
   return issues;
 }
 
+async function walkTsx(dir: string): Promise<string[]> {
+  const results: string[] = [];
+  const list = await readdir(dir);
+  for (const file of list) {
+    const fullPath = join(dir, file);
+    const fileStat = await stat(fullPath);
+    if (fileStat.isDirectory()) {
+      results.push(...(await walkTsx(fullPath)));
+    } else if (fullPath.endsWith(".tsx")) {
+      results.push(fullPath);
+    }
+  }
+  return results;
+}
+
+async function checkComponentTsxHeadings(): Promise<Issue[]> {
+  const compDirs = [
+    "src/components/demos",
+    "src/components/diagrams",
+    "src/components/framework",
+  ];
+  const issues: Issue[] = [];
+
+  for (const dir of compDirs) {
+    let files: string[] = [];
+    try {
+      files = await walkTsx(dir);
+    } catch {
+      continue;
+    }
+
+    for (const file of files) {
+      const content = await readFile(file, "utf-8");
+      const lines = content.split("\n");
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const trimmed = line.trim();
+        if (
+          trimmed.startsWith('"') ||
+          trimmed.startsWith("'") ||
+          trimmed.startsWith("`") ||
+          trimmed.startsWith("//") ||
+          trimmed.startsWith("*") ||
+          trimmed.startsWith("/*")
+        ) {
+          continue;
+        }
+        const match = line.match(/<(h[1-6])(\s|>)/);
+        if (match) {
+          if (line.includes(`"${match[0]}`) || line.includes(`'${match[0]}`)) {
+            continue;
+          }
+          const tag = match[1];
+          const level = tag.slice(1);
+          issues.push({
+            file,
+            line: i + 1,
+            type: "error",
+            code: "no-raw-heading-in-island",
+            message: `Found raw <${tag}> in React Island component. Astro MDX SSR (rehype-slug) will inject 'id' on server headings, causing client Hydration Mismatch. Use <span role="heading" aria-level={${level}}> instead.`,
+          });
+        }
+      }
+    }
+  }
+
+  return issues;
+}
+
 async function main(): Promise<void> {
   const files = await walk(targetDir);
   const allIssues: Issue[] = [];
@@ -263,6 +332,9 @@ async function main(): Promise<void> {
     const issues = checkFile(file, content);
     allIssues.push(...issues);
   }
+
+  const componentIssues = await checkComponentTsxHeadings();
+  allIssues.push(...componentIssues);
 
   const errors = allIssues.filter((i) => i.type === "error");
   const warnings = allIssues.filter((i) => i.type === "warn");

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import {
   BufferGeometry,
   Color,
@@ -14,10 +14,7 @@ import {
 } from "three";
 import KdeTabs, { type KdeTabOption } from "../framework/KdeTabs";
 import KdeGroupBox from "../framework/KdeGroupBox";
-import CanvasToolbar from "../framework/CanvasToolbar";
-import CanvasResizer from "../framework/CanvasResizer";
 import ExpandableDemo from "../framework/ExpandableDemo";
-import { AutoMath } from "../framework/AutoMath";
 import ParamSlider from "../framework/ParamSlider";
 import PresetSelector, { type PresetOption } from "../framework/PresetSelector";
 import KdeWindowShell from "../framework/KdeWindowShell";
@@ -25,8 +22,8 @@ import KdeCard from "../framework/KdeCard";
 import KdeReadout from "../framework/KdeReadout";
 import KdeBadge from "../framework/KdeBadge";
 import KdeMessageBar from "../framework/KdeMessageBar";
-import { useCanvas2D } from "../framework/useCanvas2D";
-import { useViewer3D } from "../framework/useViewer3D";
+import CanvasViewport from "../framework/CanvasViewport";
+import Viewer3DViewport from "../framework/Viewer3DViewport";
 import { clamp } from "@math";
 import {
   computeNiceTicks,
@@ -39,7 +36,6 @@ import {
   type Plot2D,
   type ThemeColors,
 } from "../../visualizations/core/2d/plot2d";
-import type { Canvas2DOptions } from "../../visualizations/core/2d/canvas2d";
 import { createAxesGroup } from "../../visualizations/core/3d/axes3d";
 import { mathToWorld } from "../../visualizations/core/3d/coords";
 import {
@@ -388,86 +384,72 @@ function HullCanvas2D({
   const samples = useMemo(() => sampleConvexCombinations2D(points), [points]);
   const dimension = affineDimension2D(points);
 
-  const canvasOptions: Canvas2DOptions = {
-    initialBounds: WORLD_BOUNDS,
-    draw(ctx, plot, theme) {
-      const ticks = computeNiceTicks(-3, 3, 7);
-      drawAxes(ctx, plot, theme, ticks, ticks);
-      drawHull2D(ctx, plot, theme, points, samples, activeIndex);
-    },
-    onLeftDown(event, plot) {
-      let closestIndex: number | null = null;
-      let closestDistance = 18;
-      const el =
-        (event.currentTarget as HTMLElement | null) ??
-        (event.target as HTMLElement | null);
-      const rect = el?.getBoundingClientRect();
-      const px = rect ? event.clientX - rect.left : event.offsetX;
-      const py = rect ? event.clientY - rect.top : event.offsetY;
-      points.forEach((point, index) => {
-        const distance = Math.hypot(
-          plot.toScreenX(point.x) - px,
-          plot.toScreenY(point.y) - py,
-        );
-        if (distance < closestDistance) {
-          closestIndex = index;
-          closestDistance = distance;
-        }
-      });
-      if (closestIndex === null) return false;
-      draggingIndex.current = closestIndex;
-      setActiveIndex(closestIndex);
-      return true;
-    },
-    onLeftMove(event, plot) {
-      const index = draggingIndex.current;
-      if (index === null) return;
-      const el =
-        (event.currentTarget as HTMLElement | null) ??
-        (event.target as HTMLElement | null);
-      const rect = el?.getBoundingClientRect();
-      const px = rect ? event.clientX - rect.left : event.offsetX;
-      const py = rect ? event.clientY - rect.top : event.offsetY;
-      const x = clamp(plot.toWorldX(px), -2.75, 2.75);
-      const y = clamp(plot.toWorldY(py), -2.75, 2.75);
-      onPointsChange(
-        points.map((point, pointIndex) =>
-          pointIndex === index ? { x, y } : point,
-        ),
-      );
-    },
-    onLeftUp() {
-      draggingIndex.current = null;
-      setActiveIndex(null);
-    },
-  };
-
-  const { containerRef, canvasRef, resetBounds } = useCanvas2D(canvasOptions, [
-    points,
-    activeIndex,
-  ]);
-
   const handleReset = () => {
     draggingIndex.current = null;
     setActiveIndex(null);
     onReset();
-    resetBounds();
   };
 
   return (
     <div
-      ref={containerRef}
       className="relative flex-1 h-full min-h-[var(--demo-height,20rem)] w-full overflow-hidden"
       data-affine-dimension={dimension}
     >
-      <CanvasToolbar onReset={handleReset} />
-      <canvas
-        ref={canvasRef}
-        aria-label="拖动平面点，观察仿射包与凸包"
-        className="absolute inset-0 h-full w-full touch-none"
-        data-testid={canvasTestId}
+      <CanvasViewport
+        initialBounds={WORLD_BOUNDS}
+        className="flex-1 h-full min-h-[var(--demo-height,20rem)] w-full"
+        onReset={handleReset}
+        onLeftDown={(event, plot) => {
+          let closestIndex: number | null = null;
+          let closestDistance = 18;
+          const el =
+            (event.currentTarget as HTMLElement | null) ??
+            (event.target as HTMLElement | null);
+          const rect = el?.getBoundingClientRect();
+          const px = rect ? event.clientX - rect.left : event.offsetX;
+          const py = rect ? event.clientY - rect.top : event.offsetY;
+          points.forEach((point, index) => {
+            const distance = Math.hypot(
+              plot.toScreenX(point.x) - px,
+              plot.toScreenY(point.y) - py,
+            );
+            if (distance < closestDistance) {
+              closestIndex = index;
+              closestDistance = distance;
+            }
+          });
+          if (closestIndex === null) return false;
+          draggingIndex.current = closestIndex;
+          setActiveIndex(closestIndex);
+          return true;
+        }}
+        onLeftMove={(event, plot) => {
+          const index = draggingIndex.current;
+          if (index === null) return;
+          const el =
+            (event.currentTarget as HTMLElement | null) ??
+            (event.target as HTMLElement | null);
+          const rect = el?.getBoundingClientRect();
+          const px = rect ? event.clientX - rect.left : event.offsetX;
+          const py = rect ? event.clientY - rect.top : event.offsetY;
+          const x = clamp(plot.toWorldX(px), -2.75, 2.75);
+          const y = clamp(plot.toWorldY(py), -2.75, 2.75);
+          onPointsChange(
+            points.map((point, pointIndex) =>
+              pointIndex === index ? { x, y } : point,
+            ),
+          );
+        }}
+        onLeftUp={() => {
+          draggingIndex.current = null;
+          setActiveIndex(null);
+        }}
+        onDraw={(ctx, plot, theme) => {
+          const ticks = computeNiceTicks(-3, 3, 7);
+          drawAxes(ctx, plot, theme, ticks, ticks);
+          drawHull2D(ctx, plot, theme, points, samples, activeIndex);
+        }}
       />
-      <CanvasResizer className="absolute bottom-0 inset-x-0 z-20" />
     </div>
   );
 }
@@ -1110,42 +1092,23 @@ function R3FourPointExperiment({
   scenarioSelector: ReactNode;
 }) {
   const [height, setHeight] = useState(DEFAULT_TETRA_HEIGHT);
-  const onUpdate = useCallback(
-    ({ api }: { api: TetraSceneApi }) => api.setHeight(height),
-    [height],
-  );
-  const { containerRef, apiRef, viewerRef } = useViewer3D(
-    createTetrahedronScene,
-    onUpdate,
-    [height],
-  );
 
   const points = tetrahedronPoints(height);
   const volume = Math.abs(tetrahedronSixVolume(points)) / 6;
   const affineDimension = height > GEOMETRY_EPSILON ? 3 : 2;
   const sampleCount = sampleSimplexWeights(4).length;
 
-  const handleReset = () => {
-    setHeight(DEFAULT_TETRA_HEIGHT);
-    apiRef.current?.setHeight(DEFAULT_TETRA_HEIGHT);
-    const viewer = viewerRef.current;
-    if (!viewer) return;
-    viewer.camera.position.set(3, 2.5, 4);
-    viewer.camera.lookAt(0, 0, 0);
-    viewer.controls.target.set(0, 0, 0);
-    viewer.controls.update();
-    viewer.render();
-  };
-
   const canvas = (
-    <div
-      ref={containerRef}
-      className="relative flex-1 h-full min-h-[var(--demo-height,28rem)] w-full overflow-hidden"
-      data-testid="r3-tetra-canvas-container"
-    >
-      <CanvasToolbar onReset={handleReset} />
-      <CanvasResizer className="absolute bottom-0 inset-x-0 z-20" />
-    </div>
+    <Viewer3DViewport
+      factory={createTetrahedronScene}
+      className="flex-1 h-full min-h-[var(--demo-height,28rem)] w-full"
+      onReset={() => setHeight(DEFAULT_TETRA_HEIGHT)}
+      onUpdate={({ api, viewer }) => {
+        api.setHeight(height);
+        viewer.render();
+      }}
+      deps={[height]}
+    />
   );
   const readouts = (
     <div className="flex w-full min-w-0 flex-col gap-3">
@@ -1340,18 +1303,16 @@ export default function AffineHullConvexRedundancyDemo() {
   );
 
   return (
-    <AutoMath>
-      <ExpandableDemo id="affine-hull-convex-redundancy">
-        {scenario === "r2-three" && (
-          <R2ThreePointExperiment scenarioSelector={scenarioSelector} />
-        )}
-        {scenario === "r3-four" && (
-          <R3FourPointExperiment scenarioSelector={scenarioSelector} />
-        )}
-        {scenario === "r2-four" && (
-          <R2FourPointExperiment scenarioSelector={scenarioSelector} />
-        )}
-      </ExpandableDemo>
-    </AutoMath>
+    <ExpandableDemo id="affine-hull-convex-redundancy">
+      {scenario === "r2-three" && (
+        <R2ThreePointExperiment scenarioSelector={scenarioSelector} />
+      )}
+      {scenario === "r3-four" && (
+        <R3FourPointExperiment scenarioSelector={scenarioSelector} />
+      )}
+      {scenario === "r2-four" && (
+        <R2FourPointExperiment scenarioSelector={scenarioSelector} />
+      )}
+    </ExpandableDemo>
   );
 }

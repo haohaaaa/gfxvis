@@ -7,7 +7,6 @@ import InteractiveLayout from "../framework/InteractiveLayout";
 import KdeCard from "../framework/KdeCard";
 import KdeBadge from "../framework/KdeBadge";
 import CodePlayground from "../framework/CodePlayground";
-import { AutoMath } from "../framework/AutoMath";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import PresetSelector from "../framework/PresetSelector";
 import KdeButton from "../framework/KdeButton";
@@ -220,677 +219,674 @@ export default function DependentTypeDiagram() {
   }
 
   return (
-    <AutoMath>
-      <ExpandableDemo id="dependent-types-sandbox">
-        <KdeWindowShell
-          eyebrow="TYPE THEORY WORKSPACE · DEPENDENT TYPES"
-          mark="Π"
-          modeTag="DENSE-DOCK"
-          title="依值类型论（Dependent Type Theory）交互探针"
-        >
-          <InteractiveLayout
-            preset="dense-dock"
-            top={
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-[var(--kde-muted)]">
-                    探针视角：
-                  </span>
-                  <KdeTabs
-                    onChange={(val) => setActiveTab(val)}
-                    options={VIEW_OPTIONS}
-                    size="sm"
-                    value={activeTab}
+    <ExpandableDemo id="dependent-types-sandbox">
+      <KdeWindowShell
+        eyebrow="TYPE THEORY WORKSPACE · DEPENDENT TYPES"
+        mark="Π"
+        modeTag="DENSE-DOCK"
+        title="依值类型论（Dependent Type Theory）交互探针"
+      >
+        <InteractiveLayout
+          preset="dense-dock"
+          top={
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-[var(--kde-muted)]">
+                  探针视角：
+                </span>
+                <KdeTabs
+                  onChange={(val) => setActiveTab(val)}
+                  options={VIEW_OPTIONS}
+                  size="sm"
+                  value={activeTab}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <KdeBadge variant="primary">
+                  {currentPreset.theoryBadge}
+                </KdeBadge>
+              </div>
+            </div>
+          }
+          main={
+            <div className="relative flex h-[var(--demo-height,28rem)] w-full flex-col overflow-hidden rounded-xl border border-[var(--kde-border)] bg-[var(--kde-canvas)] p-5 shadow-inner">
+              <CanvasToolbar onReset={handleReset} />
+
+              {activeTab === "code_sandbox" ? (
+                <div className="flex-1 flex flex-col overflow-y-auto pr-1">
+                  <CodePlayground
+                    code={DEPENDENT_TS_CODE}
+                    description="在线运行 TypeScript 类型级元组长度约束，模拟 safeHead 与 append 长度计算。"
+                    lang="ts"
+                    maxHeight="20rem"
+                    title="TypeScript 依值类型沙盒"
                   />
                 </div>
-                <div className="flex items-center gap-2">
-                  <KdeBadge variant="primary">
-                    {currentPreset.theoryBadge}
-                  </KdeBadge>
-                </div>
-              </div>
-            }
-            main={
-              <div className="relative flex h-[var(--demo-height,28rem)] w-full flex-col overflow-hidden rounded-xl border border-[var(--kde-border)] bg-[var(--kde-canvas)] p-5 shadow-inner">
-                <CanvasToolbar onReset={handleReset} />
-
-                {activeTab === "code_sandbox" ? (
-                  <div className="flex-1 flex flex-col overflow-y-auto pr-1">
-                    <CodePlayground
-                      code={DEPENDENT_TS_CODE}
-                      description="在线运行 TypeScript 类型级元组长度约束，模拟 safeHead 与 append 长度计算。"
-                      lang="ts"
-                      maxHeight="20rem"
-                      title="TypeScript 依值类型沙盒"
-                    />
-                  </div>
-                ) : (
-                  <>
-                    {/* Shared Top Mathematical Formal Signature */}
-                    <div className="rounded-lg bg-[var(--kde-raised)] p-3 border border-[var(--kde-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                      <div>
-                        <span className="text-xs font-semibold text-[var(--kde-muted)] block mb-0.5">
-                          形式化签名 (Dependent Type Signature)
-                        </span>
-                        <div className="text-[var(--kde-accent)] font-mono text-sm overflow-x-auto">
-                          {`$${currentPreset.formalSignature}$`}
-                        </div>
-                      </div>
-                      <div className="text-xs px-2.5 py-1 rounded-md bg-[var(--kde-panel)] text-[var(--kde-ink)] font-mono border border-[var(--kde-border)]">
-                        {currentPreset.theoryBadge}
+              ) : (
+                <>
+                  {/* Shared Top Mathematical Formal Signature */}
+                  <div className="rounded-lg bg-[var(--kde-raised)] p-3 border border-[var(--kde-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                    <div>
+                      <span className="text-xs font-semibold text-[var(--kde-muted)] block mb-0.5">
+                        形式化签名 (Dependent Type Signature)
+                      </span>
+                      <div className="text-[var(--kde-accent)] font-mono text-sm overflow-x-auto">
+                        {`$${currentPreset.formalSignature}$`}
                       </div>
                     </div>
+                    <div className="text-xs px-2.5 py-1 rounded-md bg-[var(--kde-panel)] text-[var(--kde-ink)] font-mono border border-[var(--kde-border)]">
+                      {currentPreset.theoryBadge}
+                    </div>
+                  </div>
 
-                    {/* Tab 1: Length-indexed Vector Interactive Simulator */}
-                    {activeTab === "vect_simulator" && (
-                      <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-1">
-                        {/* Dynamic Dimension & Operation Configurator */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                          {/* Vector Length Tweakers */}
-                          <div className="rounded-lg bg-[var(--kde-raised)] p-3 border border-[var(--kde-border)] flex items-center justify-between">
-                            <span className="font-semibold text-[var(--kde-muted)]">
-                              向量 A 长度 (n):
-                            </span>
-                            <div className="flex items-center gap-1.5 font-mono">
-                              {[0, 1, 2, 3, 4].map((len) => (
-                                <KdeButton
-                                  key={len}
-                                  size="xs"
-                                  variant={
-                                    vec1Len === len ? "primary" : "default"
-                                  }
-                                  aria-label={`向量 A 长度 ${len}`}
-                                  onClick={() => setVec1Len(len)}
-                                  className="w-7 h-7 p-0"
-                                >
-                                  {len}
-                                </KdeButton>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div className="rounded-lg bg-[var(--kde-raised)] p-3 border border-[var(--kde-border)] flex items-center justify-between">
-                            <span className="font-semibold text-[var(--kde-muted)]">
-                              向量 B 长度 (m):
-                            </span>
-                            <div className="flex items-center gap-1.5 font-mono">
-                              {[0, 1, 2, 3, 4].map((len) => (
-                                <KdeButton
-                                  key={len}
-                                  size="xs"
-                                  variant={
-                                    vec2Len === len ? "primary" : "default"
-                                  }
-                                  aria-label={`向量 B 长度 ${len}`}
-                                  onClick={() => setVec2Len(len)}
-                                  className="w-7 h-7 p-0"
-                                >
-                                  {len}
-                                </KdeButton>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Operation Selector Bar */}
-                        <div className="flex flex-wrap items-center justify-between gap-2 bg-[var(--kde-raised)] p-2.5 rounded-lg border border-[var(--kde-border)] text-xs">
-                          <span className="text-[var(--kde-muted)] font-medium">
-                            选择调用的依值类型函数：
+                  {/* Tab 1: Length-indexed Vector Interactive Simulator */}
+                  {activeTab === "vect_simulator" && (
+                    <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-1">
+                      {/* Dynamic Dimension & Operation Configurator */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                        {/* Vector Length Tweakers */}
+                        <div className="rounded-lg bg-[var(--kde-raised)] p-3 border border-[var(--kde-border)] flex items-center justify-between">
+                          <span className="font-semibold text-[var(--kde-muted)]">
+                            向量 A 长度 (n):
                           </span>
-                          <div className="flex gap-1.5">
-                            <KdeButton
-                              size="xs"
-                              variant={
-                                targetOp === "append" ? "primary" : "default"
-                              }
-                              onClick={() => setTargetOp("append")}
-                            >
-                              append (拼接)
-                            </KdeButton>
-                            <KdeButton
-                              size="xs"
-                              variant={
-                                targetOp === "safe_head" ? "primary" : "default"
-                              }
-                              onClick={() => setTargetOp("safe_head")}
-                            >
-                              safe_head (取首元)
-                            </KdeButton>
-                            <KdeButton
-                              size="xs"
-                              variant={
-                                targetOp === "zip_with" ? "primary" : "default"
-                              }
-                              onClick={() => setTargetOp("zip_with")}
-                            >
-                              zipWith (等长并合)
-                            </KdeButton>
+                          <div className="flex items-center gap-1.5 font-mono">
+                            {[0, 1, 2, 3, 4].map((len) => (
+                              <KdeButton
+                                key={len}
+                                size="xs"
+                                variant={
+                                  vec1Len === len ? "primary" : "default"
+                                }
+                                aria-label={`向量 A 长度 ${len}`}
+                                onClick={() => setVec1Len(len)}
+                                className="w-7 h-7 p-0"
+                              >
+                                {len}
+                              </KdeButton>
+                            ))}
                           </div>
                         </div>
 
-                        {/* Interactive Vector Visual Stage */}
-                        <div className="rounded-lg bg-[var(--kde-raised)] border border-[var(--kde-border)] p-3.5 shadow-xs flex flex-col justify-between flex-1 text-xs">
-                          <div>
-                            <div className="flex items-center justify-between pb-2 border-b border-[var(--kde-border)] mb-3">
-                              <span className="font-bold text-[var(--kde-ink)] flex items-center gap-2">
-                                <span className="h-2 w-2 rounded-full bg-indigo-500" />
-                                当前类型推导与求值状态
-                              </span>
+                        <div className="rounded-lg bg-[var(--kde-raised)] p-3 border border-[var(--kde-border)] flex items-center justify-between">
+                          <span className="font-semibold text-[var(--kde-muted)]">
+                            向量 B 长度 (m):
+                          </span>
+                          <div className="flex items-center gap-1.5 font-mono">
+                            {[0, 1, 2, 3, 4].map((len) => (
+                              <KdeButton
+                                key={len}
+                                size="xs"
+                                variant={
+                                  vec2Len === len ? "primary" : "default"
+                                }
+                                aria-label={`向量 B 长度 ${len}`}
+                                onClick={() => setVec2Len(len)}
+                                className="w-7 h-7 p-0"
+                              >
+                                {len}
+                              </KdeButton>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
 
-                              {/* Dynamic Compilation Status Badge */}
-                              {targetOp === "append" && (
-                                <span className="px-2 py-0.5 rounded font-mono font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
-                                  ✅ 编译通过：返回 Vect ({vec1Len + vec2Len}) T
-                                </span>
-                              )}
-                              {targetOp === "safe_head" && (
-                                <span
-                                  className={`px-2 py-0.5 rounded font-mono font-semibold ${
-                                    isHeadValid
-                                      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-                                      : "bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/30"
-                                  }`}
-                                >
-                                  {isHeadValid
-                                    ? `✅ 编译通过：Vect ${vec1Len} ≥ 1`
-                                    : "💥 编译期类型检查拦截：拒绝空向量 Nil"}
-                                </span>
-                              )}
-                              {targetOp === "zip_with" && (
-                                <span
-                                  className={`px-2 py-0.5 rounded font-mono font-semibold ${
-                                    isZipValid
-                                      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-                                      : "bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/30"
-                                  }`}
-                                >
-                                  {isZipValid
-                                    ? `✅ 编译通过：两向量长度精确一致 (${vec1Len} == ${vec2Len})`
-                                    : `💥 编译期拦截：长度不匹配 (${vec1Len} ≠ ${vec2Len})`}
-                                </span>
-                              )}
+                      {/* Operation Selector Bar */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 bg-[var(--kde-raised)] p-2.5 rounded-lg border border-[var(--kde-border)] text-xs">
+                        <span className="text-[var(--kde-muted)] font-medium">
+                          选择调用的依值类型函数：
+                        </span>
+                        <div className="flex gap-1.5">
+                          <KdeButton
+                            size="xs"
+                            variant={
+                              targetOp === "append" ? "primary" : "default"
+                            }
+                            onClick={() => setTargetOp("append")}
+                          >
+                            append (拼接)
+                          </KdeButton>
+                          <KdeButton
+                            size="xs"
+                            variant={
+                              targetOp === "safe_head" ? "primary" : "default"
+                            }
+                            onClick={() => setTargetOp("safe_head")}
+                          >
+                            safe_head (取首元)
+                          </KdeButton>
+                          <KdeButton
+                            size="xs"
+                            variant={
+                              targetOp === "zip_with" ? "primary" : "default"
+                            }
+                            onClick={() => setTargetOp("zip_with")}
+                          >
+                            zipWith (等长并合)
+                          </KdeButton>
+                        </div>
+                      </div>
+
+                      {/* Interactive Vector Visual Stage */}
+                      <div className="rounded-lg bg-[var(--kde-raised)] border border-[var(--kde-border)] p-3.5 shadow-xs flex flex-col justify-between flex-1 text-xs">
+                        <div>
+                          <div className="flex items-center justify-between pb-2 border-b border-[var(--kde-border)] mb-3">
+                            <span className="font-bold text-[var(--kde-ink)] flex items-center gap-2">
+                              <span className="h-2 w-2 rounded-full bg-indigo-500" />
+                              当前类型推导与求值状态
+                            </span>
+
+                            {/* Dynamic Compilation Status Badge */}
+                            {targetOp === "append" && (
+                              <span className="px-2 py-0.5 rounded font-mono font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
+                                ✅ 编译通过：返回 Vect ({vec1Len + vec2Len}) T
+                              </span>
+                            )}
+                            {targetOp === "safe_head" && (
+                              <span
+                                className={`px-2 py-0.5 rounded font-mono font-semibold ${
+                                  isHeadValid
+                                    ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                                    : "bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/30"
+                                }`}
+                              >
+                                {isHeadValid
+                                  ? `✅ 编译通过：Vect ${vec1Len} ≥ 1`
+                                  : "💥 编译期类型检查拦截：拒绝空向量 Nil"}
+                              </span>
+                            )}
+                            {targetOp === "zip_with" && (
+                              <span
+                                className={`px-2 py-0.5 rounded font-mono font-semibold ${
+                                  isZipValid
+                                    ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                                    : "bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/30"
+                                }`}
+                              >
+                                {isZipValid
+                                  ? `✅ 编译通过：两向量长度精确一致 (${vec1Len} == ${vec2Len})`
+                                  : `💥 编译期拦截：长度不匹配 (${vec1Len} ≠ ${vec2Len})`}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Visual Vector Cells */}
+                          <div className="space-y-2 mb-3">
+                            <div className="flex items-center gap-3">
+                              <span className="w-24 font-mono text-[var(--kde-muted)]">
+                                Vector A [{vec1Len}]:
+                              </span>
+                              <div className="flex gap-1">
+                                {vec1Len === 0 ? (
+                                  <span className="font-mono text-[var(--kde-muted)] italic px-2 py-0.5 rounded bg-[var(--kde-panel)] border border-[var(--kde-border)]">
+                                    Nil (空向量)
+                                  </span>
+                                ) : (
+                                  Array.from({ length: vec1Len }).map(
+                                    (_, i) => (
+                                      <div
+                                        key={i}
+                                        className="h-7 w-7 rounded bg-indigo-500/15 border border-indigo-500/40 flex items-center justify-center font-mono font-bold text-indigo-800 dark:text-indigo-200"
+                                      >
+                                        a{i + 1}
+                                      </div>
+                                    ),
+                                  )
+                                )}
+                              </div>
                             </div>
 
-                            {/* Visual Vector Cells */}
-                            <div className="space-y-2 mb-3">
+                            {targetOp !== "safe_head" && (
                               <div className="flex items-center gap-3">
                                 <span className="w-24 font-mono text-[var(--kde-muted)]">
-                                  Vector A [{vec1Len}]:
+                                  Vector B [{vec2Len}]:
                                 </span>
                                 <div className="flex gap-1">
-                                  {vec1Len === 0 ? (
+                                  {vec2Len === 0 ? (
                                     <span className="font-mono text-[var(--kde-muted)] italic px-2 py-0.5 rounded bg-[var(--kde-panel)] border border-[var(--kde-border)]">
                                       Nil (空向量)
                                     </span>
                                   ) : (
-                                    Array.from({ length: vec1Len }).map(
+                                    Array.from({ length: vec2Len }).map(
                                       (_, i) => (
                                         <div
                                           key={i}
-                                          className="h-7 w-7 rounded bg-indigo-500/15 border border-indigo-500/40 flex items-center justify-center font-mono font-bold text-indigo-800 dark:text-indigo-200"
+                                          className="h-7 w-7 rounded bg-[var(--kde-panel)] border border-[var(--kde-border)] flex items-center justify-center font-mono font-bold text-[var(--kde-ink)]"
                                         >
-                                          a{i + 1}
+                                          b{i + 1}
                                         </div>
                                       ),
                                     )
                                   )}
                                 </div>
                               </div>
-
-                              {targetOp !== "safe_head" && (
-                                <div className="flex items-center gap-3">
-                                  <span className="w-24 font-mono text-[var(--kde-muted)]">
-                                    Vector B [{vec2Len}]:
-                                  </span>
-                                  <div className="flex gap-1">
-                                    {vec2Len === 0 ? (
-                                      <span className="font-mono text-[var(--kde-muted)] italic px-2 py-0.5 rounded bg-[var(--kde-panel)] border border-[var(--kde-border)]">
-                                        Nil (空向量)
-                                      </span>
-                                    ) : (
-                                      Array.from({ length: vec2Len }).map(
-                                        (_, i) => (
-                                          <div
-                                            key={i}
-                                            className="h-7 w-7 rounded bg-[var(--kde-panel)] border border-[var(--kde-border)] flex items-center justify-center font-mono font-bold text-[var(--kde-ink)]"
-                                          >
-                                            b{i + 1}
-                                          </div>
-                                        ),
-                                      )
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Operation Semantic Explanation */}
-                            <div className="p-2.5 rounded-lg bg-[var(--kde-panel)] font-mono text-[11px] leading-relaxed border border-[var(--kde-border)] text-[var(--kde-ink)]">
-                              {targetOp === "append" && (
-                                <div>
-                                  <span className="text-indigo-600 dark:text-indigo-400 font-bold">
-                                    append
-                                  </span>{" "}
-                                  : Vect {vec1Len} T -&gt; Vect {vec2Len} T
-                                  -&gt;{" "}
-                                  <span className="text-emerald-700 dark:text-emerald-400 font-bold">
-                                    Vect ({vec1Len} + {vec2Len} ={" "}
-                                    {vec1Len + vec2Len}) T
-                                  </span>
-                                  <div className="text-[var(--kde-muted)] text-[10px] mt-1 font-sans">
-                                    拼接后的向量长度是两个输入长度之和，在类型级别被静态严密证明。
-                                  </div>
-                                </div>
-                              )}
-                              {targetOp === "safe_head" && (
-                                <div>
-                                  {isHeadValid ? (
-                                    <div>
-                                      <span className="text-indigo-600 dark:text-indigo-400 font-bold">
-                                        safe_head
-                                      </span>{" "}
-                                      : Vect {vec1Len} T -&gt;{" "}
-                                      <span className="text-emerald-700 dark:text-emerald-400 font-bold">
-                                        T
-                                      </span>{" "}
-                                      (返回值: a1)
-                                      <div className="text-[var(--kde-muted)] text-[10px] mt-1 font-sans">
-                                        由于长度 {vec1Len} 满足 $n+1$
-                                        约束，模式匹配必定能解构出第一个元素，运行时绝不可能发生越界！
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <div className="text-rose-700 dark:text-rose-400">
-                                      <div>
-                                        TypeError: Couldn't match expected type
-                                        'Vect (n + 1) T' with actual type 'Vect
-                                        0 T'
-                                      </div>
-                                      <div className="text-[var(--kde-muted)] text-[10px] mt-1 font-sans">
-                                        在传统语言（如
-                                        C/Java/JS）中，对空数组调用 head
-                                        导致崩溃。依赖类型在编译期直接拦截，杜绝漏洞！
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                              {targetOp === "zip_with" && (
-                                <div>
-                                  {isZipValid ? (
-                                    <KdeMessageBar
-                                      variant="success"
-                                      mode="card"
-                                      title={`zipWith : Vect ${vec1Len} A -> Vect ${vec2Len} B -> Vect ${vec1Len} (A, B)`}
-                                    >
-                                      两输入向量长度严格相等，并合过程不需要处理长度不齐的边界情况。
-                                    </KdeMessageBar>
-                                  ) : (
-                                    <KdeMessageBar
-                                      variant="danger"
-                                      mode="card"
-                                      title={`DimensionMismatch: Cannot zip vectors of length ${vec1Len} and ${vec2Len}`}
-                                    >
-                                      无需在函数内部编写 if (a.length !=
-                                      b.length) throw
-                                      异常，类型系统在编译期直接拦截！
-                                    </KdeMessageBar>
-                                  )}
-                                </div>
-                              )}
-                            </div>
+                            )}
                           </div>
 
-                          <div className="text-xs text-[var(--kde-muted)] mt-2 border-t border-[var(--kde-border)] pt-2 flex items-center justify-between">
-                            <span>
-                              💡 <strong>核心直觉</strong>
-                              ：类型不再是孤立的标签，而是携带数学等式与长度约束的命题证据。
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Tab 2: Compile-time Format String Parser */}
-                    {activeTab === "format_parser" && (
-                      <div className="flex-1 flex flex-col gap-3.5 overflow-y-auto pr-1">
-                        <div className="text-center max-w-xl mx-auto py-0.5">
-                          <h4 className="text-sm font-bold text-[var(--kde-ink)]">
-                            编译期格式化字符串推导 (从字符串值计算类型签名)
-                          </h4>
-                          <p className="text-xs text-[var(--kde-muted)] mt-0.5">
-                            输入格式化模板字符串，观察依赖类型解释器如何由“字符串值”动态合成函数实参类型元组
-                          </p>
-                        </div>
-
-                        {/* Format String Input Field */}
-                        <div className="bg-[var(--kde-raised)] p-3 rounded-lg border border-[var(--kde-border)]">
-                          <label className="text-xs font-semibold text-[var(--kde-muted)] block mb-1">
-                            编辑格式化字符串 (试着输入 %s, %d, %f, %c, %b)：
-                          </label>
-                          <div className="flex gap-2 items-center">
-                            <KdeInput
-                              mono
-                              size="xs"
-                              value={formatText}
-                              onChange={(e) => setFormatText(e.target.value)}
-                              placeholder="例如: %s has %d items, cost: %f"
-                              className="flex-1"
-                            />
-                            <KdeButtonGroup attached size="xs">
-                              <KdeButton
-                                size="xs"
-                                variant="default"
-                                onClick={() =>
-                                  setFormatText("User %s logged in with ID: %d")
-                                }
-                                className="whitespace-nowrap"
-                              >
-                                示例 1
-                              </KdeButton>
-                              <KdeButton
-                                size="xs"
-                                variant="default"
-                                onClick={() =>
-                                  setFormatText(
-                                    "Matrix[%d, %d] = %f (valid: %b)",
-                                  )
-                                }
-                                className="whitespace-nowrap"
-                              >
-                                示例 2
-                              </KdeButton>
-                            </KdeButtonGroup>
-                          </div>
-                        </div>
-
-                        {/* Synthesized Signature & Token Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1 text-xs">
-                          {/* Left: Dependent Type Synthesis */}
-                          <KdeCard
-                            title="合成目标函数类型 (Synthesized Function Type)"
-                            badge={
-                              <KdeBadge variant="primary">
-                                Π(fmt: String)
-                              </KdeBadge>
-                            }
-                            variant="highlight"
-                            footer={
-                              <div className="text-[10px] text-[var(--kde-accent)] font-mono">
-                                类型签名参数个数：{parsedSpecs.length}{" "}
-                                项强类型参数
+                          {/* Operation Semantic Explanation */}
+                          <div className="p-2.5 rounded-lg bg-[var(--kde-panel)] font-mono text-[11px] leading-relaxed border border-[var(--kde-border)] text-[var(--kde-ink)]">
+                            {targetOp === "append" && (
+                              <div>
+                                <span className="text-indigo-600 dark:text-indigo-400 font-bold">
+                                  append
+                                </span>{" "}
+                                : Vect {vec1Len} T -&gt; Vect {vec2Len} T -&gt;{" "}
+                                <span className="text-emerald-700 dark:text-emerald-400 font-bold">
+                                  Vect ({vec1Len} + {vec2Len} ={" "}
+                                  {vec1Len + vec2Len}) T
+                                </span>
+                                <div className="text-[var(--kde-muted)] text-[10px] mt-1 font-sans">
+                                  拼接后的向量长度是两个输入长度之和，在类型级别被静态严密证明。
+                                </div>
                               </div>
-                            }
-                          >
-                            <div className="p-2.5 rounded-lg bg-[var(--kde-panel)] font-mono text-xs text-[var(--kde-ink)] border border-[var(--kde-border)] mb-2 leading-relaxed">
-                              {parsedSpecs.length === 0 ? (
-                                <span className="text-[var(--kde-muted)] italic">
-                                  () -&gt; String (无需任何参数)
-                                </span>
-                              ) : (
-                                <span>
-                                  {parsedSpecs.map((s) => s.type).join(" -> ")}{" "}
-                                  -&gt;{" "}
-                                  <span className="text-emerald-700 dark:text-emerald-400 font-bold">
-                                    String
-                                  </span>
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="text-[11px] text-[var(--kde-muted)] leading-relaxed">
-                              在普通语言（如
-                              C/Java）中，函数的签名必须在编译期静态硬编码；而在依赖类型（或
-                              C++20 `std::format` 编译期常量求值）中，
-                              <strong className="text-[var(--kde-ink)]">
-                                函数所需的形参类型直接取决于 format
-                                字符串的内容！
-                              </strong>
-                            </div>
-                          </KdeCard>
-
-                          {/* Right: Parsed Tokens Mapping Table */}
-                          <div className="rounded-lg border border-[var(--kde-border)] bg-[var(--kde-raised)] p-3 flex flex-col justify-between">
-                            <div>
-                              <div className="font-bold text-[var(--kde-ink)] mb-2 flex items-center justify-between border-b border-[var(--kde-border)] pb-1.5">
-                                <span>占位符语义映射表 (Value to Type)</span>
-                                <span className="text-[10px] text-[var(--kde-muted)]">
-                                  共解析到 {parsedSpecs.length} 个占位符
-                                </span>
-                              </div>
-
-                              <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                                {parsedSpecs.length === 0 ? (
-                                  <div className="text-[var(--kde-muted)] text-center py-4 italic">
-                                    未检测到占位符，函数为纯文本返回
+                            )}
+                            {targetOp === "safe_head" && (
+                              <div>
+                                {isHeadValid ? (
+                                  <div>
+                                    <span className="text-indigo-600 dark:text-indigo-400 font-bold">
+                                      safe_head
+                                    </span>{" "}
+                                    : Vect {vec1Len} T -&gt;{" "}
+                                    <span className="text-emerald-700 dark:text-emerald-400 font-bold">
+                                      T
+                                    </span>{" "}
+                                    (返回值: a1)
+                                    <div className="text-[var(--kde-muted)] text-[10px] mt-1 font-sans">
+                                      由于长度 {vec1Len} 满足 $n+1$
+                                      约束，模式匹配必定能解构出第一个元素，运行时绝不可能发生越界！
+                                    </div>
                                   </div>
                                 ) : (
-                                  parsedSpecs.map((spec, i) => (
-                                    <div
-                                      key={i}
-                                      className="flex items-center justify-between p-1.5 rounded bg-[var(--kde-panel)] border border-[var(--kde-border)] font-mono text-[11px]"
-                                    >
-                                      <span className="text-indigo-600 dark:text-indigo-400 font-bold">
-                                        Arg #{i + 1} ({spec.spec})
-                                      </span>
-                                      <span className="text-indigo-800 dark:text-indigo-200 bg-indigo-500/15 px-2 py-0.5 rounded text-[10px]">
-                                        {spec.type} ({spec.desc})
-                                      </span>
+                                  <div className="text-rose-700 dark:text-rose-400">
+                                    <div>
+                                      TypeError: Couldn't match expected type
+                                      'Vect (n + 1) T' with actual type 'Vect 0
+                                      T'
                                     </div>
-                                  ))
+                                    <div className="text-[var(--kde-muted)] text-[10px] mt-1 font-sans">
+                                      在传统语言（如 C/Java/JS）中，对空数组调用
+                                      head
+                                      导致崩溃。依赖类型在编译期直接拦截，杜绝漏洞！
+                                    </div>
+                                  </div>
                                 )}
                               </div>
+                            )}
+                            {targetOp === "zip_with" && (
+                              <div>
+                                {isZipValid ? (
+                                  <KdeMessageBar
+                                    variant="success"
+                                    mode="card"
+                                    title={`zipWith : Vect ${vec1Len} A -> Vect ${vec2Len} B -> Vect ${vec1Len} (A, B)`}
+                                  >
+                                    两输入向量长度严格相等，并合过程不需要处理长度不齐的边界情况。
+                                  </KdeMessageBar>
+                                ) : (
+                                  <KdeMessageBar
+                                    variant="danger"
+                                    mode="card"
+                                    title={`DimensionMismatch: Cannot zip vectors of length ${vec1Len} and ${vec2Len}`}
+                                  >
+                                    无需在函数内部编写 if (a.length != b.length)
+                                    throw 异常，类型系统在编译期直接拦截！
+                                  </KdeMessageBar>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="text-xs text-[var(--kde-muted)] mt-2 border-t border-[var(--kde-border)] pt-2 flex items-center justify-between">
+                          <span>
+                            💡 <strong>核心直觉</strong>
+                            ：类型不再是孤立的标签，而是携带数学等式与长度约束的命题证据。
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tab 2: Compile-time Format String Parser */}
+                  {activeTab === "format_parser" && (
+                    <div className="flex-1 flex flex-col gap-3.5 overflow-y-auto pr-1">
+                      <div className="text-center max-w-xl mx-auto py-0.5">
+                        <span
+                          className="block text-sm font-bold text-[var(--kde-ink)]"
+                          role="heading"
+                          aria-level={4}
+                        >
+                          编译期格式化字符串推导 (从字符串值计算类型签名)
+                        </span>
+                        <p className="text-xs text-[var(--kde-muted)] mt-0.5">
+                          输入格式化模板字符串，观察依赖类型解释器如何由“字符串值”动态合成函数实参类型元组
+                        </p>
+                      </div>
+
+                      {/* Format String Input Field */}
+                      <div className="bg-[var(--kde-raised)] p-3 rounded-lg border border-[var(--kde-border)]">
+                        <label className="text-xs font-semibold text-[var(--kde-muted)] block mb-1">
+                          编辑格式化字符串 (试着输入 %s, %d, %f, %c, %b)：
+                        </label>
+                        <div className="flex gap-2 items-center">
+                          <KdeInput
+                            mono
+                            size="xs"
+                            value={formatText}
+                            onChange={(e) => setFormatText(e.target.value)}
+                            placeholder="例如: %s has %d items, cost: %f"
+                            className="flex-1"
+                          />
+                          <KdeButtonGroup attached size="xs">
+                            <KdeButton
+                              size="xs"
+                              variant="default"
+                              onClick={() =>
+                                setFormatText("User %s logged in with ID: %d")
+                              }
+                              className="whitespace-nowrap"
+                            >
+                              示例 1
+                            </KdeButton>
+                            <KdeButton
+                              size="xs"
+                              variant="default"
+                              onClick={() =>
+                                setFormatText("Matrix[%d, %d] = %f (valid: %b)")
+                              }
+                              className="whitespace-nowrap"
+                            >
+                              示例 2
+                            </KdeButton>
+                          </KdeButtonGroup>
+                        </div>
+                      </div>
+
+                      {/* Synthesized Signature & Token Grid */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1 text-xs">
+                        {/* Left: Dependent Type Synthesis */}
+                        <KdeCard
+                          title="合成目标函数类型 (Synthesized Function Type)"
+                          badge={
+                            <KdeBadge variant="primary">
+                              Π(fmt: String)
+                            </KdeBadge>
+                          }
+                          variant="highlight"
+                          footer={
+                            <div className="text-[10px] text-[var(--kde-accent)] font-mono">
+                              类型签名参数个数：{parsedSpecs.length}{" "}
+                              项强类型参数
+                            </div>
+                          }
+                        >
+                          <div className="p-2.5 rounded-lg bg-[var(--kde-panel)] font-mono text-xs text-[var(--kde-ink)] border border-[var(--kde-border)] mb-2 leading-relaxed">
+                            {parsedSpecs.length === 0 ? (
+                              <span className="text-[var(--kde-muted)] italic">
+                                () -&gt; String (无需任何参数)
+                              </span>
+                            ) : (
+                              <span>
+                                {parsedSpecs.map((s) => s.type).join(" -> ")}{" "}
+                                -&gt;{" "}
+                                <span className="text-emerald-700 dark:text-emerald-400 font-bold">
+                                  String
+                                </span>
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="text-[11px] text-[var(--kde-muted)] leading-relaxed">
+                            在普通语言（如
+                            C/Java）中，函数的签名必须在编译期静态硬编码；而在依赖类型（或
+                            C++20 `std::format` 编译期常量求值）中，
+                            <strong className="text-[var(--kde-ink)]">
+                              函数所需的形参类型直接取决于 format 字符串的内容！
+                            </strong>
+                          </div>
+                        </KdeCard>
+
+                        {/* Right: Parsed Tokens Mapping Table */}
+                        <div className="rounded-lg border border-[var(--kde-border)] bg-[var(--kde-raised)] p-3 flex flex-col justify-between">
+                          <div>
+                            <div className="font-bold text-[var(--kde-ink)] mb-2 flex items-center justify-between border-b border-[var(--kde-border)] pb-1.5">
+                              <span>占位符语义映射表 (Value to Type)</span>
+                              <span className="text-[10px] text-[var(--kde-muted)]">
+                                共解析到 {parsedSpecs.length} 个占位符
+                              </span>
                             </div>
 
-                            <div className="text-[10px] text-[var(--kde-muted)] border-t border-[var(--kde-border)] pt-1.5">
-                              ⚠️
-                              若调用时参数数量或类型不一致，编译器在类型检查阶段直接拒绝生成机器码。
+                            <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                              {parsedSpecs.length === 0 ? (
+                                <div className="text-[var(--kde-muted)] text-center py-4 italic">
+                                  未检测到占位符，函数为纯文本返回
+                                </div>
+                              ) : (
+                                parsedSpecs.map((spec, i) => (
+                                  <div
+                                    key={i}
+                                    className="flex items-center justify-between p-1.5 rounded bg-[var(--kde-panel)] border border-[var(--kde-border)] font-mono text-[11px]"
+                                  >
+                                    <span className="text-indigo-600 dark:text-indigo-400 font-bold">
+                                      Arg #{i + 1} ({spec.spec})
+                                    </span>
+                                    <span className="text-indigo-800 dark:text-indigo-200 bg-indigo-500/15 px-2 py-0.5 rounded text-[10px]">
+                                      {spec.type} ({spec.desc})
+                                    </span>
+                                  </div>
+                                ))
+                              )}
                             </div>
+                          </div>
+
+                          <div className="text-[10px] text-[var(--kde-muted)] border-t border-[var(--kde-border)] pt-1.5">
+                            ⚠️
+                            若调用时参数数量或类型不一致，编译器在类型检查阶段直接拒绝生成机器码。
                           </div>
                         </div>
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    {/* Tab 3: Lambda Cube Explorer */}
-                    {activeTab === "lambda_cube" && (
-                      <div className="flex-1 flex flex-col gap-3.5 overflow-y-auto pr-1">
-                        <div className="text-center max-w-xl mx-auto py-0.5">
-                          <h4 className="text-sm font-bold text-[var(--kde-ink)]">
-                            Barendregt Lambda 立方体（The Lambda Cube）全景定位
-                          </h4>
-                          <p className="text-xs text-[var(--kde-muted)] mt-0.5">
-                            类型论的三维演进：项依值于项、项依值于类型、类型依值于类型与类型依值于项
-                          </p>
+                  {/* Tab 3: Lambda Cube Explorer */}
+                  {activeTab === "lambda_cube" && (
+                    <div className="flex-1 flex flex-col gap-3.5 overflow-y-auto pr-1">
+                      <div className="text-center max-w-xl mx-auto py-0.5">
+                        <span
+                          className="block text-sm font-bold text-[var(--kde-ink)]"
+                          role="heading"
+                          aria-level={4}
+                        >
+                          Barendregt Lambda 立方体（The Lambda Cube）全景定位
+                        </span>
+                        <p className="text-xs text-[var(--kde-muted)] mt-0.5">
+                          类型论的三维演进：项依值于项、项依值于类型、类型依值于类型与类型依值于项
+                        </p>
+                      </div>
+
+                      {/* 4 Major Dimensions / Quadrants */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 text-xs">
+                        {/* 1. STLC */}
+                        <div className="rounded-lg border border-[var(--kde-border)] bg-[var(--kde-raised)] p-3 flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-center justify-between pb-1.5 border-b border-[var(--kde-border)] mb-1.5">
+                              <span className="font-bold text-[var(--kde-ink)] font-mono">
+                                λ→ (STLC)
+                              </span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--kde-panel)] text-[var(--kde-muted)] font-mono">
+                                项依赖于项
+                              </span>
+                            </div>
+                            <p className="text-[var(--kde-muted)] text-[11px] leading-relaxed">
+                              基础简单类型 λ 演算：值到值的普通函数抽象（`\x:
+                              Int &rarr; x + 1`）。函数只操作运行时的数据值。
+                            </p>
+                          </div>
+                          <div className="text-[10px] font-mono text-indigo-600 dark:text-indigo-400 mt-1 border-t border-[var(--kde-border)] pt-1">
+                            工业对应：C 语言函数、Pascal、基础 JavaScript
+                          </div>
                         </div>
 
-                        {/* 4 Major Dimensions / Quadrants */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 text-xs">
-                          {/* 1. STLC */}
-                          <div className="rounded-lg border border-[var(--kde-border)] bg-[var(--kde-raised)] p-3 flex flex-col justify-between">
-                            <div>
-                              <div className="flex items-center justify-between pb-1.5 border-b border-[var(--kde-border)] mb-1.5">
-                                <span className="font-bold text-[var(--kde-ink)] font-mono">
-                                  λ→ (STLC)
-                                </span>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--kde-panel)] text-[var(--kde-muted)] font-mono">
-                                  项依赖于项
-                                </span>
-                              </div>
-                              <p className="text-[var(--kde-muted)] text-[11px] leading-relaxed">
-                                基础简单类型 λ 演算：值到值的普通函数抽象（`\x:
-                                Int &rarr; x + 1`）。函数只操作运行时的数据值。
-                              </p>
+                        {/* 2. System F */}
+                        <div className="rounded-lg border border-sky-500/40 bg-sky-500/10 p-3 flex flex-col justify-between text-[var(--kde-ink)] ring-1 ring-sky-500/20">
+                          <div>
+                            <div className="flex items-center justify-between pb-1.5 border-b border-sky-500/20 mb-1.5">
+                              <span className="font-bold text-sky-700 dark:text-sky-300 font-mono">
+                                λ2 (System F)
+                              </span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-800 dark:text-sky-200 font-mono">
+                                项依赖于类型 (多态)
+                              </span>
                             </div>
-                            <div className="text-[10px] font-mono text-indigo-600 dark:text-indigo-400 mt-1 border-t border-[var(--kde-border)] pt-1">
-                              工业对应：C 语言函数、Pascal、基础 JavaScript
-                            </div>
+                            <p className="text-[var(--kde-muted)] text-[11px] leading-relaxed">
+                              参数多态（Parametric
+                              Polymorphism）：函数接收一个类型作为参数，生成具体类型的项（`\X.
+                              \x: X &rarr; x`）。
+                            </p>
                           </div>
-
-                          {/* 2. System F */}
-                          <div className="rounded-lg border border-sky-500/40 bg-sky-500/10 p-3 flex flex-col justify-between text-[var(--kde-ink)] ring-1 ring-sky-500/20">
-                            <div>
-                              <div className="flex items-center justify-between pb-1.5 border-b border-sky-500/20 mb-1.5">
-                                <span className="font-bold text-sky-700 dark:text-sky-300 font-mono">
-                                  λ2 (System F)
-                                </span>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-800 dark:text-sky-200 font-mono">
-                                  项依赖于类型 (多态)
-                                </span>
-                              </div>
-                              <p className="text-[var(--kde-muted)] text-[11px] leading-relaxed">
-                                参数多态（Parametric
-                                Polymorphism）：函数接收一个类型作为参数，生成具体类型的项（`\X.
-                                \x: X &rarr; x`）。
-                              </p>
-                            </div>
-                            <div className="text-[10px] font-mono text-sky-800 dark:text-sky-300 mt-1 border-t border-sky-500/20 pt-1">
-                              工业对应：C++ 模板、Rust 泛型、Java/C# 泛型
-                            </div>
+                          <div className="text-[10px] font-mono text-sky-800 dark:text-sky-300 mt-1 border-t border-sky-500/20 pt-1">
+                            工业对应：C++ 模板、Rust 泛型、Java/C# 泛型
                           </div>
+                        </div>
 
-                          {/* 3. System Fw */}
-                          <div className="rounded-lg border border-purple-500/40 bg-purple-500/10 p-3 flex flex-col justify-between text-[var(--kde-ink)] ring-1 ring-purple-500/20">
-                            <div>
-                              <div className="flex items-center justify-between pb-1.5 border-b border-purple-500/20 mb-1.5">
-                                <span className="font-bold text-purple-700 dark:text-purple-300 font-mono">
-                                  λω (Higher-Kinded Types)
-                                </span>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-800 dark:text-purple-200 font-mono">
-                                  类型依赖于类型
-                                </span>
-                              </div>
-                              <p className="text-[var(--kde-muted)] text-[11px] leading-relaxed">
-                                高阶类型构造器（Type
-                                Operators）：类型层面的函数（Kind 机制，如 `Type
-                                &rarr; Type`，Monad 的 `m: * &rarr; *`）。
-                              </p>
+                        {/* 3. System Fw */}
+                        <div className="rounded-lg border border-purple-500/40 bg-purple-500/10 p-3 flex flex-col justify-between text-[var(--kde-ink)] ring-1 ring-purple-500/20">
+                          <div>
+                            <div className="flex items-center justify-between pb-1.5 border-b border-purple-500/20 mb-1.5">
+                              <span className="font-bold text-purple-700 dark:text-purple-300 font-mono">
+                                λω (Higher-Kinded Types)
+                              </span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-800 dark:text-purple-200 font-mono">
+                                类型依赖于类型
+                              </span>
                             </div>
-                            <div className="text-[10px] font-mono text-purple-800 dark:text-purple-300 mt-1 border-t border-purple-500/20 pt-1">
-                              工业对应：Haskell、Scala HKT、C++ 模板模板参数
-                            </div>
+                            <p className="text-[var(--kde-muted)] text-[11px] leading-relaxed">
+                              高阶类型构造器（Type
+                              Operators）：类型层面的函数（Kind 机制，如 `Type
+                              &rarr; Type`，Monad 的 `m: * &rarr; *`）。
+                            </p>
                           </div>
+                          <div className="text-[10px] font-mono text-purple-800 dark:text-purple-300 mt-1 border-t border-purple-500/20 pt-1">
+                            工业对应：Haskell、Scala HKT、C++ 模板模板参数
+                          </div>
+                        </div>
 
-                          {/* 4. Lambda P / CoC */}
-                          <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 flex flex-col justify-between text-[var(--kde-ink)] ring-1 ring-emerald-500/20">
-                            <div>
-                              <div className="flex items-center justify-between pb-1.5 border-b border-emerald-500/20 mb-1.5">
-                                <span className="font-bold text-emerald-700 dark:text-emerald-300 font-mono">
-                                  λP / CoC (Dependent Types)
-                                </span>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 font-mono font-bold">
-                                  ★ 类型依赖于项 (依值类型)
-                                </span>
-                              </div>
-                              <p className="text-[var(--kde-muted)] text-[11px] leading-relaxed">
-                                类型系统的最高峰：类型的构造由运行时的项（值）直接决定（如
-                                `Vect n
-                                a`、`FormatType(str)`）。谓词逻辑与计算完全统一。
-                              </p>
+                        {/* 4. Lambda P / CoC */}
+                        <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 flex flex-col justify-between text-[var(--kde-ink)] ring-1 ring-emerald-500/20">
+                          <div>
+                            <div className="flex items-center justify-between pb-1.5 border-b border-emerald-500/20 mb-1.5">
+                              <span className="font-bold text-emerald-700 dark:text-emerald-300 font-mono">
+                                λP / CoC (Dependent Types)
+                              </span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 font-mono font-bold">
+                                ★ 类型依赖于项 (依值类型)
+                              </span>
                             </div>
-                            <div className="text-[10px] font-mono text-emerald-800 dark:text-emerald-300 mt-1 border-t border-emerald-500/20 pt-1">
-                              代表语言：Idris、Agda、Lean 4、Coq / Rocq
-                            </div>
+                            <p className="text-[var(--kde-muted)] text-[11px] leading-relaxed">
+                              类型系统的最高峰：类型的构造由运行时的项（值）直接决定（如
+                              `Vect n
+                              a`、`FormatType(str)`）。谓词逻辑与计算完全统一。
+                            </p>
+                          </div>
+                          <div className="text-[10px] font-mono text-emerald-800 dark:text-emerald-300 mt-1 border-t border-emerald-500/20 pt-1">
+                            代表语言：Idris、Agda、Lean 4、Coq / Rocq
                           </div>
                         </div>
                       </div>
-                    )}
-                  </>
-                )}
-
-                <CanvasResizer className="absolute bottom-0 inset-x-0 z-20" />
-              </div>
-            }
-            side={
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                <KdeCard title="依值类型三大经典范式预设" variant="dense">
-                  <PresetSelector
-                    layout="vertical"
-                    size="xs"
-                    options={PRESETS.map((p) => ({
-                      id: p.id,
-                      label: p.label,
-                      description: p.desc,
-                    }))}
-                    value={selectedPresetId}
-                    onChange={handlePresetChange}
-                  />
-                </KdeCard>
-
-                <KdeCard title="向量长度约束与类型判定" variant="dense">
-                  <div className="space-y-2 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[var(--kde-muted)]">
-                        运算操作：
-                      </span>
-                      <span className="font-mono font-bold text-[var(--kde-accent)]">
-                        {targetOp === "append"
-                          ? "向量拼接 (++)"
-                          : targetOp === "safe_head"
-                            ? "安全 Head"
-                            : "配对 Zip"}
-                      </span>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[var(--kde-muted)]">
-                        长度1 / 长度2：
-                      </span>
-                      <span className="font-mono font-bold text-[var(--kde-ink)]">
-                        {vec1Len} / {vec2Len}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[var(--kde-muted)]">
-                        类型判定：
-                      </span>
-                      <KdeBadge
-                        variant={
-                          targetOp === "safe_head"
-                            ? isHeadValid
-                              ? "success"
-                              : "danger"
-                            : targetOp === "zip_with"
-                              ? isZipValid
-                                ? "success"
-                                : "danger"
-                              : "primary"
-                        }
-                      >
-                        {targetOp === "safe_head"
+                  )}
+                </>
+              )}
+
+              <CanvasResizer className="absolute bottom-0 inset-x-0 z-20" />
+            </div>
+          }
+          side={
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <KdeCard title="依值类型三大经典范式预设" variant="dense">
+                <PresetSelector
+                  layout="vertical"
+                  size="xs"
+                  options={PRESETS.map((p) => ({
+                    id: p.id,
+                    label: p.label,
+                    description: p.desc,
+                  }))}
+                  value={selectedPresetId}
+                  onChange={handlePresetChange}
+                />
+              </KdeCard>
+
+              <KdeCard title="向量长度约束与类型判定" variant="dense">
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[var(--kde-muted)]">运算操作：</span>
+                    <span className="font-mono font-bold text-[var(--kde-accent)]">
+                      {targetOp === "append"
+                        ? "向量拼接 (++)"
+                        : targetOp === "safe_head"
+                          ? "安全 Head"
+                          : "配对 Zip"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[var(--kde-muted)]">
+                      长度1 / 长度2：
+                    </span>
+                    <span className="font-mono font-bold text-[var(--kde-ink)]">
+                      {vec1Len} / {vec2Len}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[var(--kde-muted)]">类型判定：</span>
+                    <KdeBadge
+                      variant={
+                        targetOp === "safe_head"
                           ? isHeadValid
-                            ? "合法 (len ≥ 1)"
-                            : "拒绝 (空向量)"
+                            ? "success"
+                            : "danger"
                           : targetOp === "zip_with"
                             ? isZipValid
-                              ? "合法 (等长)"
-                              : "拒绝 (长度不匹配)"
-                            : "类型安全"}
-                      </KdeBadge>
-                    </div>
+                              ? "success"
+                              : "danger"
+                            : "primary"
+                      }
+                    >
+                      {targetOp === "safe_head"
+                        ? isHeadValid
+                          ? "合法 (len ≥ 1)"
+                          : "拒绝 (空向量)"
+                        : targetOp === "zip_with"
+                          ? isZipValid
+                            ? "合法 (等长)"
+                            : "拒绝 (长度不匹配)"
+                          : "类型安全"}
+                    </KdeBadge>
                   </div>
-                </KdeCard>
-
-                <KdeCard title="依赖类型形式签名" variant="dense">
-                  <div className="space-y-2 text-xs">
-                    <div className="p-1.5 rounded bg-[var(--kde-panel)] border border-[var(--kde-border)] font-mono text-[11px] text-[var(--kde-accent)] overflow-x-auto">
-                      {`$${currentPreset.formalSignature}$`}
-                    </div>
-                    <div className="text-[11px] text-[var(--kde-muted)]">
-                      范式分类：<strong>{currentPreset.theoryBadge}</strong>
-                    </div>
-                  </div>
-                </KdeCard>
-              </div>
-            }
-            bottom={
-              <KdeCard title="🔍 依值类型理论洞见 (Dependent Types Insight)">
-                <p className="mt-1 text-xs leading-relaxed text-[var(--kde-ink)]">
-                  {currentPreset.explanation}
-                </p>
+                </div>
               </KdeCard>
-            }
-          />
-        </KdeWindowShell>
-      </ExpandableDemo>
-    </AutoMath>
+
+              <KdeCard title="依赖类型形式签名" variant="dense">
+                <div className="space-y-2 text-xs">
+                  <div className="p-1.5 rounded bg-[var(--kde-panel)] border border-[var(--kde-border)] font-mono text-[11px] text-[var(--kde-accent)] overflow-x-auto">
+                    {`$${currentPreset.formalSignature}$`}
+                  </div>
+                  <div className="text-[11px] text-[var(--kde-muted)]">
+                    范式分类：<strong>{currentPreset.theoryBadge}</strong>
+                  </div>
+                </div>
+              </KdeCard>
+            </div>
+          }
+          bottom={
+            <KdeCard title="🔍 依值类型理论洞见 (Dependent Types Insight)">
+              <p className="mt-1 text-xs leading-relaxed text-[var(--kde-ink)]">
+                {currentPreset.explanation}
+              </p>
+            </KdeCard>
+          }
+        />
+      </KdeWindowShell>
+    </ExpandableDemo>
   );
 }

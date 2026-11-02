@@ -1,5 +1,8 @@
 import React from "react";
 import katex from "katex";
+import { M, type MathProps } from "./M";
+
+export { M, type MathProps };
 
 const mathCache = new Map<string, string>();
 
@@ -44,53 +47,56 @@ export function parseMathText(
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
+
+  // 必须重置 regex.lastIndex，因为这是模块级正则
   MATH_TOKEN_REGEX.lastIndex = 0;
 
   while ((match = MATH_TOKEN_REGEX.exec(text)) !== null) {
     const matchStart = match.index;
     const matchStr = match[0];
 
-    // 匹配项之前的普通纯文本
+    // 压入匹配项之前的普通文本
     if (matchStart > lastIndex) {
-      parts.push(text.slice(lastIndex, matchStart));
+      parts.push(
+        <React.Fragment key={`${keyPrefix}-txt-${lastIndex}`}>
+          {text.slice(lastIndex, matchStart)}
+        </React.Fragment>,
+      );
     }
-    lastIndex = matchStart + matchStr.length;
+    lastIndex = MATH_TOKEN_REGEX.lastIndex;
 
-    // 1. 转义的美元符号 \$ -> 还原为字面量 $
+    // 1. 处理转义美元符 \$ -> 输出单个字面量 $
     if (matchStr === "\\$") {
-      parts.push("$");
+      parts.push(
+        <React.Fragment key={`${keyPrefix}-esc-${matchStart}`}>
+          $
+        </React.Fragment>,
+      );
       continue;
     }
 
-    // 2. 块级公式 $$...$$
-    if (
-      matchStr.startsWith("$$") &&
-      matchStr.endsWith("$$") &&
-      matchStr.length >= 4
-    ) {
+    // 2. 处理块级公式 $$...$$
+    if (matchStr.startsWith("$$") && matchStr.endsWith("$$")) {
       const tex = matchStr.slice(2, -2).trim();
       const html = renderKaTeXToString(tex, true);
       parts.push(
         <span
           key={`${keyPrefix}-block-${matchStart}`}
-          className="inline-block"
+          className="katex-display"
           dangerouslySetInnerHTML={{ __html: html }}
         />,
       );
       continue;
     }
 
-    // 3. 行内公式 $...$
-    if (
-      matchStr.startsWith("$") &&
-      matchStr.endsWith("$") &&
-      matchStr.length >= 2
-    ) {
+    // 3. 处理行内公式 $...$
+    if (matchStr.startsWith("$") && matchStr.endsWith("$")) {
       const tex = matchStr.slice(1, -1).trim();
       const html = renderKaTeXToString(tex, false);
       parts.push(
         <span
           key={`${keyPrefix}-inline-${matchStart}`}
+          className="katex-inline"
           dangerouslySetInnerHTML={{ __html: html }}
         />,
       );
@@ -98,12 +104,20 @@ export function parseMathText(
     }
 
     // 兜底：未识别则作为普通文本
-    parts.push(matchStr);
+    parts.push(
+      <React.Fragment key={`${keyPrefix}-raw-${matchStart}`}>
+        {matchStr}
+      </React.Fragment>,
+    );
   }
 
   // 剩余末尾文本
   if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
+    parts.push(
+      <React.Fragment key={`${keyPrefix}-end-${lastIndex}`}>
+        {text.slice(lastIndex)}
+      </React.Fragment>,
+    );
   }
 
   return parts;
@@ -112,7 +126,15 @@ export function parseMathText(
 const SKIP_TAGS = new Set(["code", "pre", "script", "style", "svg", "math"]);
 
 /**
- * 递归遍历并转换 React 子节点中的纯文本为 KaTeX 节点
+ * 递归遍历并转换 React 子节点中的纯文本为 KaTeX 节点。
+ *
+ * 核心安全准则（Component Barrier）：
+ * 1. 纯文本 / 字符串：正常解析并转换为 KaTeX 渲染节点；
+ * 2. 纯数值 / 布尔 / 空值：原样返回，绝对不包装多余 Fragment 或修改数据类型；
+ * 3. 数组（Array）：递归处理各子项，对元素补齐必要 key；
+ * 4. React 片段（Fragment）：仅递归处理其 children；
+ * 5. 自定义 React 组件（typeof type !== "string"）：立即短路原样返回！绝对不穿透克隆其 props，避免破坏数据模型；
+ * 6. 原生 DOM 标签（typeof type === "string"）：仅递归处理其 props.children，绝不修改其他 props。
  */
 export function transformMathChildren(
   children: React.ReactNode,
@@ -120,7 +142,8 @@ export function transformMathChildren(
 ): React.ReactNode {
   if (typeof children === "string") {
     const parsed = parseMathText(children, keyPrefix);
-    return parsed.length === 1 ? parsed[0] : parsed;
+    if (parsed.length === 1) return parsed[0];
+    return <React.Fragment key={keyPrefix}>{parsed}</React.Fragment>;
   }
 
   if (
@@ -133,132 +156,114 @@ export function transformMathChildren(
   }
 
   if (Array.isArray(children)) {
-    return children.map((child, index) =>
-      transformMathChildren(child, `${keyPrefix}-${index}`),
-    );
+    let hasChanges = false;
+    const mapped = children.map((child, index) => {
+      const fallbackKey = `${keyPrefix}-${index}`;
+      const transformed = transformMathChildren(child, fallbackKey);
+
+      if (transformed !== child) {
+        hasChanges = true;
+      }
+
+      if (React.isValidElement(transformed) && transformed.key == null) {
+        return React.cloneElement(transformed, { key: fallbackKey });
+      }
+
+      return transformed;
+    });
+
+    return hasChanges ? mapped : children;
   }
 
   if (React.isValidElement(children)) {
-    // 忽略特定标签或带有 data-no-math 属性的容器
     const type = children.type;
+
+    // 1. 如果是 Fragment，递归处理其 children
+    if (type === React.Fragment) {
+      const props = (children.props || {}) as { children?: React.ReactNode };
+      if (!props.children) return children;
+      const transformedChildren = transformMathChildren(
+        props.children,
+        keyPrefix,
+      );
+      if (transformedChildren !== props.children) {
+        return React.cloneElement(children, undefined, transformedChildren);
+      }
+      return children;
+    }
+
+    // 2. 组件防火墙（Component Barrier）：
+    // 若不是原生 DOM/SVG 字符串标签（说明是自定义组件，如 <KdeWindowShell>, <KdeCard>, <CanvasViewport> 等），
+    // 绝对不穿透！立即原样返回，交由组件自身负责。杜绝任何跨组件 Props 篡改！
+    if (typeof type !== "string") {
+      return children;
+    }
+
+    // 3. 忽略特定不适合渲染公式的原生标签（代码块、脚本、底层原生 math 标签等）
+    if (SKIP_TAGS.has(type.toLowerCase())) {
+      return children;
+    }
+
     const props = (children.props || {}) as Record<string, unknown>;
+
+    // 4. 忽略带有显式 data-no-math 或已包含 KaTeX 渲染产物的节点
     if (
-      (typeof type === "string" && SKIP_TAGS.has(type.toLowerCase())) ||
-      Boolean(props["data-no-math"])
+      Boolean(props["data-no-math"]) ||
+      Boolean(props["dangerouslySetInnerHTML"]) ||
+      (typeof props.className === "string" && props.className.includes("katex"))
     ) {
       return children;
     }
 
-    let hasChanges = false;
-    const newProps: Record<string, unknown> = {};
-
-    for (const [key, value] of Object.entries(props)) {
-      if (
-        key === "key" ||
-        key === "ref" ||
-        typeof value === "function" ||
-        key.startsWith("on")
-      ) {
-        continue;
-      }
-      if (
-        key === "children" ||
-        (value &&
-          (typeof value === "string" ||
-            React.isValidElement(value) ||
-            Array.isArray(value)))
-      ) {
-        const transformedVal = transformMathChildren(
-          value as React.ReactNode,
-          `${keyPrefix}-${key}`,
-        );
-        if (transformedVal !== value) {
-          newProps[key] = transformedVal;
-          hasChanges = true;
-        }
-      }
-    }
-
-    if (hasChanges) {
-      const elementWithRef = children as { ref?: unknown };
-      if (elementWithRef.ref !== undefined && newProps.ref === undefined) {
-        newProps.ref = elementWithRef.ref;
-      }
-      return React.cloneElement(
-        children,
-        newProps as Partial<Record<string, unknown>>,
+    // 5. 对原生 DOM 标签，仅处理其 children，绝不遍历修改原生属性！
+    if (props.children !== undefined && props.children !== null) {
+      const transformedChildren = transformMathChildren(
+        props.children as React.ReactNode,
+        `${keyPrefix}-c`,
       );
+      if (transformedChildren !== props.children) {
+        return React.cloneElement(children, undefined, transformedChildren);
+      }
     }
+
+    return children;
   }
 
   return children;
 }
 
 export interface AutoMathProps extends React.HTMLAttributes<HTMLElement> {
-  children?: React.ReactNode;
-  /**
-   * 兼容直接传 tex 字符串的模式
-   */
-  tex?: string;
-  /**
-   * 是否以块级公式展示 (仅当传入 tex 属性时有效)
-   */
-  displayMode?: boolean;
-  /**
-   * 自定义外层渲染标签 (如 "div", "p", "span")。若不指定且无 HTML 属性，则默认以 Fragment 渲染，不增加多余 DOM 层级
-   */
+  /** 显式公式内容（优先使用） */
+  math?: string;
+  /** 是否以块级公式 (displayMode) 渲染 */
+  block?: boolean;
+  /** 作为自定义 HTML 标签包裹输出，例如 "span"、"div"、"p" 等 */
   as?: React.ElementType;
+  /** 子节点 */
+  children?: React.ReactNode;
 }
 
 /**
- * 自动 LaTeX 渲染包装器
+ * AutoMath 容器组件
  *
- * 功能：
- * 1. 自动识别子内容中的 `$公式$` 与 `$$块级公式$$` 并渲染为 KaTeX；
- * 2. 支持 `\$` 转义为普通美元符号；
- * 3. 内置全局 LRU / Map 缓存，60FPS 高频重渲染时零额外开销；
- * 4. 支持嵌套结构自动递归解析，无需手动切割文本与繁琐公式组件；
- * 5. 兼容直接传入 `tex` 属性的单公式模式。
- *
- * @example
- * ```tsx
- * // 1. 自然包裹带公式的文本段落
- * <AutoMath>设点 $P \in \operatorname{aff}(S)$，当 $\dim = 2$ 且 $\lambda_i \ge 0$ 时成立。</AutoMath>
- *
- * // 2. 包装包含多层子标签的卡片容器
- * <AutoMath as="div" className="p-3 bg-surface border rounded">
- *   <h4>重心坐标定理</h4>
- *   <p>满足 $\sum \lambda_i = 1$。</p>
- * </AutoMath>
- *
- * // 3. 动态数据模板
- * <AutoMath>{`实时坐标：$P = (${x.toFixed(2)}, ${y.toFixed(2)})$`}</AutoMath>
- * ```
+ * 适用于段落文本、几何解说等文字较多、混排行内公式的区域。
+ * 具备组件防火墙，不会侵入下游任何自定义 React 组件或破坏数据 Props。
  */
 export function AutoMath({
-  children,
-  tex,
-  displayMode = false,
+  math,
+  block = false,
   as: Component,
+  children,
   className,
   style,
   ...rest
-}: AutoMathProps) {
-  // 1. 如果显式指定了 tex 属性，直接按单公式渲染
-  if (typeof tex === "string") {
-    const html = renderKaTeXToString(tex, displayMode);
-    if (Component) {
-      return (
-        <Component
-          className={className}
-          style={style}
-          dangerouslySetInnerHTML={{ __html: html }}
-          {...rest}
-        />
-      );
-    }
+}: AutoMathProps): React.JSX.Element {
+  // 1. 显式 math 属性优先
+  if (math !== undefined) {
+    const html = renderKaTeXToString(math, block);
+    const Container = Component || (block ? "div" : "span");
     return (
-      <span
+      <Container
         className={className}
         style={style}
         dangerouslySetInnerHTML={{ __html: html }}
@@ -291,32 +296,12 @@ export function AutoMath({
     );
   }
 
-  // 无额外属性时，直接以 Fragment 输出，零多余 DOM
+  // 无额外属性时，若为单个有效 React 元素直接返回，否则以 Fragment 输出，零多余 DOM
+  if (React.isValidElement(transformed)) {
+    return transformed;
+  }
   return <>{transformed}</>;
 }
 
-/**
- * 高阶组件 (HOC): 为任意 Island 组件包裹单一顶层 AutoMath 自动数学公式渲染能力
- *
- * @example
- * export default withAutoMath(function MyIsland() {
- *   return <div>满足 $\sum \lambda_i = 1$</div>;
- * });
- */
-export function withAutoMath<P extends object>(
-  Component: React.ComponentType<P>,
-): React.FC<P> {
-  const WrappedComponent: React.FC<P> = (props) => {
-    return (
-      <AutoMath>
-        <Component {...props} />
-      </AutoMath>
-    );
-  };
-  WrappedComponent.displayName = `withAutoMath(${Component.displayName || Component.name || "Component"})`;
-  return WrappedComponent;
-}
-
-// 导出易记的短别名
-export { AutoMath as Math, AutoMath as M };
+export { AutoMath as Math };
 export default AutoMath;

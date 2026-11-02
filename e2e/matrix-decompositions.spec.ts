@@ -18,7 +18,9 @@ test.describe("Matrix Decompositions 文章与 MatrixDecompositionsDemo E2E 冒�
     await expect(demo).toBeVisible();
     await expect(demo.locator("canvas").first()).toBeVisible();
 
-    const qrTab = demo.getByRole("button", { name: /2. QR 分解/ });
+    const qrTab = demo
+      .getByRole("tab", { name: /2. QR 分解/ })
+      .or(demo.getByRole("button", { name: /2. QR 分解/ }));
     await qrTab.click();
     await expect(demo).toContainText("单边正交三角分解：A = Q · R");
 

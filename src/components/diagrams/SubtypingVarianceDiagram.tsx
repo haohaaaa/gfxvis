@@ -10,7 +10,6 @@ import KdeButton from "../framework/KdeButton";
 import KdeButtonGroup from "../framework/KdeButtonGroup";
 import KdeMessageBar from "../framework/KdeMessageBar";
 import CodePlayground from "../framework/CodePlayground";
-import { AutoMath } from "../framework/AutoMath";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import PresetSelector from "../framework/PresetSelector";
 
@@ -304,506 +303,499 @@ export default function SubtypingVarianceDiagram() {
   };
 
   return (
-    <AutoMath>
-      <ExpandableDemo id="subtyping-variance-sandbox">
-        <KdeWindowShell
-          eyebrow="TYPE THEORY WORKSPACE · LSP & VARIANCE"
-          mark="<:"
-          modeTag="DENSE-DOCK"
-          title="子类型与型变（Subtyping & Variance）交互探针"
-        >
-          <InteractiveLayout
-            preset="dense-dock"
-            top={
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-[var(--kde-muted)]">
-                    探针视角：
-                  </span>
-                  <KdeTabs
-                    onChange={(val) => setViewMode(val)}
-                    options={VIEW_OPTIONS}
-                    size="sm"
-                    value={viewMode}
+    <ExpandableDemo id="subtyping-variance-sandbox">
+      <KdeWindowShell
+        eyebrow="TYPE THEORY WORKSPACE · LSP & VARIANCE"
+        mark="<:"
+        modeTag="DENSE-DOCK"
+        title="子类型与型变（Subtyping & Variance）交互探针"
+      >
+        <InteractiveLayout
+          preset="dense-dock"
+          top={
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-[var(--kde-muted)]">
+                  探针视角：
+                </span>
+                <KdeTabs
+                  onChange={(val) => setViewMode(val)}
+                  options={VIEW_OPTIONS}
+                  size="sm"
+                  value={viewMode}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <KdeBadge variant="primary">
+                  {`Rule: $${preset.ruleTex}$`}
+                </KdeBadge>
+              </div>
+            </div>
+          }
+          main={
+            <div className="relative flex h-[var(--demo-height,28rem)] w-full flex-col overflow-hidden rounded-xl border border-[var(--kde-border)] bg-[var(--kde-canvas)] p-5 shadow-inner">
+              <CanvasToolbar onReset={handleReset} />
+
+              {viewMode === "code_sandbox" ? (
+                <div className="flex-1 flex flex-col overflow-y-auto pr-1">
+                  <CodePlayground
+                    code={VARIANCE_TS_CODE}
+                    description="实时执行 strictFunctionTypes 下的逆变入参与协变返回值替换测试。"
+                    lang="ts"
+                    maxHeight="20rem"
+                    title="TypeScript 函数型变沙盒"
                   />
                 </div>
-                <div className="flex items-center gap-2">
-                  <KdeBadge variant="primary">
-                    {`Rule: $${preset.ruleTex}$`}
-                  </KdeBadge>
-                </div>
-              </div>
-            }
-            main={
-              <div className="relative flex h-[var(--demo-height,28rem)] w-full flex-col overflow-hidden rounded-xl border border-[var(--kde-border)] bg-[var(--kde-canvas)] p-5 shadow-inner">
-                <CanvasToolbar onReset={handleReset} />
+              ) : (
+                <>
+                  {/* Stepper / Toggle Toolbar in LSP Mode */}
+                  {viewMode === "lsp" && (
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--kde-border)] pb-3">
+                      <KdeButtonGroup attached size="xs">
+                        <KdeButton
+                          size="xs"
+                          variant={
+                            activeAssignmentType === "valid"
+                              ? "success"
+                              : "default"
+                          }
+                          onClick={() => setActiveAssignmentType("valid")}
+                        >
+                          ✅ 合法替换 (LSP Subtype)
+                        </KdeButton>
+                        <KdeButton
+                          size="xs"
+                          variant={
+                            activeAssignmentType === "invalid"
+                              ? "danger"
+                              : "default"
+                          }
+                          onClick={() => setActiveAssignmentType("invalid")}
+                        >
+                          ❌ 非法替换 (Rejected Subtype)
+                        </KdeButton>
+                      </KdeButtonGroup>
 
-                {viewMode === "code_sandbox" ? (
-                  <div className="flex-1 flex flex-col overflow-y-auto pr-1">
-                    <CodePlayground
-                      code={VARIANCE_TS_CODE}
-                      description="实时执行 strictFunctionTypes 下的逆变入参与协变返回值替换测试。"
-                      lang="ts"
-                      maxHeight="20rem"
-                      title="TypeScript 函数型变沙盒"
-                    />
-                  </div>
-                ) : (
-                  <>
-                    {/* Stepper / Toggle Toolbar in LSP Mode */}
+                      <div className="flex items-center gap-2">
+                        <KdeBadge
+                          variant={
+                            activeAssignmentType === "valid"
+                              ? "success"
+                              : "danger"
+                          }
+                        >
+                          {activeAssignmentType === "valid"
+                            ? "通过类型检查"
+                            : "拦截类型错误"}
+                        </KdeBadge>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Main View Area */}
+                  <div className="flex flex-1 flex-col justify-center overflow-y-auto overflow-x-auto text-center">
                     {viewMode === "lsp" && (
-                      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--kde-border)] pb-3">
-                        <KdeButtonGroup attached size="xs">
-                          <KdeButton
-                            size="xs"
-                            variant={
-                              activeAssignmentType === "valid"
-                                ? "success"
-                                : "default"
-                            }
-                            onClick={() => setActiveAssignmentType("valid")}
-                          >
-                            ✅ 合法替换 (LSP Subtype)
-                          </KdeButton>
-                          <KdeButton
-                            size="xs"
-                            variant={
-                              activeAssignmentType === "invalid"
-                                ? "danger"
-                                : "default"
-                            }
-                            onClick={() => setActiveAssignmentType("invalid")}
-                          >
-                            ❌ 非法替换 (Rejected Subtype)
-                          </KdeButton>
-                        </KdeButtonGroup>
+                      <div className="space-y-4 py-2">
+                        {/* Assignment Display */}
+                        <div className="flex items-center justify-center overflow-x-auto px-4 py-2">
+                          <div className="rounded-2xl border border-[var(--kde-border)] bg-[var(--kde-raised)] px-6 py-4 shadow-sm">
+                            <div className="font-mono text-sm font-bold text-[var(--kde-ink)] sm:text-base">
+                              {`$${
+                                activeAssignmentType === "valid"
+                                  ? preset.validAssignmentTex
+                                  : preset.invalidAssignmentTex
+                              }$`}
+                            </div>
+                          </div>
+                        </div>
 
-                        <div className="flex items-center gap-2">
-                          <KdeBadge
+                        {/* Explanation Banner */}
+                        <div className="mx-auto max-w-xl">
+                          <KdeMessageBar
                             variant={
                               activeAssignmentType === "valid"
                                 ? "success"
                                 : "danger"
                             }
+                            mode="card"
+                            title={
+                              activeAssignmentType === "valid"
+                                ? "里氏替换原则 (LSP) 验证通过"
+                                : "违反里氏替换原则 (LSP 拦截)"
+                            }
                           >
                             {activeAssignmentType === "valid"
-                              ? "通过类型检查"
-                              : "拦截类型错误"}
-                          </KdeBadge>
+                              ? preset.validReason
+                              : preset.invalidReason}
+                          </KdeMessageBar>
                         </div>
                       </div>
                     )}
 
-                    {/* Main View Area */}
-                    <div className="flex flex-1 flex-col justify-center overflow-y-auto overflow-x-auto text-center">
-                      {viewMode === "lsp" && (
-                        <div className="space-y-4 py-2">
-                          {/* Assignment Display */}
-                          <div className="flex items-center justify-center overflow-x-auto px-4 py-2">
-                            <div className="rounded-2xl border border-[var(--kde-border)] bg-[var(--kde-raised)] px-6 py-4 shadow-sm">
-                              <div className="font-mono text-sm font-bold text-[var(--kde-ink)] sm:text-base">
-                                {`$${
-                                  activeAssignmentType === "valid"
-                                    ? preset.validAssignmentTex
-                                    : preset.invalidAssignmentTex
-                                }$`}
-                              </div>
+                    {viewMode === "polarity" && (
+                      <div className="space-y-4 py-3 text-center">
+                        <div className="mx-auto max-w-xl text-left">
+                          <KdeCard
+                            title="极性符号运算法则 (Polarity Multiplication)"
+                            badge={
+                              <KdeBadge variant="warning">Polarity</KdeBadge>
+                            }
+                            variant="default"
+                          >
+                            <div className="mb-2 font-mono text-xs text-[var(--kde-ink)] bg-[var(--kde-panel)] p-2.5 rounded-lg border border-[var(--kde-border)]">
+                              {preset.codeSnippet}
                             </div>
-                          </div>
-
-                          {/* Explanation Banner */}
-                          <div className="mx-auto max-w-xl">
-                            <KdeMessageBar
-                              variant={
-                                activeAssignmentType === "valid"
-                                  ? "success"
-                                  : "danger"
-                              }
-                              mode="card"
-                              title={
-                                activeAssignmentType === "valid"
-                                  ? "里氏替换原则 (LSP) 验证通过"
-                                  : "违反里氏替换原则 (LSP 拦截)"
-                              }
-                            >
-                              {activeAssignmentType === "valid"
-                                ? preset.validReason
-                                : preset.invalidReason}
-                            </KdeMessageBar>
-                          </div>
+                            <div className="mt-3 text-xs leading-relaxed text-[var(--kde-ink)]">
+                              💡 <strong>符号相乘推演</strong>：
+                              <span className="text-[var(--kde-muted)]">
+                                {preset.polarityExplanation}
+                              </span>
+                            </div>
+                          </KdeCard>
                         </div>
-                      )}
+                      </div>
+                    )}
 
-                      {viewMode === "polarity" && (
-                        <div className="space-y-4 py-3 text-center">
-                          <div className="mx-auto max-w-xl text-left">
-                            <KdeCard
-                              title="极性符号运算法则 (Polarity Multiplication)"
-                              badge={
-                                <KdeBadge variant="warning">Polarity</KdeBadge>
-                              }
-                              variant="default"
-                            >
-                              <div className="mb-2 font-mono text-xs text-[var(--kde-ink)] bg-[var(--kde-panel)] p-2.5 rounded-lg border border-[var(--kde-border)]">
-                                {preset.codeSnippet}
-                              </div>
-                              <div className="mt-3 text-xs leading-relaxed text-[var(--kde-ink)]">
-                                💡 <strong>符号相乘推演</strong>：
-                                <span className="text-[var(--kde-muted)]">
-                                  {preset.polarityExplanation}
+                    {viewMode === "safety" && (
+                      <div className="space-y-4 py-3 text-center">
+                        <div className="mx-auto max-w-xl text-left">
+                          <KdeCard
+                            title="物理内存安全沙盒与运行时行为"
+                            badge={
+                              <KdeBadge
+                                variant={
+                                  preset.safetySandbox.isSafe
+                                    ? "success"
+                                    : "danger"
+                                }
+                              >
+                                {preset.safetySandbox.isSafe
+                                  ? "安全契约生效"
+                                  : "引发严重 Bug"}
+                              </KdeBadge>
+                            }
+                            variant="default"
+                          >
+                            <div className="mb-2 text-xs font-semibold text-[var(--kde-muted)]">
+                              目标系统：
+                              <strong className="text-[var(--kde-ink)]">
+                                {preset.safetySandbox.language}
+                              </strong>
+                            </div>
+
+                            <div className="mt-2 font-mono text-xs text-[var(--kde-ink)] whitespace-pre-wrap bg-[var(--kde-panel)] p-2.5 rounded-lg border border-[var(--kde-border)]">
+                              {preset.safetySandbox.scenario}
+                            </div>
+
+                            <div className="mt-3 text-[11px] leading-relaxed text-[var(--kde-ink)]">
+                              💡 <strong>真实影响分析</strong>：
+                              <span className="text-[var(--kde-muted)]">
+                                {preset.safetySandbox.runtimeEffect}
+                              </span>
+                            </div>
+                          </KdeCard>
+                        </div>
+                      </div>
+                    )}
+
+                    {viewMode === "variance_matrix" && (
+                      <div className="flex-1 flex flex-col gap-3 py-1 overflow-y-auto text-left text-xs">
+                        <div className="text-center max-w-xl mx-auto py-0.5">
+                          <div className="text-xs font-bold text-[var(--kde-accent)]">
+                            四大主流语言型变（Covariance / Contravariance /
+                            Invariance）全景矩阵
+                          </div>
+                          <p className="text-[11px] text-[var(--kde-muted)] mt-0.5">
+                            从 C# 声明点型变、TypeScript 结构妥协，到 Rust
+                            生命周期防线与 C++ 模板不变性
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {/* C# */}
+                          <div className="rounded-xl border border-purple-500/40 bg-purple-500/10 text-[var(--kde-ink)] p-3 flex flex-col justify-between ring-1 ring-purple-500/20">
+                            <div>
+                              <div className="flex items-center justify-between pb-1.5 border-b border-purple-500/20 mb-1.5 font-bold text-purple-700 dark:text-purple-300">
+                                <span>C#：声明点型变 (out / in)</span>
+                                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-800 dark:text-purple-200">
+                                  Declaration-site
                                 </span>
                               </div>
-                            </KdeCard>
+                              <div className="space-y-1 text-[11px] text-[var(--kde-ink)]">
+                                <p>
+                                  <strong className="text-purple-700 dark:text-purple-300">
+                                    协变 (out T)
+                                  </strong>
+                                  ：只充当返回值，如{" "}
+                                  <code className="bg-[var(--kde-panel)] px-1 rounded border border-[var(--kde-border)] font-mono">
+                                    IEnumerable&lt;out T&gt;
+                                  </code>
+                                  、
+                                  <code className="bg-[var(--kde-panel)] px-1 rounded border border-[var(--kde-border)] font-mono">
+                                    Func&lt;out R&gt;
+                                  </code>
+                                  ；
+                                </p>
+                                <p>
+                                  <strong className="text-purple-700 dark:text-purple-300">
+                                    逆变 (in T)
+                                  </strong>
+                                  ：只充当入参，如{" "}
+                                  <code className="bg-[var(--kde-panel)] px-1 rounded border border-[var(--kde-border)] font-mono">
+                                    IComparable&lt;in T&gt;
+                                  </code>
+                                  、
+                                  <code className="bg-[var(--kde-panel)] px-1 rounded border border-[var(--kde-border)] font-mono">
+                                    Action&lt;in T&gt;
+                                  </code>
+                                  ；
+                                </p>
+                                <p>
+                                  <strong className="text-purple-700 dark:text-purple-300">
+                                    不变
+                                  </strong>
+                                  ：普通类、结构体、读写接口；数组历史性保留可变协变（带运行时检查）。
+                                </p>
+                              </div>
+                            </div>
+                            <div className="mt-2 text-[10px] font-mono text-purple-800 dark:text-purple-300 border-t border-purple-500/20 pt-1">
+                              IEnumerable&lt;Dog&gt; 可以安全赋给
+                              IEnumerable&lt;Animal&gt;
+                            </div>
                           </div>
-                        </div>
-                      )}
 
-                      {viewMode === "safety" && (
-                        <div className="space-y-4 py-3 text-center">
-                          <div className="mx-auto max-w-xl text-left">
-                            <KdeCard
-                              title="物理内存安全沙盒与运行时行为"
-                              badge={
-                                <KdeBadge
-                                  variant={
-                                    preset.safetySandbox.isSafe
-                                      ? "success"
-                                      : "danger"
-                                  }
-                                >
-                                  {preset.safetySandbox.isSafe
-                                    ? "安全契约生效"
-                                    : "引发严重 Bug"}
-                                </KdeBadge>
-                              }
-                              variant="default"
-                            >
-                              <div className="mb-2 text-xs font-semibold text-[var(--kde-muted)]">
-                                目标系统：
-                                <strong className="text-[var(--kde-ink)]">
-                                  {preset.safetySandbox.language}
-                                </strong>
-                              </div>
-
-                              <div className="mt-2 font-mono text-xs text-[var(--kde-ink)] whitespace-pre-wrap bg-[var(--kde-panel)] p-2.5 rounded-lg border border-[var(--kde-border)]">
-                                {preset.safetySandbox.scenario}
-                              </div>
-
-                              <div className="mt-3 text-[11px] leading-relaxed text-[var(--kde-ink)]">
-                                💡 <strong>真实影响分析</strong>：
-                                <span className="text-[var(--kde-muted)]">
-                                  {preset.safetySandbox.runtimeEffect}
+                          {/* TypeScript */}
+                          <div className="rounded-xl border border-sky-500/40 bg-sky-500/10 text-[var(--kde-ink)] p-3 flex flex-col justify-between ring-1 ring-sky-500/20">
+                            <div>
+                              <div className="flex items-center justify-between pb-1.5 border-b border-sky-500/20 mb-1.5 font-bold text-sky-700 dark:text-sky-300">
+                                <span>TypeScript：结构化推导与双向协变</span>
+                                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-800 dark:text-sky-200">
+                                  Structural Inferred
                                 </span>
                               </div>
-                            </KdeCard>
+                              <div className="space-y-1 text-[11px] text-[var(--kde-ink)]">
+                                <p>
+                                  <strong className="text-sky-700 dark:text-sky-300">
+                                    协变
+                                  </strong>
+                                  ：对象只读属性、函数返回值；
+                                </p>
+                                <p>
+                                  <strong className="text-sky-700 dark:text-sky-300">
+                                    逆变
+                                  </strong>
+                                  ：开启{" "}
+                                  <code className="bg-[var(--kde-panel)] px-1 rounded border border-[var(--kde-border)] font-mono">
+                                    --strictFunctionTypes
+                                  </code>{" "}
+                                  后的函数参数；
+                                </p>
+                                <p>
+                                  <strong className="text-sky-700 dark:text-sky-300">
+                                    双向协变 (Bivariant)
+                                  </strong>
+                                  ：对象方法形参默认双向协变，以兼容{" "}
+                                  <code className="bg-[var(--kde-panel)] px-1 rounded border border-[var(--kde-border)] font-mono">
+                                    addEventListener
+                                  </code>{" "}
+                                  等 DOM 历史代码。
+                                </p>
+                              </div>
+                            </div>
+                            <div className="mt-2 text-[10px] font-mono text-sky-800 dark:text-sky-300 border-t border-sky-500/20 pt-1">
+                              (x: Animal) =&gt; Dog 可以赋给 (x: Dog) =&gt;
+                              Animal
+                            </div>
                           </div>
-                        </div>
-                      )}
 
-                      {viewMode === "variance_matrix" && (
-                        <div className="flex-1 flex flex-col gap-3 py-1 overflow-y-auto text-left text-xs">
-                          <div className="text-center max-w-xl mx-auto py-0.5">
-                            <div className="text-xs font-bold text-[var(--kde-accent)]">
-                              四大主流语言型变（Covariance / Contravariance /
-                              Invariance）全景矩阵
+                          {/* Rust */}
+                          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-[var(--kde-ink)] p-3 flex flex-col justify-between ring-1 ring-emerald-500/20">
+                            <div>
+                              <div className="flex items-center justify-between pb-1.5 border-b border-emerald-500/20 mb-1.5 font-bold text-emerald-700 dark:text-emerald-300">
+                                <span>Rust：生命周期型变与内存安全</span>
+                                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-800 dark:text-emerald-200">
+                                  Lifetime Subtyping
+                                </span>
+                              </div>
+                              <div className="space-y-1 text-[11px] text-[var(--kde-ink)]">
+                                <p>
+                                  <strong className="text-emerald-700 dark:text-emerald-300">
+                                    协变
+                                  </strong>
+                                  ：不可变引用{" "}
+                                  <code className="bg-[var(--kde-panel)] px-1 rounded border border-[var(--kde-border)] font-mono">
+                                    &amp;'a T
+                                  </code>{" "}
+                                  对 <code>'a</code> 和 <code>T</code> 均协变；
+                                </p>
+                                <p>
+                                  <strong className="text-emerald-700 dark:text-emerald-300">
+                                    严格不变
+                                  </strong>
+                                  ：
+                                  <code className="bg-[var(--kde-panel)] px-1 rounded border border-[var(--kde-border)] font-mono">
+                                    &amp;'a mut T
+                                  </code>{" "}
+                                  对 <code>'a</code> 协变，但对 <code>T</code>{" "}
+                                  严格不变（消灭悬垂指针！）；
+                                </p>
+                                <p>
+                                  <strong className="text-emerald-700 dark:text-emerald-300">
+                                    逆变
+                                  </strong>
+                                  ：函数指针{" "}
+                                  <code className="bg-[var(--kde-panel)] px-1 rounded border border-[var(--kde-border)] font-mono">
+                                    fn(T)
+                                  </code>{" "}
+                                  对入参 <code>T</code> 逆变；可用{" "}
+                                  <code className="bg-[var(--kde-panel)] px-1 rounded border border-[var(--kde-border)] font-mono">
+                                    PhantomData&lt;fn(T)&gt;
+                                  </code>{" "}
+                                  标记。
+                                </p>
+                              </div>
                             </div>
-                            <p className="text-[11px] text-[var(--kde-muted)] mt-0.5">
-                              从 C# 声明点型变、TypeScript 结构妥协，到 Rust
-                              生命周期防线与 C++ 模板不变性
-                            </p>
+                            <div className="mt-2 text-[10px] font-mono text-emerald-800 dark:text-emerald-300 border-t border-emerald-500/20 pt-1">
+                              'static 可以收窄为短生命周期
+                              'a（长寿命可假装短寿命）
+                            </div>
                           </div>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {/* C# */}
-                            <div className="rounded-xl border border-purple-500/40 bg-purple-500/10 text-[var(--kde-ink)] p-3 flex flex-col justify-between ring-1 ring-purple-500/20">
-                              <div>
-                                <div className="flex items-center justify-between pb-1.5 border-b border-purple-500/20 mb-1.5 font-bold text-purple-700 dark:text-purple-300">
-                                  <span>C#：声明点型变 (out / in)</span>
-                                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-800 dark:text-purple-200">
-                                    Declaration-site
-                                  </span>
-                                </div>
-                                <div className="space-y-1 text-[11px] text-[var(--kde-ink)]">
-                                  <p>
-                                    <strong className="text-purple-700 dark:text-purple-300">
-                                      协变 (out T)
-                                    </strong>
-                                    ：只充当返回值，如{" "}
-                                    <code className="bg-[var(--kde-panel)] px-1 rounded border border-[var(--kde-border)] font-mono">
-                                      IEnumerable&lt;out T&gt;
-                                    </code>
-                                    、
-                                    <code className="bg-[var(--kde-panel)] px-1 rounded border border-[var(--kde-border)] font-mono">
-                                      Func&lt;out R&gt;
-                                    </code>
-                                    ；
-                                  </p>
-                                  <p>
-                                    <strong className="text-purple-700 dark:text-purple-300">
-                                      逆变 (in T)
-                                    </strong>
-                                    ：只充当入参，如{" "}
-                                    <code className="bg-[var(--kde-panel)] px-1 rounded border border-[var(--kde-border)] font-mono">
-                                      IComparable&lt;in T&gt;
-                                    </code>
-                                    、
-                                    <code className="bg-[var(--kde-panel)] px-1 rounded border border-[var(--kde-border)] font-mono">
-                                      Action&lt;in T&gt;
-                                    </code>
-                                    ；
-                                  </p>
-                                  <p>
-                                    <strong className="text-purple-700 dark:text-purple-300">
-                                      不变
-                                    </strong>
-                                    ：普通类、结构体、读写接口；数组历史性保留可变协变（带运行时检查）。
-                                  </p>
-                                </div>
+                          {/* C++ */}
+                          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 text-[var(--kde-ink)] p-3 flex flex-col justify-between ring-1 ring-amber-500/20">
+                            <div>
+                              <div className="flex items-center justify-between pb-1.5 border-b border-amber-500/20 mb-1.5 font-bold text-amber-700 dark:text-amber-300">
+                                <span>C++：模板不变性与虚函数协变</span>
+                                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-800 dark:text-amber-200">
+                                  Template Invariance
+                                </span>
                               </div>
-                              <div className="mt-2 text-[10px] font-mono text-purple-800 dark:text-purple-300 border-t border-purple-500/20 pt-1">
-                                IEnumerable&lt;Dog&gt; 可以安全赋给
-                                IEnumerable&lt;Animal&gt;
+                              <div className="space-y-1 text-[11px] text-[var(--kde-ink)]">
+                                <p>
+                                  <strong className="text-amber-700 dark:text-amber-300">
+                                    协变返回
+                                  </strong>
+                                  ：虚函数派生重写允许返回更具体的派生类指针{" "}
+                                  <code className="bg-[var(--kde-panel)] px-1 rounded border border-[var(--kde-border)] font-mono">
+                                    Derived*
+                                  </code>
+                                  ；
+                                </p>
+                                <p>
+                                  <strong className="text-amber-700 dark:text-amber-300">
+                                    入参拒绝逆变
+                                  </strong>
+                                  ：派生类改写参数类型直接判定为重载隐藏（Method
+                                  Hiding）；
+                                </p>
+                                <p>
+                                  <strong className="text-amber-700 dark:text-amber-300">
+                                    模板严格不变
+                                  </strong>
+                                  ：
+                                  <code className="bg-[var(--kde-panel)] px-1 rounded border border-[var(--kde-border)] font-mono">
+                                    vector&lt;Dog*&gt;
+                                  </code>{" "}
+                                  与{" "}
+                                  <code className="bg-[var(--kde-panel)] px-1 rounded border border-[var(--kde-border)] font-mono">
+                                    vector&lt;Animal*&gt;
+                                  </code>{" "}
+                                  绝无继承关系；智能指针靠转换构造函数模拟。
+                                </p>
                               </div>
                             </div>
-
-                            {/* TypeScript */}
-                            <div className="rounded-xl border border-sky-500/40 bg-sky-500/10 text-[var(--kde-ink)] p-3 flex flex-col justify-between ring-1 ring-sky-500/20">
-                              <div>
-                                <div className="flex items-center justify-between pb-1.5 border-b border-sky-500/20 mb-1.5 font-bold text-sky-700 dark:text-sky-300">
-                                  <span>TypeScript：结构化推导与双向协变</span>
-                                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-800 dark:text-sky-200">
-                                    Structural Inferred
-                                  </span>
-                                </div>
-                                <div className="space-y-1 text-[11px] text-[var(--kde-ink)]">
-                                  <p>
-                                    <strong className="text-sky-700 dark:text-sky-300">
-                                      协变
-                                    </strong>
-                                    ：对象只读属性、函数返回值；
-                                  </p>
-                                  <p>
-                                    <strong className="text-sky-700 dark:text-sky-300">
-                                      逆变
-                                    </strong>
-                                    ：开启{" "}
-                                    <code className="bg-[var(--kde-panel)] px-1 rounded border border-[var(--kde-border)] font-mono">
-                                      --strictFunctionTypes
-                                    </code>{" "}
-                                    后的函数参数；
-                                  </p>
-                                  <p>
-                                    <strong className="text-sky-700 dark:text-sky-300">
-                                      双向协变 (Bivariant)
-                                    </strong>
-                                    ：对象方法形参默认双向协变，以兼容{" "}
-                                    <code className="bg-[var(--kde-panel)] px-1 rounded border border-[var(--kde-border)] font-mono">
-                                      addEventListener
-                                    </code>{" "}
-                                    等 DOM 历史代码。
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="mt-2 text-[10px] font-mono text-sky-800 dark:text-sky-300 border-t border-sky-500/20 pt-1">
-                                (x: Animal) =&gt; Dog 可以赋给 (x: Dog) =&gt;
-                                Animal
-                              </div>
-                            </div>
-
-                            {/* Rust */}
-                            <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-[var(--kde-ink)] p-3 flex flex-col justify-between ring-1 ring-emerald-500/20">
-                              <div>
-                                <div className="flex items-center justify-between pb-1.5 border-b border-emerald-500/20 mb-1.5 font-bold text-emerald-700 dark:text-emerald-300">
-                                  <span>Rust：生命周期型变与内存安全</span>
-                                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-800 dark:text-emerald-200">
-                                    Lifetime Subtyping
-                                  </span>
-                                </div>
-                                <div className="space-y-1 text-[11px] text-[var(--kde-ink)]">
-                                  <p>
-                                    <strong className="text-emerald-700 dark:text-emerald-300">
-                                      协变
-                                    </strong>
-                                    ：不可变引用{" "}
-                                    <code className="bg-[var(--kde-panel)] px-1 rounded border border-[var(--kde-border)] font-mono">
-                                      &amp;'a T
-                                    </code>{" "}
-                                    对 <code>'a</code> 和 <code>T</code>{" "}
-                                    均协变；
-                                  </p>
-                                  <p>
-                                    <strong className="text-emerald-700 dark:text-emerald-300">
-                                      严格不变
-                                    </strong>
-                                    ：
-                                    <code className="bg-[var(--kde-panel)] px-1 rounded border border-[var(--kde-border)] font-mono">
-                                      &amp;'a mut T
-                                    </code>{" "}
-                                    对 <code>'a</code> 协变，但对 <code>T</code>{" "}
-                                    严格不变（消灭悬垂指针！）；
-                                  </p>
-                                  <p>
-                                    <strong className="text-emerald-700 dark:text-emerald-300">
-                                      逆变
-                                    </strong>
-                                    ：函数指针{" "}
-                                    <code className="bg-[var(--kde-panel)] px-1 rounded border border-[var(--kde-border)] font-mono">
-                                      fn(T)
-                                    </code>{" "}
-                                    对入参 <code>T</code> 逆变；可用{" "}
-                                    <code className="bg-[var(--kde-panel)] px-1 rounded border border-[var(--kde-border)] font-mono">
-                                      PhantomData&lt;fn(T)&gt;
-                                    </code>{" "}
-                                    标记。
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="mt-2 text-[10px] font-mono text-emerald-800 dark:text-emerald-300 border-t border-emerald-500/20 pt-1">
-                                'static 可以收窄为短生命周期
-                                'a（长寿命可假装短寿命）
-                              </div>
-                            </div>
-
-                            {/* C++ */}
-                            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 text-[var(--kde-ink)] p-3 flex flex-col justify-between ring-1 ring-amber-500/20">
-                              <div>
-                                <div className="flex items-center justify-between pb-1.5 border-b border-amber-500/20 mb-1.5 font-bold text-amber-700 dark:text-amber-300">
-                                  <span>C++：模板不变性与虚函数协变</span>
-                                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-800 dark:text-amber-200">
-                                    Template Invariance
-                                  </span>
-                                </div>
-                                <div className="space-y-1 text-[11px] text-[var(--kde-ink)]">
-                                  <p>
-                                    <strong className="text-amber-700 dark:text-amber-300">
-                                      协变返回
-                                    </strong>
-                                    ：虚函数派生重写允许返回更具体的派生类指针{" "}
-                                    <code className="bg-[var(--kde-panel)] px-1 rounded border border-[var(--kde-border)] font-mono">
-                                      Derived*
-                                    </code>
-                                    ；
-                                  </p>
-                                  <p>
-                                    <strong className="text-amber-700 dark:text-amber-300">
-                                      入参拒绝逆变
-                                    </strong>
-                                    ：派生类改写参数类型直接判定为重载隐藏（Method
-                                    Hiding）；
-                                  </p>
-                                  <p>
-                                    <strong className="text-amber-700 dark:text-amber-300">
-                                      模板严格不变
-                                    </strong>
-                                    ：
-                                    <code className="bg-[var(--kde-panel)] px-1 rounded border border-[var(--kde-border)] font-mono">
-                                      vector&lt;Dog*&gt;
-                                    </code>{" "}
-                                    与{" "}
-                                    <code className="bg-[var(--kde-panel)] px-1 rounded border border-[var(--kde-border)] font-mono">
-                                      vector&lt;Animal*&gt;
-                                    </code>{" "}
-                                    绝无继承关系；智能指针靠转换构造函数模拟。
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="mt-2 text-[10px] font-mono text-amber-800 dark:text-amber-300 border-t border-amber-500/20 pt-1">
-                                std::unique_ptr&lt;Derived&gt;
-                                通过移动转换构造转移给 Base
-                              </div>
+                            <div className="mt-2 text-[10px] font-mono text-amber-800 dark:text-amber-300 border-t border-amber-500/20 pt-1">
+                              std::unique_ptr&lt;Derived&gt;
+                              通过移动转换构造转移给 Base
                             </div>
                           </div>
                         </div>
-                      )}
-                    </div>
-                  </>
-                )}
-                <CanvasResizer className="absolute bottom-0 inset-x-0 z-20" />
-              </div>
-            }
-            side={
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                <KdeCard title="精选子类型公理与型变预设" variant="dense">
-                  <PresetSelector
-                    layout="vertical"
-                    size="xs"
-                    onChange={handlePresetChange}
-                    options={PRESETS.map((p) => ({
-                      id: p.id,
-                      label: p.label,
-                      description: p.desc,
-                    }))}
-                    value={activePresetId}
-                  />
-                </KdeCard>
-
-                <KdeCard title="LSP 替换合法性判定" variant="dense">
-                  <div className="space-y-2 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[var(--kde-muted)]">
-                        替换模式：
-                      </span>
-                      <span
-                        className={`font-semibold text-[11px] ${
-                          activeAssignmentType === "valid"
-                            ? "text-emerald-700 dark:text-emerald-400"
-                            : "text-rose-700 dark:text-rose-400"
-                        }`}
-                      >
-                        {activeAssignmentType === "valid"
-                          ? "✅ 符合 LSP"
-                          : "❌ 违反子类型"}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      <KdeButton
-                        size="xs"
-                        variant={
-                          activeAssignmentType === "valid"
-                            ? "primary"
-                            : "default"
-                        }
-                        onClick={() => setActiveAssignmentType("valid")}
-                      >
-                        合法替换 (LSP)
-                      </KdeButton>
-                      <KdeButton
-                        size="xs"
-                        variant={
-                          activeAssignmentType === "invalid"
-                            ? "danger"
-                            : "default"
-                        }
-                        onClick={() => setActiveAssignmentType("invalid")}
-                      >
-                        非法替换 (Reject)
-                      </KdeButton>
-                    </div>
+                      </div>
+                    )}
                   </div>
-                </KdeCard>
-
-                <KdeCard title="形式化公理规则" variant="dense">
-                  <div className="space-y-2 text-xs">
-                    <div className="p-1.5 rounded bg-[var(--kde-panel)] border border-[var(--kde-border)] font-mono text-[11px] text-[var(--kde-accent)] overflow-x-auto">
-                      {`$${preset.ruleTex}$`}
-                    </div>
-                    <div className="text-[11px] text-[var(--kde-muted)]">
-                      极性法则：{preset.polarityExplanation}
-                    </div>
-                  </div>
-                </KdeCard>
-              </div>
-            }
-            bottom={
-              <KdeCard title="🔍 子类型与型变深邃理论洞见 (Subtyping & Variance Insight)">
-                <p className="mt-1 text-xs leading-relaxed text-[var(--kde-ink)]">
-                  {preset.insight}
-                </p>
+                </>
+              )}
+              <CanvasResizer className="absolute bottom-0 inset-x-0 z-20" />
+            </div>
+          }
+          side={
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <KdeCard title="精选子类型公理与型变预设" variant="dense">
+                <PresetSelector
+                  layout="vertical"
+                  size="xs"
+                  onChange={handlePresetChange}
+                  options={PRESETS.map((p) => ({
+                    id: p.id,
+                    label: p.label,
+                    description: p.desc,
+                  }))}
+                  value={activePresetId}
+                />
               </KdeCard>
-            }
-          />
-        </KdeWindowShell>
-      </ExpandableDemo>
-    </AutoMath>
+
+              <KdeCard title="LSP 替换合法性判定" variant="dense">
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[var(--kde-muted)]">替换模式：</span>
+                    <span
+                      className={`font-semibold text-[11px] ${
+                        activeAssignmentType === "valid"
+                          ? "text-emerald-700 dark:text-emerald-400"
+                          : "text-rose-700 dark:text-rose-400"
+                      }`}
+                    >
+                      {activeAssignmentType === "valid"
+                        ? "✅ 符合 LSP"
+                        : "❌ 违反子类型"}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    <KdeButton
+                      size="xs"
+                      variant={
+                        activeAssignmentType === "valid" ? "primary" : "default"
+                      }
+                      onClick={() => setActiveAssignmentType("valid")}
+                    >
+                      合法替换 (LSP)
+                    </KdeButton>
+                    <KdeButton
+                      size="xs"
+                      variant={
+                        activeAssignmentType === "invalid"
+                          ? "danger"
+                          : "default"
+                      }
+                      onClick={() => setActiveAssignmentType("invalid")}
+                    >
+                      非法替换 (Reject)
+                    </KdeButton>
+                  </div>
+                </div>
+              </KdeCard>
+
+              <KdeCard title="形式化公理规则" variant="dense">
+                <div className="space-y-2 text-xs">
+                  <div className="p-1.5 rounded bg-[var(--kde-panel)] border border-[var(--kde-border)] font-mono text-[11px] text-[var(--kde-accent)] overflow-x-auto">
+                    {`$${preset.ruleTex}$`}
+                  </div>
+                  <div className="text-[11px] text-[var(--kde-muted)]">
+                    极性法则：{preset.polarityExplanation}
+                  </div>
+                </div>
+              </KdeCard>
+            </div>
+          }
+          bottom={
+            <KdeCard title="🔍 子类型与型变深邃理论洞见 (Subtyping & Variance Insight)">
+              <p className="mt-1 text-xs leading-relaxed text-[var(--kde-ink)]">
+                {preset.insight}
+              </p>
+            </KdeCard>
+          }
+        />
+      </KdeWindowShell>
+    </ExpandableDemo>
   );
 }

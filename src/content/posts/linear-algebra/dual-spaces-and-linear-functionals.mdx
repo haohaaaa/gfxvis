@@ -58,18 +58,55 @@ $$
 
 几何上，一个原空间向量 $\mathbf{v} \in V$ 表现为一个带方向的“箭头”。那么一个对偶泛函 $f \in V^*$ 应当如何具象化？
 
-答案是：<strong>一族具有特定间距和方向的平行等值超平面（Equispaced Parallel Hyperplanes）</strong>！
+对于<strong>非零线性泛函</strong>，答案是：<strong>一族平行等值超平面</strong>！当等值标签按固定步长选取，并给空间选定欧氏内积后，这些超平面等间距排列。
 
 <DualFunctionalHyperplanesDemo client:visible />
 
 1. <strong>零核（Kernel / Nullspace）</strong>：
-   所有使泛函为零的向量集合 $\ker(f) = \{ \mathbf{v} \in V \mid f(\mathbf{v}) = 0 \}$，构成空间中一个穿过原点的 <strong>$n-1$ 维超平面（Hyperplane）</strong>；
+   对于非零泛函，所有使泛函为零的向量集合 $\ker(f) = \{ \mathbf{v} \in V \mid f(\mathbf{v}) = 0 \}$，构成空间中一个穿过原点的 <strong>$n-1$ 维超平面（Hyperplane）</strong>；
 2. <strong>等值面（Level Sets）</strong>：
-   对于任意实数 $c \in \mathbb{R}$，集合 $\{ \mathbf{v} \in V \mid f(\mathbf{v}) = c \}$ 都是与 $\ker(f)$ 平行的超平面；
+   对于非零泛函及任意实数 $c \in \mathbb{R}$，集合 $\{ \mathbf{v} \in V \mid f(\mathbf{v}) = c \}$ 都是与 $\ker(f)$ 平行的超平面；
 3. <strong>求值即穿透</strong>：
    将泛函 $f$ 作用于向量 $\mathbf{v}$ 计算标量 $f(\mathbf{v})$，在几何上等价于 <strong>数出向量 $\mathbf{v}$ 从原点出发所刺穿的等值超平面的层数</strong>！
    - 超平面间距越密集，代表泛函的“刻度越精细/幅值越大”，同样的向量穿透的层数越多；
-   - 两个平行的超平面网格如果间距和方向相同，就代表同一个线性泛函。
+   - 等值标签与数值增长方向也属于图景的一部分；只有包含这些信息的等值网格才能确定泛函。例如 $f$ 与 $-f$ 的无标签等值面相同，但取值符号相反。
+
+零泛函是边界情况：若 $f \equiv 0$，则 $\ker f = V$；$f(\mathbf{v}) = c$ 在 $c = 0$ 时对所有向量成立，在 $c \ne 0$ 时无解，其等值集不再是上述超平面。
+
+### 1.4 从单个泛函到线性方程组：核与等值集的交集
+
+以 $V = \mathbb{R}^2$ 为例，定义线性泛函：
+
+$$
+f(\mathbf{x}) = 2x_1 - x_2
+$$
+
+这里 $f$ 是<strong>映射</strong>，而方程 $f(\mathbf{x}) = c$ 的解集是该映射的一个<strong>等值集</strong>。当 $c = 0$ 时，它就是齐次方程 $2x_1 - x_2 = 0$ 的解空间：
+
+$$
+\ker f = \{t(1, 2)^\top : t \in \mathbb{R}\}
+$$
+
+当 $c = 1$ 时，$\mathbf{x}_p = (1, 1)^\top$ 是一个特解，所以非齐次方程的完整解集为：
+
+$$
+\{\mathbf{x} : f(\mathbf{x}) = 1\}
+= (1, 1)^\top + \ker f
+= \{(1, 1)^\top + t(1, 2)^\top : t \in \mathbb{R}\}
+$$
+
+两条直线平行，前者经过原点，后者不经过原点。<strong>非零的指定值并没有让 $f$ 失去线性性，而是让所选等值集成为不经过原点的仿射子空间。</strong>
+
+当我们同时使用 $m$ 个泛函 $f_1, \ldots, f_m$ 时，在选定基后，把它们的行坐标依次排列成矩阵 $A$，便得到：
+
+$$
+A\mathbf{x} = \mathbf{b}
+\iff f_i(\mathbf{x}) = b_i \quad (i = 1, \ldots, m)
+$$
+
+于是齐次系统的解空间是 $\ker A = \bigcap_{i=1}^{m} \ker f_i$，一般系统的解集则是 $\bigcap_{i=1}^{m} \{\mathbf{x} : f_i(\mathbf{x}) = b_i\}$。后者可能为空；若存在特解 $\mathbf{x}_p$，就等于 $\mathbf{x}_p + \ker A$。其自由度由<strong>独立约束的数量</strong>决定，即 $n - \operatorname{rank}(A)$，而不一定是 $n - m$。
+
+这正是 [《线性方程组的几何全景》第一节](/posts/linear-algebra/linear-systems-row-column-and-solution-manifolds#一双重视角行视角row-picture-vs-列视角column-picture)中“行视角”的泛函解释。关于特解加零空间的完整证明，参见该文[第四节](/posts/linear-algebra/linear-systems-row-column-and-solution-manifolds#四解集流形齐次约束与非齐次约束的本质分野)；关于无解、唯一解与无穷多解的判据，参见该文[第五节](/posts/linear-algebra/linear-systems-row-column-and-solution-manifolds#五可解性判据维数公式与解的三种命运)。
 
 ---
 
@@ -158,24 +195,170 @@ $$
 
 ### 3.1 基底变换下的对立演化
 
-设原空间基底发生变换 $\mathbf{e}'_j = \sum_i P^i_{\ j} \mathbf{e}_i$，写成矩阵形式：
+#### 基底变换的代数定义与过渡矩阵 $P$
+
+设原空间 $V$ 中原本有一套旧基底 $\{\mathbf{e}_1, \dots, \mathbf{e}_n\}$。现在换用一套新的基底 $\{\mathbf{e}'_1, \dots, \mathbf{e}'_n\}$。每个新基向量都可以由旧基底线性表示：
+
+$$
+\mathbf{e}'_j = \sum_{i=1}^n P^i_{\ j} \mathbf{e}_i = P^1_{\ j} \mathbf{e}_1 + P^2_{\ j} \mathbf{e}_2 + \dots + P^n_{\ j} \mathbf{e}_n
+$$
+
+写成紧凑的矩阵形式：
 
 $$
 \begin{bmatrix} \mathbf{e}'_1 & \cdots & \mathbf{e}'_n \end{bmatrix} = \begin{bmatrix} \mathbf{e}_1 & \cdots & \mathbf{e}_n \end{bmatrix} P
 $$
 
-1. <strong>反变分量（Contravariant Components / 向量坐标）</strong>：
-   为了保持客观几何箭头 $\mathbf{x} = \sum x^i \mathbf{e}_i = \sum x'^j \mathbf{e}'_j$ 不随人类选取的参考系而改变，基底被放大 $P$ 倍，坐标分量必须相应地乘以逆矩阵 $P^{-1}$ 缩小：
-   $$
-   \mathbf{x}' = P^{-1} \mathbf{x}
-   $$
-   <strong>坐标的变换方向与基底的变换方向“相反”，故名反变（Contravariant）</strong>。习惯上使用上标（$x^i$）。
-2. <strong>协变分量（Covariant Components / 对偶向量 / 泛函系数）</strong>：
-   对偶泛函 $f = \sum f_i \mathbf{e}^{*i} = \sum f'_j \mathbf{e}'^{*j}$ 的分量 $f_i = f(\mathbf{e}_i)$ 满足：
-   $$
-   f'_j = f(\mathbf{e}'_j) = f\left( \sum_i P^i_{\ j} \mathbf{e}_i \right) = \sum_i P^i_{\ j} f(\mathbf{e}_i) = \sum_i P^i_{\ j} f_i \implies \mathbf{f}'^\top = \mathbf{f}^\top P
-   $$
-   <strong>泛函分量的变换方式与基底的变换方式“相同”，故名协变（Covariant）</strong>。习惯上使用下标（$f_i$）。
+> 💡 <strong>指标记号与矩阵右乘机制解析</strong>：
+>
+> 1. <strong>张量上下标的含义</strong>：
+>    - <strong>下标 $j$</strong>：标示正在生成“第 $j$ 个新基向量”；
+>    - <strong>上标 $i$</strong>：标示旧基向量 $\mathbf{e}_i$ 前面的线性加权系数。在矩阵 $P$ 中，$P^i_{\ j}$ 恰好位于第 $i$ 行、第 $j$ 列；
+>    - <strong>因此，过渡矩阵 $P$ 的第 $j$ 列，就是第 $j$ 个新基向量 $\mathbf{e}'_j$ 在旧基底下的坐标！</strong>
+> 2. <strong>形式行向量与矩阵右乘</strong>：
+>    平时向量求值都是矩阵在前（$A\mathbf{x}$），但这里是将基向量横向排成一个<strong>形式行向量</strong>。以二维平面展开为例：
+>    $$
+>    \begin{bmatrix} \mathbf{e}'_1 & \mathbf{e}'_2 \end{bmatrix} 
+>    = \begin{bmatrix} \mathbf{e}_1 & \mathbf{e}_2 \end{bmatrix} 
+>    \begin{bmatrix} P^1_{\ 1} & P^1_{\ 2} \\ P^2_{\ 1} & P^2_{\ 2} \end{bmatrix}
+>    $$
+>    按照常规矩阵“行乘列”规则：
+>    - 第一列：$\mathbf{e}'_1 = \mathbf{e}_1 P^1_{\ 1} + \mathbf{e}_2 P^2_{\ 1}$（生成第一个新基向量）；
+>    - 第二列：$\mathbf{e}'_2 = \mathbf{e}_1 P^1_{\ 2} + \mathbf{e}_2 P^2_{\ 2}$（生成第二个新基向量）。
+>    将基底横排并让过渡矩阵 $P$ 右乘，恰好天衣无缝地契合了矩阵乘法法则。矩阵 $P$ 被称为从旧基到新基的<strong>过渡矩阵（Transition Matrix / 换基矩阵）</strong>。
+
+#### 同一客观向量的坐标双向转换与反变（Contravariant）
+
+设空间中存在一根固定不动的几何箭头 $\mathbf{v} \in V$（客观物理现实，不因人类参考系的选取而改变）。
+- 在旧基底 $\{\mathbf{e}_i\}$ 下的坐标列向量记为 $\mathbf{x} = \begin{bmatrix} x^1 & \dots & x^n \end{bmatrix}^\top$；
+- 在新基底 $\{\mathbf{e}'_j\}$ 下的坐标列向量记为 $\mathbf{x}' = \begin{bmatrix} x'^1 & \dots & x'^n \end{bmatrix}^\top$。
+
+同一个客观向量 $\mathbf{v}$ 可以用两组不同的基底与对应坐标展开：
+
+$$
+\mathbf{v} = \begin{bmatrix} \mathbf{e}_1 & \cdots & \mathbf{e}_n \end{bmatrix} \mathbf{x} = \begin{bmatrix} \mathbf{e}'_1 & \cdots & \mathbf{e}'_n \end{bmatrix} \mathbf{x}'
+$$
+
+将基底变换式 $\begin{bmatrix} \mathbf{e}'_1 & \cdots & \mathbf{e}'_n \end{bmatrix} = \begin{bmatrix} \mathbf{e}_1 & \cdots & \mathbf{e}_n \end{bmatrix} P$ 代入右侧，结合矩阵乘法结合律：
+
+$$
+\mathbf{v} = \left( \begin{bmatrix} \mathbf{e}_1 & \cdots & \mathbf{e}_n \end{bmatrix} P \right) \mathbf{x}' = \begin{bmatrix} \mathbf{e}_1 & \cdots & \mathbf{e}_n \end{bmatrix} \big( P \mathbf{x}' \big)
+$$
+
+由于客观向量 $\mathbf{v}$ 在旧基底下的坐标分解具有唯一性，对比系数直接得出坐标列向量之间的恒等关系：
+
+$$
+\mathbf{x} = P \mathbf{x}' \iff \mathbf{x}' = P^{-1} \mathbf{x}
+$$
+
+> 💡 <strong>一目了然：基底演化与坐标反变的核心对准法则</strong>
+>
+> 将基底与坐标从“旧”到“新”的变换方向并排并列，便能瞬间洞察“反变”的对立互逆之美：
+>
+> $$
+> \boxed{
+> \begin{aligned}
+> \text{基底从旧到新（} \{\mathbf{e}'_j\} \leftarrow \{\mathbf{e}_i\} \text{）：} & \quad \begin{bmatrix} \mathbf{e}'_1 & \cdots & \mathbf{e}'_n \end{bmatrix} = \begin{bmatrix} \mathbf{e}_1 & \cdots & \mathbf{e}_n \end{bmatrix} P & \quad \text{【右乘 } P \text{】} \\[8pt]
+> \text{坐标从旧到新（} \mathbf{x}' \leftarrow \mathbf{x} \text{）：} & \quad \mathbf{x}' = P^{-1} \mathbf{x} & \quad \text{【左乘 } P^{-1} \text{】}
+> \end{aligned}
+> }
+> $$
+>
+> <strong>从旧到新，基底变换用 $P$（右乘），坐标变换必然用 $P^{-1}$（左乘）！一个用 $P$，另一个就必须用 $P^{-1}$ 反向抵消。</strong>
+
+| 坐标换算方向 | 计算公式 | 算子说明 |
+| :--- | :--- | :--- |
+| <strong>新坐标 $\to$ 旧坐标</strong> | $\mathbf{x} = P \mathbf{x}'$ | <strong>直接左乘过渡矩阵 $P$</strong> |
+| <strong>旧坐标 $\to$ 新坐标</strong> | $\mathbf{x}' = P^{-1} \mathbf{x}$ | <strong>左乘过渡矩阵的逆矩阵 $P^{-1}$</strong> |
+
+> 💡 <strong>为什么叫“反变”？矩阵 $P$ 与 $P^{-1}$ 的代数与几何本质</strong>：
+>
+> 1. <strong>矩阵层面的“逆向抵消”</strong>：
+>    严格来说，过渡矩阵 $P$ 是一个满秩方阵（代表拉伸、旋转或剪切等任意可逆线性形变）。为了保持客观存在的物理箭头 $\mathbf{v} = \mathbf{E}\mathbf{x} = (\mathbf{E}P)\mathbf{x}'$ 恒定不变，基底经历了矩阵变换 $P$，坐标列向量就必须<strong>反向施加逆矩阵 $P^{-1}$</strong> 来精准抵消基底的形变：
+>    $$
+>    \mathbf{x}' = P^{-1} \mathbf{x}
+>    $$
+> 2. <strong>标量视角的直觉类比（一维退化情形）</strong>：
+>    若 $P$ 退化为单个正标量 $c > 1$（例如测量基准单位由“米”拉长放大为“千米”，标尺刻度变疏）：测量同一段客观位移，数字坐标读数必然缩小为原来的 $\frac{1}{c}$ 倍（$1000\text{ m} \to 1\text{ km}$）。
+> 3. <strong>多维几何下的反变本质</strong>：
+>    在更高维的矩阵情形下，这种“相反”关系依然处处严格成立：
+>    - 若基底坐标轴逆时针旋转 $\theta$ 角，同一个固定箭头的坐标读数在数值上相当于顺时针旋转了 $\theta$ 角；
+>    - 若 $x$ 轴基向量被单向拉长 2 倍，其对应的 $x$ 坐标分量就被压缩为原来的 $\frac{1}{2}$；
+>    - 若基向量之间发生剪切倾斜，坐标分量必须通过逆剪切矩阵 $P^{-1}$ 进行反向补偿。
+>    
+> <strong>坐标分量的变换算子始终是基底变换算子的“逆算子”（$P \leftrightarrow P^{-1}$），变换方向处处相反、互为抵消，故名“反变（Contravariant）”</strong>。习惯上在反变坐标分量上使用上标（$x^i$）。（关于换基矩阵的严格可逆性与第一性原理构造，详见 [《基、坐标系与基变换》](/posts/linear-algebra/basis-coordinate-change-of-basis) 第三节）。
+
+#### 测量泛函的分量转换与协变（Covariant）
+
+与客观箭头 $\mathbf{v}$ 类似，线性泛函 $f \in V^*$（空间中的测量探针，如温度梯度、电场或表面法线）也是一个<strong>客观存在的几何实体</strong>。
+
+无论人类选取何种坐标基底，泛函 $f$ 作用于向量 $\mathbf{v}$ 所测得的<strong>标量物理数值 $f(\mathbf{v}) \in \mathbb{R}$ 是绝对恒定不变的</strong>：
+
+$$
+f(\mathbf{v}) = \mathbf{f}^\top \mathbf{x} = \mathbf{f}'^\top \mathbf{x}'
+$$
+
+其中：
+- $\mathbf{f} = \begin{bmatrix} f_1 & \cdots & f_n \end{bmatrix}^\top$ 为泛函在旧基底下的分量，满足 $f_i = f(\mathbf{e}_i)$；
+- $\mathbf{f}' = \begin{bmatrix} f'_1 & \cdots & f'_n \end{bmatrix}^\top$ 为泛函在新基底下的分量，满足 $f'_j = f(\mathbf{e}'_j)$。
+
+1. <strong>泛函分量变换公式的双向推导</strong>：
+   - <strong>路径一（从泛函分量定义直接展开）</strong>：
+     根据新基向量的展开式 $\mathbf{e}'_j = \sum_{i=1}^n P^i_{\ j} \mathbf{e}_i$ 与泛函的线性性：
+     $$
+     f'_j = f(\mathbf{e}'_j) = f\left( \sum_{i=1}^n P^i_{\ j} \mathbf{e}_i \right) = \sum_{i=1}^n P^i_{\ j} f(\mathbf{e}_i) = \sum_{i=1}^n P^i_{\ j} f_i
+     $$
+     将所有分量按行向量横排，立即得到熟悉的行乘列矩阵乘法：
+     $$
+     \begin{bmatrix} f'_1 & \cdots & f'_n \end{bmatrix} = \begin{bmatrix} f_1 & \cdots & f_n \end{bmatrix} P \iff \mathbf{f}'^\top = \mathbf{f}^\top P
+     $$
+     对两边同时取转置，转换为列向量形式：
+     $$
+     \mathbf{f}' = P^\top \mathbf{f}
+     $$
+   - <strong>路径二（从标量物理量守恒反推）</strong>：
+     已知坐标的反变法则为 $\mathbf{x}' = P^{-1}\mathbf{x}$。代入标量测量守恒等式：
+     $$
+     \mathbf{f}^\top \mathbf{x} = \mathbf{f}'^\top \mathbf{x}' = \mathbf{f}'^\top \big( P^{-1} \mathbf{x} \big) = \big( \mathbf{f}'^\top P^{-1} \big) \mathbf{x}
+     $$
+     该式对空间中任意向量 $\mathbf{x}$ 必须恒成立，故括号内的系数矩阵必恒等：
+     $$
+     \mathbf{f}'^\top P^{-1} = \mathbf{f}^\top \iff \mathbf{f}'^\top = \mathbf{f}^\top P \iff \mathbf{f}' = P^\top \mathbf{f}
+     $$
+
+> 💡 <strong>一目了然：为什么叫“协变（Covariant）”？</strong>
+>
+> 对比基底变换与泛函分量变换的形式：
+>
+> $$
+> \boxed{
+> \begin{aligned}
+> \text{基底变换（旧 } \to \text{ 新）：} & \quad \begin{bmatrix} \mathbf{e}'_1 & \cdots & \mathbf{e}'_n \end{bmatrix} = \begin{bmatrix} \mathbf{e}_1 & \cdots & \mathbf{e}_n \end{bmatrix} P & \quad \text{【右乘 } P \text{】} \\[8pt]
+> \text{泛函分量（旧 } \to \text{ 新）：} & \quad \begin{bmatrix} f'_1 & \cdots & f'_n \end{bmatrix} = \begin{bmatrix} f_1 & \cdots & f_n \end{bmatrix} P & \quad \text{【右乘 } P \text{】}
+> \end{aligned}
+> }
+> $$
+>
+> <strong>看！泛函分量行向量的变换矩阵与基底行向量的变换矩阵完全相同，都是在右侧乘以矩阵 $P$！泛函分量的步调与基底的演化“步调完全一致、协同演变”，故名“协变（Covariant）”</strong>。习惯上在协变分量上使用下标（$f_i$）。
+
+2. <strong>协变分量的几何直觉：数切片层数</strong>：
+   结合第一节中“泛函即等值切片族、求值即穿透”的几何图景：
+   - 泛函分量 $f_i = f(\mathbf{e}_i)$ 的几何本质，就是<strong>基向量 $\mathbf{e}_i$ 穿透了泛函的多少层等值超平面</strong>；
+   - 当基向量 $\mathbf{e}_i$ 随着基底变换被拉伸形变（被 $P$ 驱动）时，这根变长变斜的基向量去穿刺原本固定不动的泛函切片，<strong>刺穿的层数自然跟着同向增长变化</strong>；
+   - 因此，泛函分量必然伴随着基向量的形变而同向“协同演变”。
+
+3. <strong>反变 vs 协变：三位一体全景对照</strong>：
+   将原空间基底、反变坐标与协变分量放在一起，整个线性代数与张量分析的坐标变换全景昭然若揭：
+
+$$
+\boxed{
+\begin{aligned}
+\text{基底向量（旧 } \to \text{ 新）：} & \quad \begin{bmatrix} \mathbf{e}'_1 & \cdots & \mathbf{e}'_n \end{bmatrix} = \begin{bmatrix} \mathbf{e}_1 & \cdots & \mathbf{e}_n \end{bmatrix} P & \quad \text{【基底基准：右乘 } P \text{】} \\[8pt]
+\text{反变坐标（旧 } \to \text{ 新）：} & \quad \mathbf{x}' = P^{-1} \mathbf{x} & \quad \text{【反向抵消：左乘 } P^{-1} \text{】} \\[8pt]
+\text{协变分量（旧 } \to \text{ 新）：} & \quad \mathbf{f}' = P^\top \mathbf{f} \quad (\mathbf{f}'^\top = \mathbf{f}^\top P) & \quad \text{【步调一致：同向使用 } P \text{】}
+\end{aligned}
+}
+$$
 
 | 物理 / 几何概念                      | 向量分类       | 典型代表                              | 基底变大时的分量变化 | 变换法则                          |
 | :----------------------------------- | :------------- | :------------------------------------ | :------------------- | :-------------------------------- |
@@ -184,29 +367,98 @@ $$
 
 ---
 
-### 3.2 图形学实战：为什么法线变换矩阵是 $(M^{-1})^\top$？
+### 3.2 图形学实战：为什么法线是协变泛函与法线矩阵 $(M^{-1})^\top$？
 
-在 3D 渲染着色器（Vertex Shader）中，网格顶点位置 $\mathbf{p}$ 经历模型变换矩阵 $M$：$\mathbf{p}' = M \mathbf{p}$。
+在 3D 渲染与着色器（Vertex Shader）中，几乎每位开发者都熟知一个铁律：<strong>变换顶点坐标用模型矩阵 $M$，但变换表面法线必须使用“法线矩阵 $(M^{-1})^\top$”</strong>。
 
-如果一个切向量 $\mathbf{t}$ 是表面上两个无穷近顶点的差值，它同样按 $M$ 变换：$\mathbf{t}' = M \mathbf{t}$（反变向量）。
+但鲜少有教程从第一性原理追问：<strong>法线在 3D 空间中明明被画成一根垂直于表面的几何箭头，为什么它不能像普通向量那样直接乘以 $M$？它凭什么在本质上是一个线性泛函（协变向量）？</strong>
 
-然而，表面法线 $\mathbf{n}$ 的核心物理使命是 <strong>时刻与表面切平面保持垂直（$\mathbf{n}^\top \mathbf{t} = 0$）</strong>。法线本质上不是一个空间位移，而是一个用于测量切向量投影是否为零的 <strong>对偶向量（Covector）</strong>！
+#### 1. 法线作为线性泛函的三个第一性证明
 
-<NormalMatrixTransformDiagram client:visible />
+1. <strong>定义方式的本质分野：切向量是真实位移，法线是“零核判定仪”</strong>：
+   - <strong>切向量 $\mathbf{t}$ 是原空间真向量</strong>：曲面切向量是表面上两个无穷近几何顶点的差值极限 $\mathbf{t} = \lim_{\Delta u \to 0} \frac{\mathbf{p}(u + \Delta u) - \mathbf{p}(u)}{\Delta u}$，代表真实的几何位移与运动切向；
+   - <strong>法线 $\mathbf{n}$ 绝非空间中两点的位移差值</strong>：法线是通过“正交测量方程”被定义的：
+     $$
+     \mathbf{n}(\mathbf{t}) \equiv \mathbf{n}^\top \mathbf{t} = 0 \quad (\forall \mathbf{t} \in \text{切平面})
+     $$
+     它的本质是一个<strong>标量测量函数（线性泛函）</strong>：输入任意空间向量，输出其在法向方向的投影读数，并严格判定其是否落在切平面内。<strong>切平面在代数上就是泛函 $\mathbf{n}$ 的零核超平面 $\ker(\mathbf{n})$</strong>！法线的存在不是为了充当一个空间箭头，而是为了建立切平面的测度准则。
 
-设法线变换矩阵为 $N$，即 $\mathbf{n}' = N \mathbf{n}$。为了在变换后依然处处正交：
+2. <strong>物理场外微分视角：曲面的法线就是隐式曲面的梯度</strong>：
+   在微积分中，任何光滑三维曲面都可以表示为标量场的零等值面（隐式曲面）$F(x, y, z) = 0$。该曲面的法向在几何上正是这个标量场的外微分（梯度 1-形式）：
+   $$
+   \mathbf{n} \propto \mathrm{d}F = \frac{\partial F}{\partial x} \mathrm{d}x + \frac{\partial F}{\partial y} \mathrm{d}y + \frac{\partial F}{\partial z} \mathrm{d}z
+   $$
+   标量场的全微分 $\mathrm{d}F$ 天然是一叠等值薄片（线性泛函 / 1-形式），而物体曲面本身就是这叠薄片中数值为 $0$ 的那一张切片基准面（零核）。
+
+3. <strong>非等比几何形变的致命检验：把法线当向量会直接破坏垂直性</strong>：
+   如果法线真是一个几何位移向量，当物体经历模型变换矩阵 $M$（例如沿 $x$ 轴单向拉长 2 倍）时，法线理应随之按 $M$ 变换：$\mathbf{n}_{\text{wrong}} = M \mathbf{n}$。
+   然而，在非等比形变下，<strong>直接用 $M$ 变换的法线会立刻发生倾斜，彻底丧失与新切平面的垂直性</strong>！这在 3D 渲染中会导致漫反射和高光光照计算彻底崩溃。
+
+#### 2. 法线矩阵定理的严格推导
+
+为了让形变后的法线 $\mathbf{n}'$ <strong>时刻与变形后的切向量 $\mathbf{t}' = M \mathbf{t}$ 保持严格正交</strong>（$\mathbf{n}'^\top \mathbf{t}' = 0$），设法线专用的变换矩阵为 $N$（即 $\mathbf{n}' = N \mathbf{n}$）：
 
 $$
 \mathbf{n}'^\top \mathbf{t}' = (N \mathbf{n})^\top (M \mathbf{t}) = \mathbf{n}^\top N^\top M \mathbf{t} = 0
 $$
 
-为了使该式对任意切向量 $\mathbf{t}$ 和法线 $\mathbf{n}$ 恒成立，必须满足：
+为了使该正交性对曲面上任意切向量 $\mathbf{t}$ 和法线 $\mathbf{n}$ 恒成立，中间的矩阵乘积必须为单位矩阵：
 
 $$
 N^\top M = I \implies N^\top = M^{-1} \implies \boxed{N = (M^{-1})^\top = M^{-\top}}
 $$
 
-这正是著名的 <strong>法线矩阵（Normal Matrix）</strong> 定理。<strong>法线矩阵之所以必须是逆转置，根源就在于法线是对偶空间的协变对象！</strong>
+<NormalMatrixTransformDiagram client:visible />
+
+> 💡 <strong>法线矩阵的对偶本质总结</strong>：
+>
+> <strong>法线矩阵之所以必须是逆转置 $(M^{-1})^\top$，根源就在于法线是一个协变泛函（Covector）！我们在空间中画出的法线“箭头”，只是借助内积赋予其的一个几何伪装；它的变换法则与代数定义，百分之百服从协变对偶空间的逆转置法则。</strong>
+
+---
+
+### 3.3 概念终极澄清：Contravariant Vector、Covariant Vector 与 1-form
+
+在物理学（广义相对论、理论力学）、微分几何与图形学文献中，读者常被一堆交织出现的名词所困扰：<strong>反变向量（Contravariant Vector）</strong>、<strong>协变向量（Covariant Vector）</strong>、<strong>对偶向量（Covector）</strong>、<strong>1-形式（1-form）</strong>、<strong>线性泛函（Linear Functional）</strong>。
+
+它们之间的区别与统一，可以通过以下三重视角彻底厘清：
+
+#### 1. 三大概念的核心定位与几何图景
+
+1. <strong>反变向量（Contravariant Vector / 真正向量）</strong>：
+   - <strong>空间归属</strong>：原向量空间 $V$ 或微分流形在点 $p$ 处的<strong>切空间（Tangent Space）$T_p M$</strong>；
+   - <strong>几何形象</strong>：<strong>一根带方向和长度的箭头（Arrow）</strong>；
+   - <strong>物理代表</strong>：空间位移 $\Delta \mathbf{x}$、质点速度 $\mathbf{v} = \frac{\mathrm{d}\mathbf{x}}{\mathrm{d}t}$、曲面切向量 $\mathbf{t}$、流体流动方向；
+   - <strong>指标习惯</strong>：在张量分析中使用<strong>上标</strong>（如 $v^\mu$、$x^i$）；
+   - <strong>变换特性</strong>：基底乘以 $P$ 发生形变，其坐标分量反向乘以逆矩阵 $P^{-1}$ 抵消，保持物理箭头客观不变。
+
+2. <strong>协变向量（Covariant Vector / 对偶向量 / Covector）</strong>：
+   - <strong>空间归属</strong>：代数对偶空间 $V^*$ 或流形切空间的对偶——<strong>余切空间（Cotangent Space）$T_p^* M$</strong>；
+   - <strong>代数身份</strong>：作用在反变向量上的<strong>线性泛函（Linear Functional）</strong>，满足 $f(\mathbf{v}) \in \mathbb{R}$；
+   - <strong>几何形象</strong>：<strong>单点处一叠平行、等间距的等值超平面（切片 / 刻度网格）</strong>；
+   - <strong>物理代表</strong>：测量探针、表面法线 $\mathbf{n}$、力与做功测量仪；
+   - <strong>指标习惯</strong>：在张量分析中使用<strong>下标</strong>（如 $\omega_\mu$、$f_i$）；
+   - <strong>变换特性</strong>：分量变换与基底同向右乘 $P$（列向量形式左乘 $P^\top$），保持测量标量值 $\langle \omega, \mathbf{v} \rangle = \omega_\mu v^\mu$ 守恒。
+
+3. <strong>1-形式（1-form / 微分 1-形式）</strong>：
+   - <strong>本质联系</strong>：<strong>单点处的协变向量就是一个 1-形式；在整个空间/流形上逐点光滑定义的协变向量场（Covector Field），就称为微分 1-形式（Differential 1-form）！</strong>
+   - <strong>数学记号</strong>：在局部坐标系下表示为 $\omega = \sum_{i=1}^n \omega_i(x) \mathrm{d}x^i$。其中微元 $\mathrm{d}x^i$ 正是坐标轴方向的对偶基泛函（负责提取第 $i$ 个坐标分量）；
+   - <strong>物理代表</strong>：
+     - 标量场的全微分：$\mathrm{d}\phi = \sum \frac{\partial \phi}{\partial x^i} \mathrm{d}x^i$（如等高线、温度分布、引力势）；
+     - 电磁四维势：$A = A_\mu \mathrm{d}x^\mu$；
+     - 光波相位波前：$k = \mathrm{d}\Phi$；
+   - <strong>积分使命</strong>：<strong>1-形式天然是线积分的被积对象</strong>（$\int_C \omega = \int_C \omega_\mu \mathrm{d}x^\mu$）。不需要任何度量或角度定义，1-形式沿着路径的积分就是简单地“数出曲线总共穿透扎破了多少层等值切片”！
+
+#### 2. 全景概念横向对照表
+
+| 维度 | 反变向量（Contravariant Vector） | 协变向量（Covariant Vector / Covector） | 1-形式（1-form / 微分 1-形式） |
+| :--- | :--- | :--- | :--- |
+| <strong>空间身份</strong> | 原空间 $V$ / 切空间 $T_p M$ | 对偶空间 $V^*$ / 余切空间 $T_p^* M$ | 整个空间或流形上的<strong>余切丛截面（场）</strong> |
+| <strong>几何图景</strong> | <strong>带箭头的空间线段</strong> | <strong>单点处的一叠平行等值超平面</strong> | <strong>空间中连续分布的一叠叠等高切片面</strong> |
+| <strong>代数操作</strong> | 作为自变量被测量（穿透者） | 作为线性泛函去测量（被穿透的刻度） | 作为沿曲线线积分的被积形式（$\int_C \omega$） |
+| <strong>指标与记法</strong> | <strong>上标</strong> $v^\mu$ | <strong>下标</strong> $\omega_\mu$ | $\omega = \omega_\mu \mathrm{d}x^\mu$ |
+| <strong>典型代表</strong> | 质点速度、切向量、顶点位置差 | 表面法线、单点处的测量探针 | 标量场微分 $\mathrm{d}f$、电磁势 $A_\mu \mathrm{d}x^\mu$、波矢 |
+| <strong>坐标换算</strong> | $\mathbf{x}' = P^{-1} \mathbf{x}$（逆变） | $\mathbf{f}' = P^\top \mathbf{f}$（协变） | 分量函数按 Jacobian 逆矩阵转置协变变换 |
+| <strong>相互作用</strong> | 与协变向量求值：$\langle \boldsymbol{\omega}, \mathbf{v} \rangle = \omega_\mu v^\mu \in \mathbb{R}$，物理意义为<strong>箭头穿透切片的层数</strong> |
 
 ---
 
@@ -342,4 +594,5 @@ $$
 - <strong>多维映射与转置伴随</strong>：理解前向投射与反向拉回的代数实现，详见 [《矩阵与线性映射基础》](/posts/linear-algebra/matrix-fundamentals-linear-mappings)；
 - <strong>度量与内积空间</strong>：探究内积如何将对偶空间与原空间建立等距同构，详见 [《内积空间与度量张量》](/posts/linear-algebra/inner-product-spaces)；
 - <strong>子空间与正交直和</strong>：理解零化子在赋予欧氏度量后如何演化为四大正交子空间，详见 [《四大基本子空间与正交直和分解》](/posts/linear-algebra/four-fundamental-subspaces)；
+- <strong>线性约束与解集</strong>：把多个泛函的等值条件联立，理解齐次核的交集与非齐次仿射平移，详见 [《线性方程组的几何全景》](/posts/linear-algebra/linear-systems-row-column-and-solution-manifolds)；
 - <strong>微积分与流形梯度</strong>：理解微分形式 $\mathrm{d}f$ 与梯度矢量的升标降标机制，详见 [《导数、梯度与 Jacobian 矩阵》](/posts/calculus/derivative-gradient-jacobian)。

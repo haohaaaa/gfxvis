@@ -1,22 +1,12 @@
-import React, { useState, useRef, useEffect, useMemo } from "react";
-import { useCanvas2D } from "../framework/useCanvas2D";
-import CanvasToolbar from "../framework/CanvasToolbar";
-import CanvasResizer from "../framework/CanvasResizer";
+import { useState, useMemo } from "react";
 import ExpandableDemo from "../framework/ExpandableDemo";
-import { AutoMath } from "../framework/AutoMath";
+import CanvasViewport from "../framework/CanvasViewport";
+import CanvasOverlay from "../framework/CanvasOverlay";
 import PresetSelector from "../framework/PresetSelector";
 import KdeWindowShell from "../framework/KdeWindowShell";
 import KdeCard from "../framework/KdeCard";
 import KdeReadout from "../framework/KdeReadout";
-import {
-  drawAdaptiveAxes,
-  drawDragGizmo,
-  drawDragGuideTrack,
-  getVisibleBounds,
-  type Bounds2,
-} from "../../visualizations/core/2d/plot2d";
-
-import { useVectorDrag } from "../framework/useVectorDrag";
+import type { Bounds2 } from "../../visualizations/core/2d/plot2d";
 
 type PresetType =
   | "ortho_21"
@@ -88,50 +78,8 @@ const PRESETS: Record<PresetType, MatrixPreset> = {
 
 const BOUNDS: Bounds2 = { xMin: -3.5, xMax: 3.5, yMin: -3.5, yMax: 3.5 };
 
-function drawPixelSegment(
-  ctx: CanvasRenderingContext2D,
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-  color: string,
-  width = 1.5,
-  dash: number[] = [],
-) {
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = width;
-  ctx.setLineDash(dash);
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
-  ctx.stroke();
-  ctx.restore();
-}
-
-function drawPixelPoint(
-  ctx: CanvasRenderingContext2D,
-  px: number,
-  py: number,
-  color: string,
-  radius = 6,
-) {
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(px, py, radius, 0, Math.PI * 2);
-  ctx.fillStyle = color;
-  ctx.fill();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-  ctx.restore();
-}
-
-export const FourSubspacesDemo: React.FC<{ height?: string }> = ({
-  height,
-}) => {
+export function FourSubspacesDemo({ height }: { height?: string }) {
   const [preset, setPreset] = useState<PresetType>("ortho_21");
-  const showAxes = true;
   const [xVec, setXVec] = useState<{ x: number; y: number }>({
     x: 1.2,
     y: 1.0,
@@ -156,483 +104,292 @@ export const FourSubspacesDemo: React.FC<{ height?: string }> = ({
     Math.abs(sq22 - a22) < 1e-3;
   const isSymmetric = Math.abs(a12 - a21) < 1e-3;
 
-  let rowLen = Math.hypot(a11, a12);
-  if (rowLen < 1e-6) rowLen = 1;
-  const rowDir = { x: a11 / rowLen, y: a12 / rowLen };
-  const nullDir = { x: -rowDir.y, y: rowDir.x };
+  const { rowDir, nullDir, colDir, leftNullDir } = useMemo(() => {
+    let rLen = Math.hypot(a11, a12);
+    if (rLen < 1e-6) rLen = 1;
+    const rDir = { x: a11 / rLen, y: a12 / rLen };
+    const nDir = { x: -rDir.y, y: rDir.x };
 
-  let colLen = Math.hypot(a11, a21);
-  if (colLen < 1e-6) colLen = 1;
-  const colDir = { x: a11 / colLen, y: a21 / colLen };
-  const leftNullDir = { x: -colDir.y, y: colDir.x };
+    let cLen = Math.hypot(a11, a21);
+    if (cLen < 1e-6) cLen = 1;
+    const cDir = { x: a11 / cLen, y: a21 / cLen };
+    const lnDir = { x: -cDir.y, y: cDir.x };
 
-  const projRowScalar = xVec.x * rowDir.x + xVec.y * rowDir.y;
-  const xRow = { x: projRowScalar * rowDir.x, y: projRowScalar * rowDir.y };
-  const projNullScalar = xVec.x * nullDir.x + xVec.y * nullDir.y;
-  const xNull = {
-    x: projNullScalar * nullDir.x,
-    y: projNullScalar * nullDir.y,
-  };
+    return { rowDir: rDir, nullDir: nDir, colDir: cDir, leftNullDir: lnDir };
+  }, [a11, a12, a21]);
 
-  const bVec = {
-    x: a11 * xVec.x + a12 * xVec.y,
-    y: a21 * xVec.x + a22 * xVec.y,
-  };
-
-  const stateRef = useRef({
-    showAxes,
-    isRank1,
-    xVec,
-    xRow,
-    xNull,
-    bVec,
-    rowDir,
-    nullDir,
-    colDir,
-    leftNullDir,
-  });
-
-  useEffect(() => {
-    stateRef.current = {
-      showAxes,
-      isRank1,
-      xVec,
-      xRow,
-      xNull,
-      bVec,
-      rowDir,
-      nullDir,
-      colDir,
-      leftNullDir,
+  const { xRow, xNull } = useMemo(() => {
+    const projRowScalar = xVec.x * rowDir.x + xVec.y * rowDir.y;
+    const rPart = { x: projRowScalar * rowDir.x, y: projRowScalar * rowDir.y };
+    const projNullScalar = xVec.x * nullDir.x + xVec.y * nullDir.y;
+    const nPart = {
+      x: projNullScalar * nullDir.x,
+      y: projNullScalar * nullDir.y,
     };
-  }, [
-    showAxes,
-    isRank1,
-    xVec,
-    xRow,
-    xNull,
-    bVec,
-    rowDir,
-    nullDir,
-    colDir,
-    leftNullDir,
-  ]);
+    return { xRow: rPart, xNull: nPart };
+  }, [xVec, rowDir, nullDir]);
 
-  const gizmoArrows = useMemo(() => {
-    if (!isRank1) return [];
-    return [
-      {
-        id: "row",
-        direction: rowDir,
-        color: "#2563eb",
-        label: "Row(A)",
-        lengthPx: 36,
-      },
-      {
-        id: "null",
-        direction: nullDir,
-        color: "#dc2626",
-        label: "Null(A)",
-        lengthPx: 36,
-      },
-    ];
-  }, [isRank1, rowDir, nullDir]);
-
-  const dragHandlers = useVectorDrag<"x">({
-    targets: [
-      {
-        id: "x",
-        x: xVec.x,
-        y: xVec.y,
-        arrows: gizmoArrows,
-      },
-    ],
-    onDrag(_id, newPos) {
-      setXVec(newPos);
-    },
-  });
-
-  // 1. LEFT CANVAS (Input Space R^2)
-  const leftCanvas = useCanvas2D({
-    initialBounds: BOUNDS,
-    onLeftDown: dragHandlers.onLeftDown,
-    onLeftMove: dragHandlers.onLeftMove,
-    onLeftUp: dragHandlers.onLeftUp,
-    onHover: dragHandlers.onHover,
-    onPointerLeave: dragHandlers.onPointerLeave,
-    draw(ctx, plot, theme) {
-      const { width, height } = plot;
-      ctx.clearRect(0, 0, width, height);
-
-      const st = stateRef.current;
-      const visible = getVisibleBounds(plot);
-
-      // Active guide track if hovering or dragging a Gizmo arrow
-      const activeTrack = dragHandlers.getActiveTrack();
-      if (activeTrack) {
-        drawDragGuideTrack(ctx, plot, activeTrack);
-      }
-
-      if (st.showAxes) {
-        drawAdaptiveAxes(ctx, plot, theme);
-      }
-
-      const toCanvas = (wx: number, wy: number) => ({
-        x: plot.toScreenX(wx),
-        y: plot.toScreenY(wy),
-      });
-
-      const span =
-        Math.max(
-          Math.abs(visible.xMin),
-          Math.abs(visible.xMax),
-          Math.abs(visible.yMin),
-          Math.abs(visible.yMax),
-        ) * 2;
-
-      if (st.isRank1) {
-        ctx.save();
-        ctx.strokeStyle = "#2563eb";
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        const r1 = toCanvas(-st.rowDir.x * span, -st.rowDir.y * span);
-        const r2 = toCanvas(st.rowDir.x * span, st.rowDir.y * span);
-        ctx.moveTo(r1.x, r1.y);
-        ctx.lineTo(r2.x, r2.y);
-        ctx.stroke();
-        ctx.fillStyle = "#2563eb";
-        ctx.font = "bold 11px system-ui, sans-serif";
-        ctx.fillText("行空间 Row(A)", r2.x - 30, r2.y - 8);
-        ctx.restore();
-
-        ctx.save();
-        ctx.strokeStyle = "#dc2626";
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        const n1 = toCanvas(-st.nullDir.x * span, -st.nullDir.y * span);
-        const n2 = toCanvas(st.nullDir.x * span, st.nullDir.y * span);
-        ctx.moveTo(n1.x, n1.y);
-        ctx.lineTo(n2.x, n2.y);
-        ctx.stroke();
-        ctx.fillStyle = "#dc2626";
-        ctx.font = "bold 11px system-ui, sans-serif";
-        ctx.fillText("零空间 Null(A)", n2.x + 8, n2.y);
-        ctx.restore();
-      }
-
-      const pX = toCanvas(st.xVec.x, st.xVec.y);
-      const pRow = toCanvas(st.xRow.x, st.xRow.y);
-      const pNull = toCanvas(st.xNull.x, st.xNull.y);
-      const pOrigin = toCanvas(0, 0);
-
-      if (st.isRank1) {
-        drawPixelSegment(
-          ctx,
-          pX.x,
-          pX.y,
-          pRow.x,
-          pRow.y,
-          theme.muted,
-          1,
-          [3, 3],
-        );
-        drawPixelSegment(
-          ctx,
-          pX.x,
-          pX.y,
-          pNull.x,
-          pNull.y,
-          theme.muted,
-          1,
-          [3, 3],
-        );
-
-        drawPixelSegment(
-          ctx,
-          pOrigin.x,
-          pOrigin.y,
-          pRow.x,
-          pRow.y,
-          "#2563eb",
-          2,
-        );
-        drawPixelPoint(ctx, pRow.x, pRow.y, "#2563eb", 4);
-        drawPixelSegment(
-          ctx,
-          pOrigin.x,
-          pOrigin.y,
-          pNull.x,
-          pNull.y,
-          "#dc2626",
-          2,
-        );
-        drawPixelPoint(ctx, pNull.x, pNull.y, "#dc2626", 4);
-      }
-
-      drawPixelSegment(ctx, pOrigin.x, pOrigin.y, pX.x, pX.y, "#d97706", 3);
-      drawPixelPoint(ctx, pX.x, pX.y, "#d97706", 5.5);
-      drawDragGizmo(ctx, plot, st.xVec.x, st.xVec.y, {
-        color: "#d97706",
-        isHoveredCenter: dragHandlers.isCenterHovered("x"),
-        isDraggingCenter: dragHandlers.isCenterDragging("x"),
-        hoveredArrowId: dragHandlers.getHoveredArrowId("x"),
-        draggingArrowId: dragHandlers.getDraggingArrowId("x"),
-        arrows: gizmoArrows,
-        opacity: dragHandlers.getOpacity("x"),
-      });
-
-      ctx.save();
-      ctx.font = "bold 12px system-ui, sans-serif";
-      ctx.fillStyle = "#d97706";
-      ctx.fillText(
-        `x (${st.xVec.x.toFixed(1)}, ${st.xVec.y.toFixed(1)})`,
-        pX.x + 8,
-        pX.y - 8,
-      );
-      ctx.restore();
-    },
-  });
-
-  // 2. RIGHT CANVAS (Output Space R^2)
-  const rightCanvas = useCanvas2D({
-    initialBounds: BOUNDS,
-    draw(ctx, plot, theme) {
-      const { width, height } = plot;
-      ctx.clearRect(0, 0, width, height);
-
-      const st = stateRef.current;
-      const visible = getVisibleBounds(plot);
-
-      // Adaptive Axes & Grid
-      if (st.showAxes) {
-        drawAdaptiveAxes(ctx, plot, theme);
-      }
-
-      const toCanvas = (wx: number, wy: number) => ({
-        x: plot.toScreenX(wx),
-        y: plot.toScreenY(wy),
-      });
-
-      const span =
-        Math.max(
-          Math.abs(visible.xMin),
-          Math.abs(visible.xMax),
-          Math.abs(visible.yMin),
-          Math.abs(visible.yMax),
-        ) * 2;
-
-      // Subspaces
-      if (st.isRank1) {
-        // Column Space (Purple line)
-        ctx.save();
-        ctx.strokeStyle = "#9333ea";
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        const c1 = toCanvas(-st.colDir.x * span, -st.colDir.y * span);
-        const c2 = toCanvas(st.colDir.x * span, st.colDir.y * span);
-        ctx.moveTo(c1.x, c1.y);
-        ctx.lineTo(c2.x, c2.y);
-        ctx.stroke();
-        ctx.fillStyle = "#9333ea";
-        ctx.font = "bold 11px system-ui, sans-serif";
-        ctx.fillText("列空间 Col(A)", c2.x - 30, c2.y - 8);
-        ctx.restore();
-
-        // Left Null Space (Emerald line)
-        ctx.save();
-        ctx.strokeStyle = "#059669";
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        const ln1 = toCanvas(
-          -st.leftNullDir.x * span,
-          -st.leftNullDir.y * span,
-        );
-        const ln2 = toCanvas(st.leftNullDir.x * span, st.leftNullDir.y * span);
-        ctx.moveTo(ln1.x, ln1.y);
-        ctx.lineTo(ln2.x, ln2.y);
-        ctx.stroke();
-        ctx.fillStyle = "#059669";
-        ctx.font = "bold 11px system-ui, sans-serif";
-        ctx.fillText("左零空间 Null(Aᵀ)", ln2.x + 8, ln2.y);
-        ctx.restore();
-      } else {
-        ctx.save();
-        ctx.fillStyle = "rgba(147, 51, 234, 0.05)";
-        ctx.fillRect(0, 0, width, height);
-        ctx.font = "11px system-ui, sans-serif";
-        ctx.fillStyle = "#9333ea";
-        ctx.fillText("列空间 Col(A) = ℝ²", 12, 56);
-        ctx.fillStyle = "#059669";
-        ctx.fillText("左零空间 Null(Aᵀ) = {0}", 12, 72);
-        ctx.restore();
-      }
-
-      const pB = toCanvas(st.bVec.x, st.bVec.y);
-      const pOrigin = toCanvas(0, 0);
-
-      // b = Ax vector
-      drawPixelSegment(ctx, pOrigin.x, pOrigin.y, pB.x, pB.y, "#9333ea", 3);
-      drawPixelPoint(ctx, pB.x, pB.y, "#9333ea", 7);
-
-      ctx.save();
-      ctx.font = "bold 12px system-ui, sans-serif";
-      ctx.fillStyle = "#9333ea";
-      ctx.fillText(
-        `b = Ax (${st.bVec.x.toFixed(1)}, ${st.bVec.y.toFixed(1)})`,
-        pB.x + 8,
-        pB.y - 8,
-      );
-      ctx.restore();
-    },
-  });
-
-  useEffect(() => {
-    leftCanvas.redraw();
-    rightCanvas.redraw();
-  }, [preset, showAxes, xVec, leftCanvas.redraw, rightCanvas.redraw]);
+  const bVec = useMemo(
+    () => ({
+      x: a11 * xVec.x + a12 * xVec.y,
+      y: a21 * xVec.x + a22 * xVec.y,
+    }),
+    [a11, a12, a21, a22, xVec],
+  );
 
   return (
-    <AutoMath>
-      <ExpandableDemo id="four-subspaces" height={height}>
-        <KdeWindowShell
-          title="四大基本子空间与正交分解"
-          eyebrow="Linear Algebra · Fundamental Theorem"
-          mark="Row(A) ⊥ Null(A)"
-          modeTag={
-            isIdempotent && isSymmetric
-              ? "正交投影算子"
-              : isIdempotent
-                ? "斜向投影算子"
-                : isRank1
-                  ? "秩亏退化变换"
-                  : "满秩同构变换"
-          }
-          display={
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-              {/* Left Canvas: Input Space */}
-              <div
-                ref={leftCanvas.containerRef}
-                className="relative h-[var(--demo-height,20rem)] w-full overflow-hidden rounded-md border border-slate-800 bg-slate-950"
-              >
-                <CanvasToolbar onReset={leftCanvas.resetBounds} />
-                <canvas
-                  ref={leftCanvas.canvasRef}
-                  className="absolute inset-0 h-full w-full"
-                />
-                <div className="pointer-events-none absolute top-3 left-3 flex flex-col gap-0.5 select-none rounded bg-slate-900/80 p-1.5 text-xs border border-slate-700/60 backdrop-blur-sm">
-                  <span className="font-semibold text-slate-200">
-                    {"输入空间 $\\mathbb{R}^2$"}
-                  </span>
-                  <span className="text-[11px] text-muted-foreground font-mono">
-                    {"$x = x_{\\text{row}} + x_{\\text{null}}$"}
-                  </span>
-                </div>
-                <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
-              </div>
+    <ExpandableDemo id="four-subspaces" height={height}>
+      <KdeWindowShell
+        title="四大基本子空间与正交分解"
+        eyebrow="Linear Algebra · Fundamental Theorem"
+        mark="Row(A) ⊥ Null(A)"
+        modeTag={
+          isIdempotent && isSymmetric
+            ? "正交投影算子"
+            : isIdempotent
+              ? "斜向投影算子"
+              : isRank1
+                ? "秩亏退化变换"
+                : "满秩同构变换"
+        }
+        display={
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            {/* Left Canvas: Input Space R^2 */}
+            <CanvasViewport
+              initialBounds={BOUNDS}
+              className="h-[var(--demo-height,20rem)]"
+              onDraw={(ctx, plot, theme, scene) => {
+                scene.addAxes();
 
-              {/* Right Canvas: Output Space */}
-              <div
-                ref={rightCanvas.containerRef}
-                className="relative h-[var(--demo-height,20rem)] w-full overflow-hidden rounded-md border border-slate-800 bg-slate-950"
-              >
-                <CanvasToolbar onReset={rightCanvas.resetBounds} />
-                <canvas
-                  ref={rightCanvas.canvasRef}
-                  className="absolute inset-0 h-full w-full"
-                />
-                <div className="pointer-events-none absolute top-3 left-3 flex flex-col gap-0.5 select-none rounded bg-slate-900/80 p-1.5 text-xs border border-slate-700/60 backdrop-blur-sm">
-                  <span className="font-semibold text-slate-200">
-                    {"输出空间 $\\mathbb{R}^2$"}
-                  </span>
-                  <span className="text-[11px] text-muted-foreground font-mono">
-                    {"$b = Ax = A x_{\\text{row}}$"}
-                  </span>
-                </div>
-                <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
-              </div>
-            </div>
-          }
-          controls={
-            <div className="space-y-3">
-              <KdeCard title="预设矩阵 A" variant="dense">
-                <PresetSelector
-                  label="预设矩阵 A:"
-                  options={PRESETS}
-                  value={preset}
-                  onChange={setPreset}
-                />
-              </KdeCard>
+                if (isRank1) {
+                  // Row space line (blue)
+                  scene.addLine({
+                    p1: [-rowDir.x * 10, -rowDir.y * 10],
+                    p2: [rowDir.x * 10, rowDir.y * 10],
+                    stroke: "#2563eb",
+                    width: 2,
+                    label: "行空间 Row(A)",
+                  });
+                  // Null space line (rose)
+                  scene.addLine({
+                    p1: [-nullDir.x * 10, -nullDir.y * 10],
+                    p2: [nullDir.x * 10, nullDir.y * 10],
+                    stroke: "#e11d48",
+                    width: 2,
+                    dash: [5, 4],
+                    label: "零空间 Null(A)",
+                  });
 
-              <KdeCard title="矩阵代数结构与四大子空间维度" variant="dense">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1.5 text-xs">
-                    <div className="font-mono text-sm text-foreground">
-                      {`$A = \\begin{pmatrix} ${a11.toFixed(1)} & ${a12.toFixed(1)} \\\\ ${a21.toFixed(1)} & ${a22.toFixed(1)} \\end{pmatrix}$`}
-                    </div>
-                    <div className="text-muted-foreground">
-                      {`秩 $\\operatorname{rank}(A) = ${rank}$ (${isRank1 ? "秩亏退化" : "满秩可逆"})`}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground leading-normal">
-                      {activePreset.desc}
-                    </p>
-                  </div>
+                  // Decomposition projection lines
+                  scene.addPolyline({
+                    points: [
+                      [xRow.x, xRow.y],
+                      [xVec.x, xVec.y],
+                    ],
+                    color: "#e11d48",
+                    dash: [3, 3],
+                    width: 1.5,
+                  });
+                  scene.addPolyline({
+                    points: [
+                      [xNull.x, xNull.y],
+                      [xVec.x, xVec.y],
+                    ],
+                    color: "#2563eb",
+                    dash: [3, 3],
+                    width: 1.5,
+                  });
 
-                  <div className="space-y-1 text-xs">
-                    <div className="text-blue-400 font-medium">
-                      {`行空间 $\\operatorname{Row}(A)$: 维数 $r = ${rank}$`}
-                    </div>
-                    <div className="text-rose-400 font-medium">
-                      {`零空间 $\\operatorname{Null}(A)$: 维数 $n - r = ${2 - rank}$ ${isRank1 ? "(垂直于 Row)" : ""}`}
-                    </div>
-                    <div className="text-purple-400 font-medium">
-                      {`列空间 $\\operatorname{Col}(A)$: 维数 $r = ${rank}$`}
-                    </div>
-                    <div className="text-emerald-400 font-medium">
-                      {`左零空间 $\\operatorname{Null}(A^\\top)$: 维数 $m - r = ${2 - rank}$ ${isRank1 ? "(垂直于 Col)" : ""}`}
-                    </div>
-                  </div>
-                </div>
-              </KdeCard>
-
-              <div className="grid grid-cols-2 gap-1.5">
-                <KdeReadout
-                  label="输入向量 x"
-                  value={`(${xVec.x.toFixed(1)}, ${xVec.y.toFixed(1)})`}
-                  dense
-                />
-                <KdeReadout
-                  label="输出向量 b = Ax"
-                  value={`(${bVec.x.toFixed(1)}, ${bVec.y.toFixed(1)})`}
-                  variant="accent"
-                  dense
-                />
-                <div className="col-span-2">
-                  <KdeReadout
-                    label="投影性质"
-                    value={
-                      isIdempotent && isSymmetric
-                        ? "正交投影 (P²=P, Pᵀ=P)"
-                        : isIdempotent
-                          ? "斜投影 (P²=P, Pᵀ≠P)"
-                          : "非投影 (P²≠P)"
-                    }
-                    variant={isIdempotent ? "success" : "default"}
-                    dense
-                  />
-                </div>
-              </div>
-
-              <p className="text-xs text-muted-foreground">
-                {
-                  "提示：拖动左侧中心橙色圆点进行 2D 自由移动；拖动蓝色箭头沿 $\\operatorname{Row}(A)$ 行空间定向滑动；拖动红色箭头沿 $\\operatorname{Null}(A)$ 零空间定向滑动（观察右侧输出向量 $b = Ax$ 保持完全静止不变！）。"
+                  // Vector components
+                  scene.addVector({
+                    to: [xRow.x, xRow.y],
+                    color: "#2563eb",
+                    width: 2.5,
+                    label: "x_row",
+                  });
+                  scene.addVector({
+                    to: [xNull.x, xNull.y],
+                    color: "#e11d48",
+                    width: 2.5,
+                    label: "x_null",
+                  });
                 }
-              </p>
+
+                // Vector x (interactive draggable handle)
+                scene.addVector({
+                  to: [xVec.x, xVec.y],
+                  color: "#d97706",
+                  width: 3.5,
+                  label: "x",
+                  draggable: true,
+                  handleRadius: 6,
+                  handleRing: true,
+                  hitRadiusPx: 24,
+                  onDrag: (tip) => setXVec({ x: tip[0], y: tip[1] }),
+                });
+
+                scene.render(ctx, plot, theme);
+              }}
+            >
+              <CanvasOverlay position="top-left">
+                <CanvasOverlay.Title>输入空间 ℝ²</CanvasOverlay.Title>
+                <CanvasOverlay.Subtitle>
+                  x = x_row + x_null
+                </CanvasOverlay.Subtitle>
+              </CanvasOverlay>
+              <CanvasOverlay position="bottom-left">
+                <CanvasOverlay.Item
+                  color="#d97706"
+                  label={`x = (${xVec.x.toFixed(1)}, ${xVec.y.toFixed(1)})`}
+                />
+                {isRank1 && (
+                  <>
+                    <CanvasOverlay.Item
+                      color="#2563eb"
+                      label={`x_row = (${xRow.x.toFixed(1)}, ${xRow.y.toFixed(1)})`}
+                    />
+                    <CanvasOverlay.Item
+                      color="#e11d48"
+                      label={`x_null = (${xNull.x.toFixed(1)}, ${xNull.y.toFixed(1)})`}
+                    />
+                  </>
+                )}
+              </CanvasOverlay>
+            </CanvasViewport>
+
+            {/* Right Canvas: Output Space R^2 */}
+            <CanvasViewport
+              initialBounds={BOUNDS}
+              className="h-[var(--demo-height,20rem)]"
+              onDraw={(ctx, plot, theme, scene) => {
+                scene.addAxes();
+
+                if (isRank1) {
+                  // Col space line (purple)
+                  scene.addLine({
+                    p1: [-colDir.x * 10, -colDir.y * 10],
+                    p2: [colDir.x * 10, colDir.y * 10],
+                    stroke: "#9333ea",
+                    width: 2,
+                    label: "列空间 Col(A)",
+                  });
+                  // Left null space line (emerald)
+                  scene.addLine({
+                    p1: [-leftNullDir.x * 10, -leftNullDir.y * 10],
+                    p2: [leftNullDir.x * 10, leftNullDir.y * 10],
+                    stroke: "#059669",
+                    width: 2,
+                    dash: [5, 4],
+                    label: "左零空间 Null(Aᵀ)",
+                  });
+                }
+
+                // Output vector b = Ax
+                scene.addVector({
+                  to: [bVec.x, bVec.y],
+                  color: "#9333ea",
+                  width: 3.5,
+                  label: `b = Ax (${bVec.x.toFixed(1)}, ${bVec.y.toFixed(1)})`,
+                });
+
+                scene.render(ctx, plot, theme);
+              }}
+            >
+              <CanvasOverlay position="top-left">
+                <CanvasOverlay.Title>输出空间 ℝ²</CanvasOverlay.Title>
+                <CanvasOverlay.Subtitle>
+                  b = Ax = A x_row
+                </CanvasOverlay.Subtitle>
+              </CanvasOverlay>
+              <CanvasOverlay position="bottom-left">
+                <CanvasOverlay.Item
+                  color="#9333ea"
+                  label={`b = (${bVec.x.toFixed(1)}, ${bVec.y.toFixed(1)})`}
+                />
+              </CanvasOverlay>
+            </CanvasViewport>
+          </div>
+        }
+        controls={
+          <div className="space-y-3">
+            <KdeCard title="预设矩阵 A" variant="dense">
+              <PresetSelector
+                label="预设矩阵 A:"
+                options={PRESETS}
+                value={preset}
+                onChange={setPreset}
+              />
+            </KdeCard>
+
+            <KdeCard title="矩阵代数结构与四大子空间维度" variant="dense">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5 text-xs">
+                  <div className="font-mono text-sm text-foreground">
+                    {`$A = \\begin{pmatrix} ${a11.toFixed(1)} & ${a12.toFixed(1)} \\\\ ${a21.toFixed(1)} & ${a22.toFixed(1)} \\end{pmatrix}$`}
+                  </div>
+                  <div className="text-muted-foreground">
+                    {`秩 $\\operatorname{rank}(A) = ${rank}$ (${isRank1 ? "秩亏退化" : "满秩可逆"})`}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-normal">
+                    {activePreset.desc}
+                  </p>
+                </div>
+
+                <div className="space-y-1 text-xs">
+                  <div className="text-blue-400 font-medium">
+                    {`行空间 $\\operatorname{Row}(A)$: 维数 $r = ${rank}$`}
+                  </div>
+                  <div className="text-rose-400 font-medium">
+                    {`零空间 $\\operatorname{Null}(A)$: 维数 $n - r = ${2 - rank}$ ${isRank1 ? "(垂直于 Row)" : ""}`}
+                  </div>
+                  <div className="text-purple-400 font-medium">
+                    {`列空间 $\\operatorname{Col}(A)$: 维数 $r = ${rank}$`}
+                  </div>
+                  <div className="text-emerald-400 font-medium">
+                    {`左零空间 $\\operatorname{Null}(A^\\top)$: 维数 $m - r = ${2 - rank}$ ${isRank1 ? "(垂直于 Col)" : ""}`}
+                  </div>
+                </div>
+              </div>
+            </KdeCard>
+
+            <div className="grid grid-cols-2 gap-1.5">
+              <KdeReadout
+                label="输入向量 x"
+                value={`(${xVec.x.toFixed(1)}, ${xVec.y.toFixed(1)})`}
+                dense
+              />
+              <KdeReadout
+                label="输出向量 b = Ax"
+                value={`(${bVec.x.toFixed(1)}, ${bVec.y.toFixed(1)})`}
+                variant="accent"
+                dense
+              />
+              <div className="col-span-2">
+                <KdeReadout
+                  label="投影性质"
+                  value={
+                    isIdempotent && isSymmetric
+                      ? "正交投影 (P²=P, Pᵀ=P)"
+                      : isIdempotent
+                        ? "斜投影 (P²=P, Pᵀ≠P)"
+                        : "非投影 (P²≠P)"
+                  }
+                  variant={isIdempotent ? "success" : "default"}
+                  dense
+                />
+              </div>
             </div>
-          }
-        />
-      </ExpandableDemo>
-    </AutoMath>
+
+            <p className="text-xs text-muted-foreground">
+              {
+                "提示：拖动左侧中心橙色手柄进行自由移动，观察输入空间正交分解 $x = x_{\\text{row}} + x_{\\text{null}}$ 与右侧输出向量 $b = Ax$ 的线性映射映射响应。"
+              }
+            </p>
+          </div>
+        }
+      />
+    </ExpandableDemo>
   );
-};
+}
 
 export default FourSubspacesDemo;

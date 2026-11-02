@@ -142,9 +142,13 @@ export default function X86MemoryLayoutDiagram() {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
           <div className="flex items-center gap-2">
             <span className="flex h-3 w-3 items-center justify-center rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-            <h4 className="text-sm font-bold text-ink">
+            <span
+              className="text-sm font-bold text-ink"
+              role="heading"
+              aria-level={4}
+            >
               Linux x86-64 进程虚拟地址空间与栈/堆生长全景
-            </h4>
+            </span>
           </div>
           <div className="flex items-center gap-1.5">
             <KdeButton

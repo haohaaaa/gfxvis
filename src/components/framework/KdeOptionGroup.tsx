@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import AutoMath from "./AutoMath";
 
 export interface KdeOptionItem<T extends string | number = string> {
   id: T;
@@ -45,7 +46,7 @@ export function KdeOptionGroup<T extends string | number = string>({
     >
       {label && (
         <div className="text-[11px] font-semibold text-[var(--kde-muted)]">
-          {label}
+          <AutoMath>{label}</AutoMath>
         </div>
       )}
 
@@ -73,7 +74,9 @@ export function KdeOptionGroup<T extends string | number = string>({
               }`}
             >
               <div className="flex flex-col gap-0.5">
-                <div className="font-medium">{opt.label}</div>
+                <div className="font-medium">
+                  <AutoMath>{opt.label}</AutoMath>
+                </div>
                 {opt.description && (
                   <div
                     className={`text-[10px] leading-relaxed ${
@@ -82,7 +85,7 @@ export function KdeOptionGroup<T extends string | number = string>({
                         : "text-[var(--kde-muted)]"
                     }`}
                   >
-                    {opt.description}
+                    <AutoMath>{opt.description}</AutoMath>
                   </div>
                 )}
               </div>

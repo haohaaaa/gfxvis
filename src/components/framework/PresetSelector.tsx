@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import KdeButton from "./KdeButton";
+import AutoMath from "./AutoMath";
 
 export interface PresetOption<T extends string = string> {
   id?: T;
@@ -88,7 +89,7 @@ export default function PresetSelector<T extends string = string>({
       >
         {label && (
           <span className="text-xs font-semibold text-[var(--kde-muted)] mb-0.5">
-            {label}
+            <AutoMath>{label}</AutoMath>
           </span>
         )}
         {items.map((item) => {
@@ -102,7 +103,9 @@ export default function PresetSelector<T extends string = string>({
               className="w-full justify-start text-left truncate"
               title={item.description}
             >
-              <span className="truncate">{item.label}</span>
+              <span className="truncate">
+                <AutoMath>{item.label}</AutoMath>
+              </span>
             </KdeButton>
           );
         })}
@@ -137,7 +140,9 @@ export default function PresetSelector<T extends string = string>({
               className="w-full justify-center text-center truncate"
               title={item.description}
             >
-              <span className="truncate">{item.label}</span>
+              <span className="truncate">
+                <AutoMath>{item.label}</AutoMath>
+              </span>
             </KdeButton>
           );
         })}
@@ -154,7 +159,7 @@ export default function PresetSelector<T extends string = string>({
     >
       {label && (
         <span className="text-xs font-semibold text-[var(--kde-muted)] mr-0.5">
-          {label}
+          <AutoMath>{label}</AutoMath>
         </span>
       )}
       {items.map((item) => {
@@ -167,7 +172,7 @@ export default function PresetSelector<T extends string = string>({
             onClick={() => onChange(item.id)}
             title={item.description}
           >
-            {item.label}
+            <AutoMath>{item.label}</AutoMath>
           </KdeButton>
         );
       })}

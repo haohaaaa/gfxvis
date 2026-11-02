@@ -296,6 +296,7 @@ export function createCanvas2D(
   const stopThemeWatch = watchTheme(draw);
   const resizeObserver = new ResizeObserver(draw);
   resizeObserver.observe(container);
+  window.addEventListener("resize", draw);
   draw();
 
   return {
@@ -333,6 +334,7 @@ export function createCanvas2D(
       draw();
     },
     dispose() {
+      window.removeEventListener("resize", draw);
       canvas.removeEventListener("wheel", onWheel);
       canvas.removeEventListener("pointerdown", onPointerDown);
       canvas.removeEventListener("pointermove", onPointerMove);

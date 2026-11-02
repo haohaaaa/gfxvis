@@ -9,7 +9,6 @@ import KdeBadge from "../framework/KdeBadge";
 import KdeButtonGroup from "../framework/KdeButtonGroup";
 import KdeProgressBar from "../framework/KdeProgressBar";
 import CodePlayground from "../framework/CodePlayground";
-import { AutoMath } from "../framework/AutoMath";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import PresetSelector from "../framework/PresetSelector";
 import KdeButton from "../framework/KdeButton";
@@ -419,438 +418,430 @@ export default function EffectsDiagram() {
   const totalSteps = currentPreset.steps.length;
 
   return (
-    <AutoMath>
-      <ExpandableDemo id="effects-sandbox">
-        <KdeWindowShell
-          eyebrow="TYPE THEORY WORKSPACE · ALGEBRAIC EFFECTS"
-          mark="ε"
-          modeTag="DENSE-DOCK"
-          title="代数效应与效应系统（Algebraic Effects）交互探针"
-        >
-          <InteractiveLayout
-            preset="dense-dock"
-            top={
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-[var(--kde-muted)]">
-                      探针视角：
-                    </span>
-                    <KdeTabs
-                      onChange={(val) => setActiveTab(val)}
-                      options={VIEW_OPTIONS}
-                      size="sm"
-                      value={activeTab}
-                    />
-                  </div>
+    <ExpandableDemo id="effects-sandbox">
+      <KdeWindowShell
+        eyebrow="TYPE THEORY WORKSPACE · ALGEBRAIC EFFECTS"
+        mark="ε"
+        modeTag="DENSE-DOCK"
+        title="代数效应与效应系统（Algebraic Effects）交互探针"
+      >
+        <InteractiveLayout
+          preset="dense-dock"
+          top={
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-[var(--kde-muted)]">
+                    探针视角：
+                  </span>
+                  <KdeTabs
+                    onChange={(val) => setActiveTab(val)}
+                    options={VIEW_OPTIONS}
+                    size="sm"
+                    value={activeTab}
+                  />
                 </div>
               </div>
-            }
-            main={
-              <div className="relative flex h-[var(--demo-height,28rem)] w-full flex-col overflow-hidden rounded-xl border border-[var(--kde-border)] bg-[var(--kde-canvas)] p-5 shadow-inner">
-                <CanvasToolbar onReset={handleReset} />
+            </div>
+          }
+          main={
+            <div className="relative flex h-[var(--demo-height,28rem)] w-full flex-col overflow-hidden rounded-xl border border-[var(--kde-border)] bg-[var(--kde-canvas)] p-5 shadow-inner">
+              <CanvasToolbar onReset={handleReset} />
 
-                {activeTab === "code_sandbox" ? (
-                  <div className="flex-1 flex flex-col overflow-y-auto pr-1">
-                    <CodePlayground
-                      code={EFFECTS_TS_CODE}
-                      description="使用 ES6 Generator yield 模拟 perform 与定界延续，实时运行状态读取与日志记录效应。"
-                      lang="ts"
-                      maxHeight="20rem"
-                      title="TypeScript 代数效应沙盒"
-                    />
-                  </div>
-                ) : (
-                  <>
-                    {/* Shared Top Formal Signature */}
-                    <div className="rounded-lg bg-[var(--kde-raised)] p-3 border border-[var(--kde-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                      <div>
-                        <span className="text-xs font-semibold text-[var(--kde-muted)] block mb-0.5">
-                          形式化效应签名 (Formal Effect Signature)
-                        </span>
-                        <div className="text-[var(--kde-accent)] font-mono text-sm">
-                          {`$${currentPreset.formalTex}$`}
-                        </div>
-                      </div>
-                      <div className="text-xs px-2.5 py-1 rounded-md bg-[var(--kde-panel)] text-[var(--kde-ink)] font-mono border border-[var(--kde-border)]">
-                        目标效应：{currentPreset.effectName}
+              {activeTab === "code_sandbox" ? (
+                <div className="flex-1 flex flex-col overflow-y-auto pr-1">
+                  <CodePlayground
+                    code={EFFECTS_TS_CODE}
+                    description="使用 ES6 Generator yield 模拟 perform 与定界延续，实时运行状态读取与日志记录效应。"
+                    lang="ts"
+                    maxHeight="20rem"
+                    title="TypeScript 代数效应沙盒"
+                  />
+                </div>
+              ) : (
+                <>
+                  {/* Shared Top Formal Signature */}
+                  <div className="rounded-lg bg-[var(--kde-raised)] p-3 border border-[var(--kde-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                    <div>
+                      <span className="text-xs font-semibold text-[var(--kde-muted)] block mb-0.5">
+                        形式化效应签名 (Formal Effect Signature)
+                      </span>
+                      <div className="text-[var(--kde-accent)] font-mono text-sm">
+                        {`$${currentPreset.formalTex}$`}
                       </div>
                     </div>
+                    <div className="text-xs px-2.5 py-1 rounded-md bg-[var(--kde-panel)] text-[var(--kde-ink)] font-mono border border-[var(--kde-border)]">
+                      目标效应：{currentPreset.effectName}
+                    </div>
+                  </div>
 
-                    {/* Tab 1: Algebraic Effects Timeline Tracer View */}
-                    {activeTab === "timeline_tracer" && (
-                      <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-1">
-                        {/* Stepper Timeline Navigation */}
-                        <div className="rounded-lg bg-[var(--kde-raised)] p-3 border border-[var(--kde-border)] flex flex-col sm:flex-row items-center justify-between gap-3">
-                          <KdeButtonGroup attached size="xs">
-                            <KdeButton
-                              size="xs"
-                              variant="default"
-                              disabled={currentStepIdx === 0}
-                              onClick={() =>
-                                setCurrentStepIdx((prev) =>
-                                  Math.max(0, prev - 1),
-                                )
-                              }
-                            >
-                              ◀ 上一步
-                            </KdeButton>
-                            {currentPreset.steps.map((_, idx) => (
-                              <KdeButton
-                                key={idx}
-                                size="xs"
-                                variant={
-                                  currentStepIdx === idx ? "primary" : "default"
-                                }
-                                onClick={() => setCurrentStepIdx(idx)}
-                                aria-label={`执行步进 ${idx + 1}`}
-                              >
-                                {idx + 1}
-                              </KdeButton>
-                            ))}
-                            <KdeButton
-                              size="xs"
-                              variant="primary"
-                              disabled={currentStepIdx === totalSteps - 1}
-                              onClick={() =>
-                                setCurrentStepIdx((prev) =>
-                                  Math.min(totalSteps - 1, prev + 1),
-                                )
-                              }
-                            >
-                              下一步 ▶
-                            </KdeButton>
-                          </KdeButtonGroup>
-
-                          <div className="flex items-center gap-2.5">
-                            <KdeProgressBar
-                              steps={totalSteps}
-                              value={currentStepIdx + 1}
-                              size="sm"
-                              className="w-28"
-                              showLabel={false}
-                            />
-                            <KdeBadge variant="primary">
-                              Step {currentStepIdx + 1} / {totalSteps}
-                            </KdeBadge>
-                          </div>
-                        </div>
-
-                        {/* Active Step Visual Box */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1 text-xs">
-                          {/* Left: Code Box */}
-                          <div className="rounded-lg bg-[var(--kde-raised)] p-3.5 border border-[var(--kde-border)] font-mono flex flex-col justify-between">
-                            <div>
-                              <div className="text-[var(--kde-muted)] font-semibold text-[11px] mb-2 flex items-center justify-between">
-                                <span>{currentStep.label}</span>
-                                <KdeBadge
-                                  variant={
-                                    currentStep.source === "caller"
-                                      ? "primary"
-                                      : currentStep.source === "runtime"
-                                        ? "warning"
-                                        : "success"
-                                  }
-                                >
-                                  {currentStep.source.toUpperCase()}
-                                </KdeBadge>
-                              </div>
-                              <pre className="text-[var(--kde-ink)] whitespace-pre-wrap leading-relaxed text-[11px] bg-[var(--kde-panel)] p-2.5 rounded-lg border border-[var(--kde-border)]">
-                                {currentStep.codeSnippet}
-                              </pre>
-                            </div>
-                            <div className="mt-3 flex items-center justify-between text-[11px] border-t border-[var(--kde-border)] pt-2">
-                              <span className="text-[var(--kde-muted)]">
-                                执行状态：
-                              </span>
-                              <span className="font-bold text-[var(--kde-ink)]">
-                                {currentStep.stateBadge}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Right: Architectural Explanation */}
-                          <KdeCard
-                            title="延续流转机理（Continuation Dynamics）"
-                            badge={
-                              <KdeBadge variant="primary">
-                                CONTROL FLOW
-                              </KdeBadge>
-                            }
-                            variant="highlight"
-                            footer={
-                              <div className="text-[11px] text-[var(--kde-muted)]">
-                                <strong>控制流拓扑：</strong>
-                                {currentStep.isPaused
-                                  ? " 执行暂停在当前定界帧，CPU 控制权向上移交至就近的 Handler。"
-                                  : " 定界延续被唤醒，控制权无缝切回原调用点继续向前求值。"}
-                              </div>
+                  {/* Tab 1: Algebraic Effects Timeline Tracer View */}
+                  {activeTab === "timeline_tracer" && (
+                    <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-1">
+                      {/* Stepper Timeline Navigation */}
+                      <div className="rounded-lg bg-[var(--kde-raised)] p-3 border border-[var(--kde-border)] flex flex-col sm:flex-row items-center justify-between gap-3">
+                        <KdeButtonGroup attached size="xs">
+                          <KdeButton
+                            size="xs"
+                            variant="default"
+                            disabled={currentStepIdx === 0}
+                            onClick={() =>
+                              setCurrentStepIdx((prev) => Math.max(0, prev - 1))
                             }
                           >
-                            <p className="text-[var(--kde-ink)] leading-relaxed text-xs">
-                              {currentStep.explanation}
-                            </p>
-                          </KdeCard>
+                            ◀ 上一步
+                          </KdeButton>
+                          {currentPreset.steps.map((_, idx) => (
+                            <KdeButton
+                              key={idx}
+                              size="xs"
+                              variant={
+                                currentStepIdx === idx ? "primary" : "default"
+                              }
+                              onClick={() => setCurrentStepIdx(idx)}
+                              aria-label={`执行步进 ${idx + 1}`}
+                            >
+                              {idx + 1}
+                            </KdeButton>
+                          ))}
+                          <KdeButton
+                            size="xs"
+                            variant="primary"
+                            disabled={currentStepIdx === totalSteps - 1}
+                            onClick={() =>
+                              setCurrentStepIdx((prev) =>
+                                Math.min(totalSteps - 1, prev + 1),
+                              )
+                            }
+                          >
+                            下一步 ▶
+                          </KdeButton>
+                        </KdeButtonGroup>
+
+                        <div className="flex items-center gap-2.5">
+                          <KdeProgressBar
+                            steps={totalSteps}
+                            value={currentStepIdx + 1}
+                            size="sm"
+                            className="w-28"
+                            showLabel={false}
+                          />
+                          <KdeBadge variant="primary">
+                            Step {currentStepIdx + 1} / {totalSteps}
+                          </KdeBadge>
                         </div>
                       </div>
-                    )}
 
-                    {/* Tab 2: React Suspense Comparison View */}
-                    {activeTab === "suspense_comparison" && (
-                      <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-1">
-                        <div className="text-center max-w-xl mx-auto py-0.5">
-                          <h4 className="text-sm font-bold text-[var(--kde-ink)]">
-                            纯粹代数效应 vs React Suspense 的工程世俗化
-                          </h4>
-                          <p className="text-xs text-[var(--kde-muted)] mt-0.5">
-                            从学术界的“原点就地恢复”到工程界的“重放渲染（Re-render）”
-                          </p>
+                      {/* Active Step Visual Box */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1 text-xs">
+                        {/* Left: Code Box */}
+                        <div className="rounded-lg bg-[var(--kde-raised)] p-3.5 border border-[var(--kde-border)] font-mono flex flex-col justify-between">
+                          <div>
+                            <div className="text-[var(--kde-muted)] font-semibold text-[11px] mb-2 flex items-center justify-between">
+                              <span>{currentStep.label}</span>
+                              <KdeBadge
+                                variant={
+                                  currentStep.source === "caller"
+                                    ? "primary"
+                                    : currentStep.source === "runtime"
+                                      ? "warning"
+                                      : "success"
+                                }
+                              >
+                                {currentStep.source.toUpperCase()}
+                              </KdeBadge>
+                            </div>
+                            <pre className="text-[var(--kde-ink)] whitespace-pre-wrap leading-relaxed text-[11px] bg-[var(--kde-panel)] p-2.5 rounded-lg border border-[var(--kde-border)]">
+                              {currentStep.codeSnippet}
+                            </pre>
+                          </div>
+                          <div className="mt-3 flex items-center justify-between text-[11px] border-t border-[var(--kde-border)] pt-2">
+                            <span className="text-[var(--kde-muted)]">
+                              执行状态：
+                            </span>
+                            <span className="font-bold text-[var(--kde-ink)]">
+                              {currentStep.stateBadge}
+                            </span>
+                          </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 flex-1 text-xs">
-                          {/* Theoretical Algebraic Effect Side */}
-                          <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3.5 flex flex-col justify-between text-[var(--kde-ink)] ring-1 ring-emerald-500/20">
-                            <div>
-                              <div className="flex items-center justify-between pb-2 border-b border-emerald-500/20 mb-2">
-                                <span className="font-bold text-emerald-700 dark:text-emerald-300">
-                                  真正的代数效应 (Koka / Eff)
-                                </span>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 font-mono">
-                                  Delimited Cont
-                                </span>
-                              </div>
-                              <div className="text-xs space-y-2 text-[var(--kde-ink)]">
-                                <p className="leading-relaxed">
+                        {/* Right: Architectural Explanation */}
+                        <KdeCard
+                          title="延续流转机理（Continuation Dynamics）"
+                          badge={
+                            <KdeBadge variant="primary">CONTROL FLOW</KdeBadge>
+                          }
+                          variant="highlight"
+                          footer={
+                            <div className="text-[11px] text-[var(--kde-muted)]">
+                              <strong>控制流拓扑：</strong>
+                              {currentStep.isPaused
+                                ? " 执行暂停在当前定界帧，CPU 控制权向上移交至就近的 Handler。"
+                                : " 定界延续被唤醒，控制权无缝切回原调用点继续向前求值。"}
+                            </div>
+                          }
+                        >
+                          <p className="text-[var(--kde-ink)] leading-relaxed text-xs">
+                            {currentStep.explanation}
+                          </p>
+                        </KdeCard>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tab 2: React Suspense Comparison View */}
+                  {activeTab === "suspense_comparison" && (
+                    <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-1">
+                      <div className="text-center max-w-xl mx-auto py-0.5">
+                        <span
+                          className="block text-sm font-bold text-[var(--kde-ink)]"
+                          role="heading"
+                          aria-level={4}
+                        >
+                          纯粹代数效应 vs React Suspense 的工程世俗化
+                        </span>
+                        <p className="text-xs text-[var(--kde-muted)] mt-0.5">
+                          从学术界的“原点就地恢复”到工程界的“重放渲染（Re-render）”
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 flex-1 text-xs">
+                        {/* Theoretical Algebraic Effect Side */}
+                        <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3.5 flex flex-col justify-between text-[var(--kde-ink)] ring-1 ring-emerald-500/20">
+                          <div>
+                            <div className="flex items-center justify-between pb-2 border-b border-emerald-500/20 mb-2">
+                              <span className="font-bold text-emerald-700 dark:text-emerald-300">
+                                真正的代数效应 (Koka / Eff)
+                              </span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 font-mono">
+                                Delimited Cont
+                              </span>
+                            </div>
+                            <div className="text-xs space-y-2 text-[var(--kde-ink)]">
+                              <p className="leading-relaxed">
+                                {currentPreset.suspenseComparison.algebraicWay}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-[10px] text-emerald-800 dark:text-emerald-300 font-mono mt-2 border-t border-emerald-500/20 pt-1.5">
+                            优势：单步暂停与精准复原，零冗余计算开销。
+                          </div>
+                        </div>
+
+                        {/* React Suspense Side */}
+                        <div className="rounded-lg border border-sky-500/40 bg-sky-500/10 p-3.5 flex flex-col justify-between text-[var(--kde-ink)] ring-1 ring-sky-500/20">
+                          <div>
+                            <div className="flex items-center justify-between pb-2 border-b border-sky-500/20 mb-2">
+                              <span className="font-bold text-sky-700 dark:text-sky-300">
+                                React Suspense 实用主义实现
+                              </span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-800 dark:text-sky-200 font-mono">
+                                Throw Promise
+                              </span>
+                            </div>
+                            <div className="text-xs space-y-2 text-[var(--kde-ink)]">
+                              <p className="leading-relaxed">
+                                {currentPreset.suspenseComparison.reactWay}
+                              </p>
+                              <div className="p-2 rounded-lg bg-amber-500/10 text-[11px] text-[var(--kde-ink)] border border-amber-500/30 mt-2">
+                                ⚠️{" "}
+                                <strong className="text-amber-700 dark:text-amber-400">
+                                  局限性：
+                                </strong>
+                                <span className="text-[var(--kde-muted)]">
                                   {
                                     currentPreset.suspenseComparison
-                                      .algebraicWay
+                                      .reactLimitation
                                   }
-                                </p>
+                                </span>
                               </div>
-                            </div>
-                            <div className="text-[10px] text-emerald-800 dark:text-emerald-300 font-mono mt-2 border-t border-emerald-500/20 pt-1.5">
-                              优势：单步暂停与精准复原，零冗余计算开销。
                             </div>
                           </div>
-
-                          {/* React Suspense Side */}
-                          <div className="rounded-lg border border-sky-500/40 bg-sky-500/10 p-3.5 flex flex-col justify-between text-[var(--kde-ink)] ring-1 ring-sky-500/20">
-                            <div>
-                              <div className="flex items-center justify-between pb-2 border-b border-sky-500/20 mb-2">
-                                <span className="font-bold text-sky-700 dark:text-sky-300">
-                                  React Suspense 实用主义实现
-                                </span>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-800 dark:text-sky-200 font-mono">
-                                  Throw Promise
-                                </span>
-                              </div>
-                              <div className="text-xs space-y-2 text-[var(--kde-ink)]">
-                                <p className="leading-relaxed">
-                                  {currentPreset.suspenseComparison.reactWay}
-                                </p>
-                                <div className="p-2 rounded-lg bg-amber-500/10 text-[11px] text-[var(--kde-ink)] border border-amber-500/30 mt-2">
-                                  ⚠️{" "}
-                                  <strong className="text-amber-700 dark:text-amber-400">
-                                    局限性：
-                                  </strong>
-                                  <span className="text-[var(--kde-muted)]">
-                                    {
-                                      currentPreset.suspenseComparison
-                                        .reactLimitation
-                                    }
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="text-[10px] text-sky-800 dark:text-sky-300 font-mono mt-2 border-t border-sky-500/20 pt-1.5">
-                              哲学：借助 JS
-                              异常机制跨级跳转，依靠纯函数重放绕开延续缺乏。
-                            </div>
+                          <div className="text-[10px] text-sky-800 dark:text-sky-300 font-mono mt-2 border-t border-sky-500/20 pt-1.5">
+                            哲学：借助 JS
+                            异常机制跨级跳转，依靠纯函数重放绕开延续缺乏。
                           </div>
                         </div>
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    {/* Tab 3: Colored Functions Matrix View */}
-                    {activeTab === "colored_functions" && (
-                      <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-1">
-                        <div className="text-center max-w-xl mx-auto py-0.5">
-                          <h4 className="text-sm font-bold text-[var(--kde-ink)]">
-                            染色函数难题（Function Color Problem）与效应多态
-                          </h4>
-                          <p className="text-xs text-[var(--kde-muted)] mt-0.5">
-                            “你的函数是什么颜色？”——代数效应如何一劳永逸终结异步传染
-                          </p>
-                        </div>
+                  {/* Tab 3: Colored Functions Matrix View */}
+                  {activeTab === "colored_functions" && (
+                    <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-1">
+                      <div className="text-center max-w-xl mx-auto py-0.5">
+                        <span
+                          className="block text-sm font-bold text-[var(--kde-ink)]"
+                          role="heading"
+                          aria-level={4}
+                        >
+                          染色函数难题（Function Color Problem）与效应多态
+                        </span>
+                        <p className="text-xs text-[var(--kde-muted)] mt-0.5">
+                          “你的函数是什么颜色？”——代数效应如何一劳永逸终结异步传染
+                        </p>
+                      </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 flex-1 text-xs">
-                          {/* Blue Synchronous Stack */}
-                          <div className="rounded-lg border border-sky-500/40 bg-sky-500/10 p-3.5 flex flex-col justify-between text-[var(--kde-ink)] ring-1 ring-sky-500/20">
-                            <div>
-                              <div className="flex items-center justify-between pb-2 border-b border-sky-500/20 mb-2">
-                                <span className="font-bold text-sky-700 dark:text-sky-300">
-                                  🔵 纯同步调用链 (Blue Stack)
-                                </span>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-800 dark:text-sky-200 font-mono">
-                                  Sync
-                                </span>
-                              </div>
-                              <div className="space-y-1.5 font-mono text-[11px]">
-                                {currentPreset.coloredFunctionMatrix.syncChain.map(
-                                  (item, idx) => (
-                                    <div
-                                      key={idx}
-                                      className="p-1.5 rounded bg-[var(--kde-panel)] text-[var(--kde-ink)] border border-[var(--kde-border)]"
-                                    >
-                                      {item}
-                                    </div>
-                                  ),
-                                )}
-                              </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 flex-1 text-xs">
+                        {/* Blue Synchronous Stack */}
+                        <div className="rounded-lg border border-sky-500/40 bg-sky-500/10 p-3.5 flex flex-col justify-between text-[var(--kde-ink)] ring-1 ring-sky-500/20">
+                          <div>
+                            <div className="flex items-center justify-between pb-2 border-b border-sky-500/20 mb-2">
+                              <span className="font-bold text-sky-700 dark:text-sky-300">
+                                🔵 纯同步调用链 (Blue Stack)
+                              </span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-800 dark:text-sky-200 font-mono">
+                                Sync
+                              </span>
                             </div>
-                            <div className="text-[10px] text-sky-800 dark:text-sky-300 font-mono mt-2 border-t border-sky-500/20 pt-1.5">
-                              同步函数只能调用同步函数，一旦混入异步便彻底断裂。
+                            <div className="space-y-1.5 font-mono text-[11px]">
+                              {currentPreset.coloredFunctionMatrix.syncChain.map(
+                                (item, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="p-1.5 rounded bg-[var(--kde-panel)] text-[var(--kde-ink)] border border-[var(--kde-border)]"
+                                  >
+                                    {item}
+                                  </div>
+                                ),
+                              )}
                             </div>
                           </div>
+                          <div className="text-[10px] text-sky-800 dark:text-sky-300 font-mono mt-2 border-t border-sky-500/20 pt-1.5">
+                            同步函数只能调用同步函数，一旦混入异步便彻底断裂。
+                          </div>
+                        </div>
 
-                          {/* Red Asynchronous Stack */}
-                          <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 p-3.5 flex flex-col justify-between text-[var(--kde-ink)] ring-1 ring-rose-500/20">
-                            <div>
-                              <div className="flex items-center justify-between pb-2 border-b border-rose-500/20 mb-2">
-                                <span className="font-bold text-rose-700 dark:text-rose-300">
-                                  🔴 异步传染调用链 (Red Infection)
-                                </span>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-800 dark:text-rose-200 font-mono">
-                                  Async Infected
-                                </span>
-                              </div>
-                              <div className="space-y-1.5 font-mono text-[11px]">
-                                {currentPreset.coloredFunctionMatrix.asyncChain.map(
-                                  (item, idx) => (
-                                    <div
-                                      key={idx}
-                                      className="p-1.5 rounded bg-[var(--kde-panel)] text-[var(--kde-ink)] border border-[var(--kde-border)]"
-                                    >
-                                      {item}
-                                    </div>
-                                  ),
-                                )}
-                              </div>
-                              <div className="mt-2 text-[11px] text-[var(--kde-muted)]">
-                                {
-                                  currentPreset.coloredFunctionMatrix
-                                    .coloredInfection
-                                }
-                              </div>
+                        {/* Red Asynchronous Stack */}
+                        <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 p-3.5 flex flex-col justify-between text-[var(--kde-ink)] ring-1 ring-rose-500/20">
+                          <div>
+                            <div className="flex items-center justify-between pb-2 border-b border-rose-500/20 mb-2">
+                              <span className="font-bold text-rose-700 dark:text-rose-300">
+                                🔴 异步传染调用链 (Red Infection)
+                              </span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-800 dark:text-rose-200 font-mono">
+                                Async Infected
+                              </span>
                             </div>
-                            <div className="text-[10px] text-rose-800 dark:text-rose-300 font-mono mt-2 border-t border-rose-500/20 pt-1.5">
-                              解法：
+                            <div className="space-y-1.5 font-mono text-[11px]">
+                              {currentPreset.coloredFunctionMatrix.asyncChain.map(
+                                (item, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="p-1.5 rounded bg-[var(--kde-panel)] text-[var(--kde-ink)] border border-[var(--kde-border)]"
+                                  >
+                                    {item}
+                                  </div>
+                                ),
+                              )}
+                            </div>
+                            <div className="mt-2 text-[11px] text-[var(--kde-muted)]">
                               {
                                 currentPreset.coloredFunctionMatrix
-                                  .keywordGenericsSolution
+                                  .coloredInfection
                               }
                             </div>
                           </div>
+                          <div className="text-[10px] text-rose-800 dark:text-rose-300 font-mono mt-2 border-t border-rose-500/20 pt-1.5">
+                            解法：
+                            {
+                              currentPreset.coloredFunctionMatrix
+                                .keywordGenericsSolution
+                            }
+                          </div>
                         </div>
                       </div>
-                    )}
-                  </>
-                )}
+                    </div>
+                  )}
+                </>
+              )}
 
-                <CanvasResizer className="absolute bottom-0 inset-x-0 z-20" />
-              </div>
-            }
-            side={
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                <KdeCard title="精选代数效应工程预设" variant="dense">
-                  <PresetSelector
-                    layout="vertical"
-                    size="xs"
-                    options={PRESETS.map((p) => ({
-                      id: p.id,
-                      label: p.label,
-                      description: p.desc,
-                    }))}
-                    value={selectedPresetId}
-                    onChange={(id: string) => {
-                      setSelectedPresetId(id);
-                      setCurrentStepIdx(0);
-                    }}
-                  />
-                </KdeCard>
-
-                <KdeCard title="时序流转与执行状态" variant="dense">
-                  <div className="space-y-2.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-[var(--kde-muted)]">
-                        当前步骤：
-                      </span>
-                      <span className="font-semibold text-[var(--kde-ink)] truncate max-w-[140px]">
-                        {currentStep.label}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-[var(--kde-muted)]">
-                        执行状态：
-                      </span>
-                      <span className="font-bold text-[var(--kde-accent)]">
-                        {currentStep.stateBadge}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-[var(--kde-muted)]">
-                        流转来源：
-                      </span>
-                      <KdeBadge
-                        variant={
-                          currentStep.source === "caller"
-                            ? "primary"
-                            : currentStep.source === "runtime"
-                              ? "warning"
-                              : "success"
-                        }
-                      >
-                        {currentStep.source.toUpperCase()}
-                      </KdeBadge>
-                    </div>
-                    <div className="pt-1">
-                      <KdeProgressBar
-                        steps={totalSteps}
-                        value={currentStepIdx + 1}
-                        size="sm"
-                        showLabel
-                      />
-                    </div>
-                  </div>
-                </KdeCard>
-
-                <KdeCard title="形式化效应代数公理" variant="dense">
-                  <div className="space-y-2 text-xs">
-                    <div className="p-2 rounded bg-[var(--kde-panel)] border border-[var(--kde-border)] font-mono text-[11px] text-[var(--kde-accent)]">
-                      {`$${currentPreset.formalTex}$`}
-                    </div>
-                    <div className="text-[11px] text-[var(--kde-muted)] leading-relaxed">
-                      目标效应契约：<strong>{currentPreset.effectName}</strong>
-                      。代数效应通过定界延续与就近 Handler
-                      实现无侵入控制流跳转。
-                    </div>
-                  </div>
-                </KdeCard>
-              </div>
-            }
-            bottom={
-              <KdeCard>
-                <div className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
-                  🔍 代数效应理论洞见 (Algebraic Effects Insight)
-                </div>
-                <p className="mt-2 text-xs leading-relaxed text-[var(--kde-ink)]">
-                  {currentPreset.insight}
-                </p>
+              <CanvasResizer className="absolute bottom-0 inset-x-0 z-20" />
+            </div>
+          }
+          side={
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <KdeCard title="精选代数效应工程预设" variant="dense">
+                <PresetSelector
+                  layout="vertical"
+                  size="xs"
+                  options={PRESETS.map((p) => ({
+                    id: p.id,
+                    label: p.label,
+                    description: p.desc,
+                  }))}
+                  value={selectedPresetId}
+                  onChange={(id: string) => {
+                    setSelectedPresetId(id);
+                    setCurrentStepIdx(0);
+                  }}
+                />
               </KdeCard>
-            }
-          />
-        </KdeWindowShell>
-      </ExpandableDemo>
-    </AutoMath>
+
+              <KdeCard title="时序流转与执行状态" variant="dense">
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[var(--kde-muted)]">当前步骤：</span>
+                    <span className="font-semibold text-[var(--kde-ink)] truncate max-w-[140px]">
+                      {currentStep.label}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[var(--kde-muted)]">执行状态：</span>
+                    <span className="font-bold text-[var(--kde-accent)]">
+                      {currentStep.stateBadge}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[var(--kde-muted)]">流转来源：</span>
+                    <KdeBadge
+                      variant={
+                        currentStep.source === "caller"
+                          ? "primary"
+                          : currentStep.source === "runtime"
+                            ? "warning"
+                            : "success"
+                      }
+                    >
+                      {currentStep.source.toUpperCase()}
+                    </KdeBadge>
+                  </div>
+                  <div className="pt-1">
+                    <KdeProgressBar
+                      steps={totalSteps}
+                      value={currentStepIdx + 1}
+                      size="sm"
+                      showLabel
+                    />
+                  </div>
+                </div>
+              </KdeCard>
+
+              <KdeCard title="形式化效应代数公理" variant="dense">
+                <div className="space-y-2 text-xs">
+                  <div className="p-2 rounded bg-[var(--kde-panel)] border border-[var(--kde-border)] font-mono text-[11px] text-[var(--kde-accent)]">
+                    {`$${currentPreset.formalTex}$`}
+                  </div>
+                  <div className="text-[11px] text-[var(--kde-muted)] leading-relaxed">
+                    目标效应契约：<strong>{currentPreset.effectName}</strong>
+                    。代数效应通过定界延续与就近 Handler 实现无侵入控制流跳转。
+                  </div>
+                </div>
+              </KdeCard>
+            </div>
+          }
+          bottom={
+            <KdeCard>
+              <div className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
+                🔍 代数效应理论洞见 (Algebraic Effects Insight)
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-[var(--kde-ink)]">
+                {currentPreset.insight}
+              </p>
+            </KdeCard>
+          }
+        />
+      </KdeWindowShell>
+    </ExpandableDemo>
   );
 }

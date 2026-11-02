@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   sampleBezier,
   type Point2,
@@ -9,16 +9,15 @@ import {
   drawPolyline,
   drawSegment,
 } from "../../visualizations/core/2d/plot2d";
-import CanvasResizer from "../framework/CanvasResizer";
-import CanvasToolbar from "../framework/CanvasToolbar";
+import CanvasViewport, {
+  type CanvasViewportHandle,
+} from "../framework/CanvasViewport";
 import ExpandableDemo from "../framework/ExpandableDemo";
-import { AutoMath } from "../framework/AutoMath";
 import KdeCard from "../framework/KdeCard";
 import KdeMessageBar from "../framework/KdeMessageBar";
 import KdeReadout, { type KdeReadoutVariant } from "../framework/KdeReadout";
 import KdeTabs, { type KdeTabOption } from "../framework/KdeTabs";
 import KdeWindowShell from "../framework/KdeWindowShell";
-import { useCanvas2D } from "../framework/useCanvas2D";
 
 import "./BezierContinuityDemo.css";
 import "./BezierSplineWorkspace.css";
@@ -97,6 +96,7 @@ export default function BezierContinuityDemo() {
     INITIAL_POINTS.c1.map(([x, y]) => [x, y]),
   );
 
+  const vpRef = useRef<CanvasViewportHandle | null>(null);
   const pointsRef = useRef(points);
   const dragIndexRef = useRef<number | null>(null);
   pointsRef.current = points;
@@ -255,257 +255,264 @@ export default function BezierContinuityDemo() {
     return next;
   };
 
-  const { containerRef, canvasRef, resetBounds } = useCanvas2D(
-    {
-      initialBounds: { xMin: -5.5, xMax: 5.5, yMin: -3.8, yMax: 3.8 },
-      margin: 34,
-      draw(ctx, plot, theme) {
-        drawAdaptiveAxes(ctx, plot, theme);
-
-        const current = pointsRef.current;
-        const segA = [current[0], current[1], current[2], current[3]];
-        const segB = [current[3], current[4], current[5], current[6]];
-
-        // 1. Draw control polygons
-        drawPolyline(ctx, plot, segA, {
-          color: "#3daee9",
-          width: 1.4,
-          dash: [4, 4],
-        });
-        drawPolyline(ctx, plot, segB, {
-          color: "#27ae60",
-          width: 1.4,
-          dash: [4, 4],
-        });
-
-        // 2. Draw Bézier curves
-        drawPolyline(ctx, plot, sampleBezier(segA, 40), {
-          color: "#3daee9",
-          width: 2.8,
-        });
-        drawPolyline(ctx, plot, sampleBezier(segB, 40), {
-          color: "#27ae60",
-          width: 2.8,
-        });
-
-        // 3. Highlight handle bars: P2 -> P3 and P3 -> Q1
-        drawSegment(
-          ctx,
-          plot,
-          current[2][0],
-          current[2][1],
-          current[3][0],
-          current[3][1],
-          {
-            color: "#f67400",
-            width: 2.0,
-          },
-        );
-        drawSegment(
-          ctx,
-          plot,
-          current[3][0],
-          current[3][1],
-          current[4][0],
-          current[4][1],
-          {
-            color: "#f67400",
-            width: 2.0,
-          },
-        );
-
-        // 4. Draw control points and labels
-        const pointLabels = ["P₀", "P₁", "P₂", "P₃ ≡ Q₀", "Q₁", "Q₂", "Q₃"];
-        current.forEach(([x, y], idx) => {
-          const isJunction = idx === 3;
-          const isHandle = idx === 2 || idx === 4;
-          const pointColor = isJunction
-            ? "#f67400"
-            : idx < 3
-              ? "#3daee9"
-              : "#27ae60";
-
-          drawPoint(ctx, plot, x, y, {
-            color: pointColor,
-            filled: true,
-            radius: isJunction ? 7 : isHandle ? 5.5 : 4.5,
-            width: 1.8,
-          });
-
-          ctx.fillStyle = theme.ink;
-          ctx.font = isJunction
-            ? "700 12px ui-sans-serif, system-ui, sans-serif"
-            : "11px ui-sans-serif, system-ui, sans-serif";
-          ctx.fillText(
-            pointLabels[idx],
-            plot.toScreenX(x) + 8,
-            plot.toScreenY(y) - 8,
-          );
-        });
-
-        // 5. Annotate junction tangent vectors
-        const junctionX = current[3][0];
-        const junctionY = current[3][1];
-        ctx.fillStyle = "#f67400";
-        ctx.font = "600 11px ui-sans-serif, system-ui, sans-serif";
-        ctx.fillText(
-          `接缝锚点 (${junctionX.toFixed(1)}, ${junctionY.toFixed(1)})`,
-          plot.toScreenX(junctionX) + 12,
-          plot.toScreenY(junctionY) + 16,
-        );
-      },
-      onLeftDown(event, plot) {
-        const target = event.currentTarget as HTMLElement | null;
-        const rect = target?.getBoundingClientRect();
-        if (!rect) return false;
-        const px = event.clientX - rect.left;
-        const py = event.clientY - rect.top;
-
-        let nearest: number | null = null;
-        let minDist = 20;
-
-        pointsRef.current.forEach(([x, y], idx) => {
-          const dist = Math.hypot(
-            plot.toScreenX(x) - px,
-            plot.toScreenY(y) - py,
-          );
-          if (dist < minDist) {
-            minDist = dist;
-            nearest = idx;
-          }
-        });
-
-        dragIndexRef.current = nearest;
-        return nearest !== null;
-      },
-      onLeftMove(event, plot) {
-        const idx = dragIndexRef.current;
-        if (idx === null) return;
-        const target = event.currentTarget as HTMLElement | null;
-        const rect = target?.getBoundingClientRect();
-        if (!rect) return;
-
-        const nextX = plot.toWorldX(event.clientX - rect.left);
-        const nextY = plot.toWorldY(event.clientY - rect.top);
-
-        const prev = pointsRef.current;
-        const nextPts = prev.map((pt, i) =>
-          i === idx ? ([nextX, nextY] as Point2) : pt,
-        );
-
-        const constrained = applyConstraints(nextPts, prev, idx, mode);
-        pointsRef.current = constrained;
-        setPoints(constrained);
-      },
-      onLeftUp() {
-        dragIndexRef.current = null;
-      },
-    },
-    [mode, points],
-  );
+  useEffect(() => {
+    vpRef.current?.redraw();
+  }, [mode, points]);
 
   const reset = () => {
     const template = INITIAL_POINTS[mode] ?? INITIAL_POINTS.c1;
     setPoints(template.map(([x, y]) => [x, y]));
-    resetBounds();
+    vpRef.current?.resetBounds();
   };
 
   return (
-    <AutoMath>
-      <ExpandableDemo id="bezier-continuity">
-        <KdeWindowShell
-          title="Bézier · 曲线拼接与连续性约束"
-          eyebrow="BREEZE WORKSPACE · MULTI-SEGMENT CONTINUITY"
-          mark="C"
-          modeTag={mode.toUpperCase()}
-          testId="bezier-continuity-demo"
-          className="bezier-spline-workspace"
-          tabs={
-            <KdeTabs
-              label="连续性模式"
-              options={CONTINUITY_OPTIONS}
-              value={mode}
-              onChange={(value) => handleModeChange(value as ContinuityMode)}
-              variant="pill"
-              size="sm"
-              testId="bezier-continuity-tabs"
+    <ExpandableDemo id="bezier-continuity">
+      <KdeWindowShell
+        title="Bézier · 曲线拼接与连续性约束"
+        eyebrow="BREEZE WORKSPACE · MULTI-SEGMENT CONTINUITY"
+        mark="C"
+        modeTag={mode.toUpperCase()}
+        testId="bezier-continuity-demo"
+        className="bezier-spline-workspace"
+        tabs={
+          <KdeTabs
+            label="连续性模式"
+            options={CONTINUITY_OPTIONS}
+            value={mode}
+            onChange={(value) => handleModeChange(value as ContinuityMode)}
+            variant="pill"
+            size="sm"
+            testId="bezier-continuity-tabs"
+          />
+        }
+        display={
+          <div
+            className="bezier-continuity__canvas relative flex-1 min-h-[var(--demo-height,18rem)] h-full w-full overflow-hidden"
+            data-testid="bezier-continuity-canvas"
+          >
+            <CanvasViewport
+              ref={vpRef}
+              initialBounds={{
+                xMin: -5.5,
+                xMax: 5.5,
+                yMin: -3.8,
+                yMax: 3.8,
+              }}
+              margin={34}
+              heightClass="h-full w-full"
+              onReset={reset}
+              onDraw={(ctx, plot, theme) => {
+                drawAdaptiveAxes(ctx, plot, theme);
+
+                const current = pointsRef.current;
+                const segA = [current[0], current[1], current[2], current[3]];
+                const segB = [current[3], current[4], current[5], current[6]];
+
+                // 1. Draw control polygons
+                drawPolyline(ctx, plot, segA, {
+                  color: "#3daee9",
+                  width: 1.4,
+                  dash: [4, 4],
+                });
+                drawPolyline(ctx, plot, segB, {
+                  color: "#27ae60",
+                  width: 1.4,
+                  dash: [4, 4],
+                });
+
+                // 2. Draw Bézier curves
+                drawPolyline(ctx, plot, sampleBezier(segA, 40), {
+                  color: "#3daee9",
+                  width: 2.8,
+                });
+                drawPolyline(ctx, plot, sampleBezier(segB, 40), {
+                  color: "#27ae60",
+                  width: 2.8,
+                });
+
+                // 3. Highlight handle bars: P2 -> P3 and P3 -> Q1
+                drawSegment(
+                  ctx,
+                  plot,
+                  current[2][0],
+                  current[2][1],
+                  current[3][0],
+                  current[3][1],
+                  {
+                    color: "#f67400",
+                    width: 2.0,
+                  },
+                );
+                drawSegment(
+                  ctx,
+                  plot,
+                  current[3][0],
+                  current[3][1],
+                  current[4][0],
+                  current[4][1],
+                  {
+                    color: "#f67400",
+                    width: 2.0,
+                  },
+                );
+
+                // 4. Draw control points and labels
+                const pointLabels = [
+                  "P₀",
+                  "P₁",
+                  "P₂",
+                  "P₃ ≡ Q₀",
+                  "Q₁",
+                  "Q₂",
+                  "Q₃",
+                ];
+                current.forEach(([x, y], idx) => {
+                  const isJunction = idx === 3;
+                  const isHandle = idx === 2 || idx === 4;
+                  const pointColor = isJunction
+                    ? "#f67400"
+                    : idx < 3
+                      ? "#3daee9"
+                      : "#27ae60";
+
+                  drawPoint(ctx, plot, x, y, {
+                    color: pointColor,
+                    filled: true,
+                    radius: isJunction ? 7 : isHandle ? 5.5 : 4.5,
+                    width: 1.8,
+                  });
+
+                  ctx.fillStyle = theme.ink;
+                  ctx.font = isJunction
+                    ? "700 12px ui-sans-serif, system-ui, sans-serif"
+                    : "11px ui-sans-serif, system-ui, sans-serif";
+                  ctx.fillText(
+                    pointLabels[idx],
+                    plot.toScreenX(x) + 8,
+                    plot.toScreenY(y) - 8,
+                  );
+                });
+
+                // 5. Annotate junction tangent vectors
+                const junctionX = current[3][0];
+                const junctionY = current[3][1];
+                ctx.fillStyle = "#f67400";
+                ctx.font = "600 11px ui-sans-serif, system-ui, sans-serif";
+                ctx.fillText(
+                  `接缝锚点 (${junctionX.toFixed(1)}, ${junctionY.toFixed(1)})`,
+                  plot.toScreenX(junctionX) + 12,
+                  plot.toScreenY(junctionY) + 16,
+                );
+              }}
+              onLeftDown={(event, plot) => {
+                const target = event.currentTarget as HTMLElement | null;
+                const rect = target?.getBoundingClientRect();
+                if (!rect) return false;
+                const px = event.clientX - rect.left;
+                const py = event.clientY - rect.top;
+
+                let nearest: number | null = null;
+                let minDist = 20;
+
+                pointsRef.current.forEach(([x, y], idx) => {
+                  const dist = Math.hypot(
+                    plot.toScreenX(x) - px,
+                    plot.toScreenY(y) - py,
+                  );
+                  if (dist < minDist) {
+                    minDist = dist;
+                    nearest = idx;
+                  }
+                });
+
+                dragIndexRef.current = nearest;
+                return nearest !== null;
+              }}
+              onLeftMove={(event, plot) => {
+                const idx = dragIndexRef.current;
+                if (idx === null) return;
+                const target = event.currentTarget as HTMLElement | null;
+                const rect = target?.getBoundingClientRect();
+                if (!rect) return;
+
+                const nextX = plot.toWorldX(event.clientX - rect.left);
+                const nextY = plot.toWorldY(event.clientY - rect.top);
+
+                const prev = pointsRef.current;
+                const nextPts = prev.map((pt, i) =>
+                  i === idx ? ([nextX, nextY] as Point2) : pt,
+                );
+
+                const constrained = applyConstraints(nextPts, prev, idx, mode);
+                pointsRef.current = constrained;
+                setPoints(constrained);
+              }}
+              onLeftUp={() => {
+                dragIndexRef.current = null;
+              }}
             />
-          }
-          display={
-            <div
-              ref={containerRef}
-              data-testid="bezier-continuity-canvas"
-              className="bezier-continuity__canvas relative flex-1 min-h-[var(--demo-height,18rem)] h-full w-full overflow-hidden"
+          </div>
+        }
+        controls={
+          <div className="bezier-continuity__stack">
+            <KdeCard title="实时诊断与条件">
+              <div className="space-y-3">
+                <KdeReadout
+                  label="当前判定连续性"
+                  value={status.level}
+                  variant={status.badgeVariant}
+                  testId="bezier-continuity-detected-level"
+                />
+                <div className="text-xs text-[var(--kde-muted)]">
+                  {mode === "free"
+                    ? "自由诊断模式下，可随意拖拽任意控制点破坏连续性，观察状态跳变。"
+                    : "当前模式已自动施加手柄几何约束，拖拽相关控制点将联动保持对称或共线。"}
+                </div>
+              </div>
+            </KdeCard>
+            <KdeCard
+              title="接缝导数向量读数"
+              variant="dense"
+              className="flex-1"
             >
-              <CanvasToolbar onReset={reset} />
-              <canvas
-                ref={canvasRef}
-                className="absolute inset-0 h-full w-full"
-              />
-              <CanvasResizer className="absolute inset-x-0 bottom-0 z-20" />
-            </div>
-          }
-          controls={
-            <div className="bezier-continuity__stack">
-              <KdeCard title="实时诊断与条件">
-                <div className="space-y-3">
-                  <KdeReadout
-                    label="当前判定连续性"
-                    value={status.level}
-                    variant={status.badgeVariant}
-                    testId="bezier-continuity-detected-level"
-                  />
-                  <div className="text-xs text-[var(--kde-muted)]">
-                    {mode === "free"
-                      ? "自由诊断模式下，可随意拖拽任意控制点破坏连续性，观察状态跳变。"
-                      : "当前模式已自动施加手柄几何约束，拖拽相关控制点将联动保持对称或共线。"}
-                  </div>
-                </div>
-              </KdeCard>
-              <KdeCard
-                title="接缝导数向量读数"
-                variant="inset"
-                className="flex-1"
-              >
-                <div className="bezier-continuity__formula">
-                  {`$\\mathbf{C}'(1^-)=${formatVec(d1Left)}$`}
-                  <br />
-                  {`$\\mathbf{D}'(0^+)=${formatVec(d1Right)}$`}
-                  <br />
-                  {`$\\mathbf{C}''(1^-)=${formatVec(d2Left)}$`}
-                  <br />
-                  {`$\\mathbf{D}''(0^+)=${formatVec(d2Right)}$`}
-                </div>
-              </KdeCard>
-            </div>
-          }
-          footer={
-            <div className="bezier-continuity__readouts">
-              <KdeReadout
-                label="1 阶导数连续条件 (C¹)"
-                value="$\mathbf{C}'(1) = \mathbf{D}'(0) \iff \mathbf{P}_3 - \mathbf{P}_2 = \mathbf{Q}_1 - \mathbf{Q}_0$"
-                subValue="速度向量严格相等，手柄对称等长"
-                variant="formula"
-              />
-              <KdeReadout
-                label="2 阶导数连续条件 (C²)"
-                value="$\mathbf{C}''(1) = \mathbf{D}''(0) \iff \mathbf{P}_1 - 2\mathbf{P}_2 + \mathbf{P}_3 = \mathbf{Q}_2 - 2\mathbf{Q}_1 + \mathbf{Q}_0$"
-                subValue="加速度向量严格相等，二阶差分一致"
-                variant="formula"
-              />
-              <KdeMessageBar
-                variant={status.isC2 ? "success" : "info"}
-                mode="card"
-                title="Bézier 拼接的局限性"
-              >
-                高阶连续（如
-                $C^2$）需要跨段强制约束多个控制点，修改一处会引发整条曲线的级联重算。这正是
-                B-Spline 本地局部控制的用武之地。
-              </KdeMessageBar>
-            </div>
-          }
-        ></KdeWindowShell>
-      </ExpandableDemo>
-    </AutoMath>
+              <div className="bezier-continuity__formula">
+                {`$\\mathbf{C}'(1^-)=${formatVec(d1Left)}$`}
+                <br />
+                {`$\\mathbf{D}'(0^+)=${formatVec(d1Right)}$`}
+                <br />
+                {`$\\mathbf{C}''(1^-)=${formatVec(d2Left)}$`}
+                <br />
+                {`$\\mathbf{D}''(0^+)=${formatVec(d2Right)}$`}
+              </div>
+            </KdeCard>
+          </div>
+        }
+        footer={
+          <div className="bezier-continuity__readouts">
+            <KdeReadout
+              label="1 阶导数连续条件 (C¹)"
+              value="$\mathbf{C}'(1) = \mathbf{D}'(0) \iff \mathbf{P}_3 - \mathbf{P}_2 = \mathbf{Q}_1 - \mathbf{Q}_0$"
+              subValue="速度向量严格相等，手柄对称等长"
+              variant="formula"
+            />
+            <KdeReadout
+              label="2 阶导数连续条件 (C²)"
+              value="$\mathbf{C}''(1) = \mathbf{D}''(0) \iff \mathbf{P}_1 - 2\mathbf{P}_2 + \mathbf{P}_3 = \mathbf{Q}_2 - 2\mathbf{Q}_1 + \mathbf{Q}_0$"
+              subValue="加速度向量严格相等，二阶差分一致"
+              variant="formula"
+            />
+            <KdeMessageBar
+              variant={status.isC2 ? "success" : "info"}
+              mode="card"
+              title="Bézier 拼接的局限性"
+            >
+              高阶连续（如
+              $C^2$）需要跨段强制约束多个控制点，修改一处会引发整条曲线的级联重算。这正是
+              B-Spline 本地局部控制的用武之地。
+            </KdeMessageBar>
+          </div>
+        }
+      />
+    </ExpandableDemo>
   );
 }

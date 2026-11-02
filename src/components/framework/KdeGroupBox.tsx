@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import AutoMath from "./AutoMath";
 
 export interface KdeGroupBoxProps {
   title: ReactNode;
@@ -26,7 +27,9 @@ export default function KdeGroupBox({
     >
       <div className="flex items-center justify-between gap-2 border-b border-[var(--kde-border)]/50 pb-1 text-[11px] font-semibold tracking-wider text-[var(--kde-muted)]">
         <div className="flex items-center gap-2">
-          <span>{title}</span>
+          <span>
+            <AutoMath>{title}</AutoMath>
+          </span>
           {badge}
         </div>
         {action && <div className="flex items-center gap-1.5">{action}</div>}
@@ -34,11 +37,15 @@ export default function KdeGroupBox({
 
       {subtitle && (
         <p className="text-xs leading-relaxed text-[var(--kde-muted)]">
-          {subtitle}
+          <AutoMath>{subtitle}</AutoMath>
         </p>
       )}
 
-      {children && <div className="min-w-0">{children}</div>}
+      {children && (
+        <div className="min-w-0">
+          <AutoMath>{children}</AutoMath>
+        </div>
+      )}
     </div>
   );
 }

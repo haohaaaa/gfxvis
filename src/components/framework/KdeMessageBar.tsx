@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import AutoMath from "./AutoMath";
 
 export type KdeMessageBarVariant =
   | "info"
@@ -219,12 +220,12 @@ export default function KdeMessageBar({
           <div
             className={`text-xs ${styles.titleColor} ${children ? "mb-1" : ""}`}
           >
-            {title}
+            <AutoMath>{title}</AutoMath>
           </div>
         )}
         {children && (
           <div className="text-xs text-[var(--kde-ink,#232629)] opacity-95">
-            {children}
+            <AutoMath>{children}</AutoMath>
           </div>
         )}
       </div>

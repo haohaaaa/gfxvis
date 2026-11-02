@@ -10,7 +10,6 @@ import KdeButton from "../framework/KdeButton";
 import KdeButtonGroup from "../framework/KdeButtonGroup";
 import KdeProgressBar from "../framework/KdeProgressBar";
 import CodePlayground from "../framework/CodePlayground";
-import { AutoMath } from "../framework/AutoMath";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import PresetSelector from "../framework/PresetSelector";
 
@@ -476,318 +475,312 @@ export default function CurryHowardDiagram() {
   };
 
   return (
-    <AutoMath>
-      <ExpandableDemo id="curry-howard-mirror">
-        <KdeWindowShell
-          eyebrow="TYPE THEORY WORKSPACE · CURRY-HOWARD"
-          mark="⊢"
-          modeTag="DENSE-DOCK"
-          title="Curry–Howard 逻辑与计算对偶镜像探针"
-        >
-          <InteractiveLayout
-            preset="dense-dock"
-            top={
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-[var(--kde-muted)]">
-                    视角模式：
-                  </span>
-                  <KdeTabs
-                    onChange={(val) => setViewMode(val)}
-                    options={VIEW_OPTIONS}
-                    size="sm"
-                    value={viewMode}
+    <ExpandableDemo id="curry-howard-mirror">
+      <KdeWindowShell
+        eyebrow="TYPE THEORY WORKSPACE · CURRY-HOWARD"
+        mark="⊢"
+        modeTag="DENSE-DOCK"
+        title="Curry–Howard 逻辑与计算对偶镜像探针"
+      >
+        <InteractiveLayout
+          preset="dense-dock"
+          top={
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-[var(--kde-muted)]">
+                  视角模式：
+                </span>
+                <KdeTabs
+                  onChange={(val) => setViewMode(val)}
+                  options={VIEW_OPTIONS}
+                  size="sm"
+                  value={viewMode}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <KdeBadge
+                  variant={preset.isConstructive ? "success" : "warning"}
+                >
+                  {preset.isConstructive ? "✅ 构造性定理" : "⚠️ 直觉主义边界"}
+                </KdeBadge>
+              </div>
+            </div>
+          }
+          main={
+            <div className="relative flex h-[var(--demo-height,28rem)] w-full flex-col overflow-hidden rounded-xl border border-[var(--kde-border)] bg-[var(--kde-canvas)] p-5 shadow-inner">
+              <CanvasToolbar onReset={handleReset} />
+
+              {viewMode === "code_sandbox" ? (
+                <div className="flex-1 flex flex-col overflow-y-auto pr-1">
+                  <CodePlayground
+                    code={CURRY_HOWARD_TS_CODE}
+                    description="在线验证 TypeScript 泛型函数实现的直觉主义逻辑定理构造性证明。"
+                    lang="ts"
+                    maxHeight="20rem"
+                    title="TypeScript 命题类型证明沙盒"
                   />
                 </div>
-                <div className="flex items-center gap-2">
-                  <KdeBadge
-                    variant={preset.isConstructive ? "success" : "warning"}
-                  >
-                    {preset.isConstructive ? "✅ 构造性定理" : "⚠️ 直觉主义边界"}
-                  </KdeBadge>
-                </div>
-              </div>
-            }
-            main={
-              <div className="relative flex h-[var(--demo-height,28rem)] w-full flex-col overflow-hidden rounded-xl border border-[var(--kde-border)] bg-[var(--kde-canvas)] p-5 shadow-inner">
-                <CanvasToolbar onReset={handleReset} />
-
-                {viewMode === "code_sandbox" ? (
-                  <div className="flex-1 flex flex-col overflow-y-auto pr-1">
-                    <CodePlayground
-                      code={CURRY_HOWARD_TS_CODE}
-                      description="在线验证 TypeScript 泛型函数实现的直觉主义逻辑定理构造性证明。"
-                      lang="ts"
-                      maxHeight="20rem"
-                      title="TypeScript 命题类型证明沙盒"
-                    />
-                  </div>
-                ) : (
-                  <>
-                    {/* Stepper Controller */}
-                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--kde-border)] pb-3 pr-12">
-                      <KdeButtonGroup attached size="xs">
-                        <KdeButton
-                          size="xs"
-                          disabled={currentStepIndex <= 0}
-                          onClick={() => setCurrentStepIndex(0)}
-                          title="回到初始假说"
-                        >
-                          ⏮ 初始
-                        </KdeButton>
-                        <KdeButton
-                          size="xs"
-                          disabled={currentStepIndex <= 0}
-                          onClick={() =>
-                            setCurrentStepIndex((prev) => Math.max(0, prev - 1))
-                          }
-                          title="回退上一步"
-                        >
-                          ◀ 单步回退
-                        </KdeButton>
-                        <KdeButton
-                          size="xs"
-                          variant="primary"
-                          disabled={currentStepIndex >= maxSteps - 1}
-                          onClick={() =>
-                            setCurrentStepIndex((prev) =>
-                              Math.min(maxSteps - 1, prev + 1),
-                            )
-                          }
-                          title="推导下一步"
-                        >
-                          推导下一步 ▶
-                        </KdeButton>
-                      </KdeButtonGroup>
-
-                      <div className="flex items-center gap-2.5">
-                        <KdeProgressBar
-                          steps={maxSteps}
-                          value={currentStepIndex + 1}
-                          size="sm"
-                          className="w-28"
-                          showLabel={false}
-                        />
-                        <span className="font-mono text-xs font-semibold text-[var(--kde-muted)]">
-                          步数：{currentStepIndex + 1} / {maxSteps}
-                        </span>
-                        <KdeBadge variant="primary">
-                          步骤 {currentStepIndex + 1}：{currentStep.name}
-                        </KdeBadge>
-                      </div>
-                    </div>
-
-                    {/* Stepper Main Display: Mirror Split */}
-                    <div className="flex flex-1 flex-col justify-center overflow-y-auto overflow-x-auto">
-                      <div
-                        className={`grid gap-4 ${
-                          viewMode === "dual"
-                            ? "grid-cols-1 lg:grid-cols-2"
-                            : "grid-cols-1"
-                        }`}
+              ) : (
+                <>
+                  {/* Stepper Controller */}
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--kde-border)] pb-3 pr-12">
+                    <KdeButtonGroup attached size="xs">
+                      <KdeButton
+                        size="xs"
+                        disabled={currentStepIndex <= 0}
+                        onClick={() => setCurrentStepIndex(0)}
+                        title="回到初始假说"
                       >
-                        {/* Left / Top: Logic Natural Deduction Tree */}
-                        {(viewMode === "dual" || viewMode === "logic") && (
-                          <KdeCard
-                            title="📜 逻辑世界：自然推导树 (Natural Deduction)"
-                            headerAction={
-                              <span className="rounded border border-sky-500/40 bg-sky-500/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-sky-700 dark:text-sky-300">
-                                推理法则：
-                                {`$${currentStep.logicRule}$`}
-                              </span>
-                            }
-                            className="flex flex-col"
-                          >
-                            <div className="my-auto flex flex-col items-center justify-center py-3 text-center">
-                              {/* Logic Premise */}
-                              <div className="font-mono text-xs font-medium text-[var(--kde-ink)]">
-                                {`$${currentStep.logicPremise}$`}
-                              </div>
-
-                              {/* Inference Line */}
-                              <div className="my-2 flex w-full max-w-[280px] items-center justify-center">
-                                <div className="h-0.5 w-full bg-sky-500/70 shadow-[0_0_8px_rgba(56,189,248,0.5)]" />
-                              </div>
-
-                              {/* Logic Conclusion */}
-                              <div className="font-mono text-sm font-bold text-sky-700 dark:text-sky-300">
-                                {`$${currentStep.logicConclusion}$`}
-                              </div>
-                            </div>
-
-                            <div className="mt-2 text-[11px] text-[var(--kde-muted)]">
-                              💡 <strong>逻辑直觉</strong>：{currentStep.desc}
-                            </div>
-                          </KdeCard>
-                        )}
-
-                        {/* Right / Bottom: STLC Typing Derivation Tree */}
-                        {(viewMode === "dual" || viewMode === "stlc") && (
-                          <KdeCard
-                            title="💻 程序世界：STLC 类型派生树 (Typing Derivation)"
-                            headerAction={
-                              <span className="rounded border border-indigo-500/40 bg-indigo-500/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-indigo-700 dark:text-indigo-300">
-                                打字规则：
-                                {`$${currentStep.stlcRule}$`}
-                              </span>
-                            }
-                            className="flex flex-col"
-                          >
-                            <div className="my-auto flex flex-col items-center justify-center py-3 text-center">
-                              {/* STLC Premise */}
-                              <div className="font-mono text-xs font-medium text-[var(--kde-ink)]">
-                                {`$${currentStep.stlcPremise}$`}
-                              </div>
-
-                              {/* Inference Line */}
-                              <div className="my-2 flex w-full max-w-[280px] items-center justify-center">
-                                <div className="h-0.5 w-full bg-indigo-500/70 shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
-                              </div>
-
-                              {/* STLC Conclusion */}
-                              <div className="font-mono text-sm font-bold text-indigo-700 dark:text-indigo-300">
-                                {`$${currentStep.stlcConclusion}$`}
-                              </div>
-                            </div>
-
-                            <div className="mt-2 text-[11px] text-[var(--kde-muted)]">
-                              💡 <strong>计算直觉</strong>：打字上下文与项构造
-                            </div>
-                          </KdeCard>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
-                <CanvasResizer className="absolute bottom-0 inset-x-0 z-20" />
-              </div>
-            }
-            side={
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                <KdeCard title="经典逻辑定理预设" variant="dense">
-                  <PresetSelector
-                    layout="vertical"
-                    size="xs"
-                    onChange={handlePresetChange}
-                    options={PRESETS.map((p) => ({
-                      id: p.id,
-                      label: p.label,
-                      description: p.desc,
-                    }))}
-                    value={activePresetId}
-                  />
-                </KdeCard>
-
-                <KdeCard title="推导进度与状态" variant="dense">
-                  <div className="space-y-2.5 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[var(--kde-muted)]">
-                        推导步骤：
-                      </span>
-                      <span className="font-semibold text-[var(--kde-ink)]">
-                        {currentStepIndex + 1} / {maxSteps}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[var(--kde-muted)]">
-                        性质判定：
-                      </span>
-                      <KdeBadge
-                        variant={preset.isConstructive ? "success" : "warning"}
+                        ⏮ 初始
+                      </KdeButton>
+                      <KdeButton
+                        size="xs"
+                        disabled={currentStepIndex <= 0}
+                        onClick={() =>
+                          setCurrentStepIndex((prev) => Math.max(0, prev - 1))
+                        }
+                        title="回退上一步"
                       >
-                        {preset.isConstructive
-                          ? "✅ 构造性定理"
-                          : "⚠️ 直觉主义边界"}
-                      </KdeBadge>
-                    </div>
-                    <div className="pt-1">
+                        ◀ 单步回退
+                      </KdeButton>
+                      <KdeButton
+                        size="xs"
+                        variant="primary"
+                        disabled={currentStepIndex >= maxSteps - 1}
+                        onClick={() =>
+                          setCurrentStepIndex((prev) =>
+                            Math.min(maxSteps - 1, prev + 1),
+                          )
+                        }
+                        title="推导下一步"
+                      >
+                        推导下一步 ▶
+                      </KdeButton>
+                    </KdeButtonGroup>
+
+                    <div className="flex items-center gap-2.5">
                       <KdeProgressBar
                         steps={maxSteps}
                         value={currentStepIndex + 1}
                         size="sm"
-                        showLabel
+                        className="w-28"
+                        showLabel={false}
                       />
+                      <span className="font-mono text-xs font-semibold text-[var(--kde-muted)]">
+                        步数：{currentStepIndex + 1} / {maxSteps}
+                      </span>
+                      <KdeBadge variant="primary">
+                        步骤 {currentStepIndex + 1}：{currentStep.name}
+                      </KdeBadge>
                     </div>
                   </div>
-                </KdeCard>
 
-                <KdeCard title="命题与类型同构签名" variant="dense">
-                  <div className="space-y-2 text-xs">
-                    <div>
-                      <span className="text-[10px] text-[var(--kde-muted)]">
-                        逻辑命题：
-                      </span>
-                      <div className="p-1 rounded bg-[var(--kde-panel)] border border-[var(--kde-border)] font-mono text-[11px] text-sky-700 dark:text-sky-300">
-                        {`$${preset.propTex}$`}
-                      </div>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-[var(--kde-muted)]">
-                        STLC 类型：
-                      </span>
-                      <div className="p-1 rounded bg-[var(--kde-panel)] border border-[var(--kde-border)] font-mono text-[11px] text-indigo-700 dark:text-indigo-300">
-                        {`$${preset.typeTex}$`}
-                      </div>
+                  {/* Stepper Main Display: Mirror Split */}
+                  <div className="flex flex-1 flex-col justify-center overflow-y-auto overflow-x-auto">
+                    <div
+                      className={`grid gap-4 ${
+                        viewMode === "dual"
+                          ? "grid-cols-1 lg:grid-cols-2"
+                          : "grid-cols-1"
+                      }`}
+                    >
+                      {/* Left / Top: Logic Natural Deduction Tree */}
+                      {(viewMode === "dual" || viewMode === "logic") && (
+                        <KdeCard
+                          title="📜 逻辑世界：自然推导树 (Natural Deduction)"
+                          headerAction={
+                            <span className="rounded border border-sky-500/40 bg-sky-500/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-sky-700 dark:text-sky-300">
+                              推理法则：
+                              {`$${currentStep.logicRule}$`}
+                            </span>
+                          }
+                          className="flex flex-col"
+                        >
+                          <div className="my-auto flex flex-col items-center justify-center py-3 text-center">
+                            {/* Logic Premise */}
+                            <div className="font-mono text-xs font-medium text-[var(--kde-ink)]">
+                              {`$${currentStep.logicPremise}$`}
+                            </div>
+
+                            {/* Inference Line */}
+                            <div className="my-2 flex w-full max-w-[280px] items-center justify-center">
+                              <div className="h-0.5 w-full bg-sky-500/70 shadow-[0_0_8px_rgba(56,189,248,0.5)]" />
+                            </div>
+
+                            {/* Logic Conclusion */}
+                            <div className="font-mono text-sm font-bold text-sky-700 dark:text-sky-300">
+                              {`$${currentStep.logicConclusion}$`}
+                            </div>
+                          </div>
+
+                          <div className="mt-2 text-[11px] text-[var(--kde-muted)]">
+                            💡 <strong>逻辑直觉</strong>：{currentStep.desc}
+                          </div>
+                        </KdeCard>
+                      )}
+
+                      {/* Right / Bottom: STLC Typing Derivation Tree */}
+                      {(viewMode === "dual" || viewMode === "stlc") && (
+                        <KdeCard
+                          title="💻 程序世界：STLC 类型派生树 (Typing Derivation)"
+                          headerAction={
+                            <span className="rounded border border-indigo-500/40 bg-indigo-500/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-indigo-700 dark:text-indigo-300">
+                              打字规则：
+                              {`$${currentStep.stlcRule}$`}
+                            </span>
+                          }
+                          className="flex flex-col"
+                        >
+                          <div className="my-auto flex flex-col items-center justify-center py-3 text-center">
+                            {/* STLC Premise */}
+                            <div className="font-mono text-xs font-medium text-[var(--kde-ink)]">
+                              {`$${currentStep.stlcPremise}$`}
+                            </div>
+
+                            {/* Inference Line */}
+                            <div className="my-2 flex w-full max-w-[280px] items-center justify-center">
+                              <div className="h-0.5 w-full bg-indigo-500/70 shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
+                            </div>
+
+                            {/* STLC Conclusion */}
+                            <div className="font-mono text-sm font-bold text-indigo-700 dark:text-indigo-300">
+                              {`$${currentStep.stlcConclusion}$`}
+                            </div>
+                          </div>
+
+                          <div className="mt-2 text-[11px] text-[var(--kde-muted)]">
+                            💡 <strong>计算直觉</strong>：打字上下文与项构造
+                          </div>
+                        </KdeCard>
+                      )}
                     </div>
                   </div>
-                </KdeCard>
-              </div>
-            }
-            bottom={
-              <div className="space-y-4">
-                {/* Theorem Summary Banner */}
-                <KdeCard
-                  title={preset.label}
-                  headerAction={
-                    <span className="text-xs text-[var(--kde-muted)]">
-                      推导进度：
-                      <span className="font-mono font-bold text-[var(--kde-accent)]">
-                        {currentStepIndex + 1} / {maxSteps}
-                      </span>
+                </>
+              )}
+              <CanvasResizer className="absolute bottom-0 inset-x-0 z-20" />
+            </div>
+          }
+          side={
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <KdeCard title="经典逻辑定理预设" variant="dense">
+                <PresetSelector
+                  layout="vertical"
+                  size="xs"
+                  onChange={handlePresetChange}
+                  options={PRESETS.map((p) => ({
+                    id: p.id,
+                    label: p.label,
+                    description: p.desc,
+                  }))}
+                  value={activePresetId}
+                />
+              </KdeCard>
+
+              <KdeCard title="推导进度与状态" variant="dense">
+                <div className="space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[var(--kde-muted)]">推导步骤：</span>
+                    <span className="font-semibold text-[var(--kde-ink)]">
+                      {currentStepIndex + 1} / {maxSteps}
                     </span>
-                  }
-                >
-                  <div className="mt-1 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    <div className="rounded-lg bg-[var(--kde-panel)] p-2.5">
-                      <div className="text-[11px] font-medium text-[var(--kde-muted)]">
-                        逻辑学命题 (Proposition)
-                      </div>
-                      <div className="mt-1 font-mono text-xs font-bold text-sky-700 dark:text-sky-300">
-                        {`$${preset.propTex}$`}
-                      </div>
-                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[var(--kde-muted)]">性质判定：</span>
+                    <KdeBadge
+                      variant={preset.isConstructive ? "success" : "warning"}
+                    >
+                      {preset.isConstructive
+                        ? "✅ 构造性定理"
+                        : "⚠️ 直觉主义边界"}
+                    </KdeBadge>
+                  </div>
+                  <div className="pt-1">
+                    <KdeProgressBar
+                      steps={maxSteps}
+                      value={currentStepIndex + 1}
+                      size="sm"
+                      showLabel
+                    />
+                  </div>
+                </div>
+              </KdeCard>
 
-                    <div className="rounded-lg bg-[var(--kde-panel)] p-2.5">
-                      <div className="text-[11px] font-medium text-[var(--kde-muted)]">
-                        STLC 类型签名 (Type)
-                      </div>
-                      <div className="mt-1 font-mono text-xs font-bold text-indigo-700 dark:text-indigo-300">
-                        {`$${preset.typeTex}$`}
-                      </div>
-                    </div>
-
-                    <div className="rounded-lg bg-[var(--kde-panel)] p-2.5">
-                      <div className="text-[11px] font-medium text-[var(--kde-muted)]">
-                        证明证据 / λ 项 (Term / Proof)
-                      </div>
-                      <div className="mt-1 font-mono text-xs font-bold text-amber-700 dark:text-amber-300">
-                        {`$${preset.termTex}$`}
-                      </div>
+              <KdeCard title="命题与类型同构签名" variant="dense">
+                <div className="space-y-2 text-xs">
+                  <div>
+                    <span className="text-[10px] text-[var(--kde-muted)]">
+                      逻辑命题：
+                    </span>
+                    <div className="p-1 rounded bg-[var(--kde-panel)] border border-[var(--kde-border)] font-mono text-[11px] text-sky-700 dark:text-sky-300">
+                      {`$${preset.propTex}$`}
                     </div>
                   </div>
-                </KdeCard>
+                  <div>
+                    <span className="text-[10px] text-[var(--kde-muted)]">
+                      STLC 类型：
+                    </span>
+                    <div className="p-1 rounded bg-[var(--kde-panel)] border border-[var(--kde-border)] font-mono text-[11px] text-indigo-700 dark:text-indigo-300">
+                      {`$${preset.typeTex}$`}
+                    </div>
+                  </div>
+                </div>
+              </KdeCard>
+            </div>
+          }
+          bottom={
+            <div className="space-y-4">
+              {/* Theorem Summary Banner */}
+              <KdeCard
+                title={preset.label}
+                headerAction={
+                  <span className="text-xs text-[var(--kde-muted)]">
+                    推导进度：
+                    <span className="font-mono font-bold text-[var(--kde-accent)]">
+                      {currentStepIndex + 1} / {maxSteps}
+                    </span>
+                  </span>
+                }
+              >
+                <div className="mt-1 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="rounded-lg bg-[var(--kde-panel)] p-2.5">
+                    <div className="text-[11px] font-medium text-[var(--kde-muted)]">
+                      逻辑学命题 (Proposition)
+                    </div>
+                    <div className="mt-1 font-mono text-xs font-bold text-sky-700 dark:text-sky-300">
+                      {`$${preset.propTex}$`}
+                    </div>
+                  </div>
 
-                {/* Deep Theoretical Insight Card */}
-                <KdeCard title="🔍 本步对偶深邃洞见 (Curry–Howard Correspondence Insight)">
-                  <p className="text-xs leading-relaxed text-[var(--kde-ink)]">
-                    {preset.insight}
-                  </p>
-                </KdeCard>
-              </div>
-            }
-          />
-        </KdeWindowShell>
-      </ExpandableDemo>
-    </AutoMath>
+                  <div className="rounded-lg bg-[var(--kde-panel)] p-2.5">
+                    <div className="text-[11px] font-medium text-[var(--kde-muted)]">
+                      STLC 类型签名 (Type)
+                    </div>
+                    <div className="mt-1 font-mono text-xs font-bold text-indigo-700 dark:text-indigo-300">
+                      {`$${preset.typeTex}$`}
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg bg-[var(--kde-panel)] p-2.5">
+                    <div className="text-[11px] font-medium text-[var(--kde-muted)]">
+                      证明证据 / λ 项 (Term / Proof)
+                    </div>
+                    <div className="mt-1 font-mono text-xs font-bold text-amber-700 dark:text-amber-300">
+                      {`$${preset.termTex}$`}
+                    </div>
+                  </div>
+                </div>
+              </KdeCard>
+
+              {/* Deep Theoretical Insight Card */}
+              <KdeCard title="🔍 本步对偶深邃洞见 (Curry–Howard Correspondence Insight)">
+                <p className="text-xs leading-relaxed text-[var(--kde-ink)]">
+                  {preset.insight}
+                </p>
+              </KdeCard>
+            </div>
+          }
+        />
+      </KdeWindowShell>
+    </ExpandableDemo>
   );
 }

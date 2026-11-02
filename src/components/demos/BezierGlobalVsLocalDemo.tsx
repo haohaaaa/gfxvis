@@ -13,8 +13,9 @@ import {
   drawPolyline,
   drawSegment,
 } from "../../visualizations/core/2d/plot2d";
-import CanvasResizer from "../framework/CanvasResizer";
-import CanvasToolbar from "../framework/CanvasToolbar";
+import CanvasViewport, {
+  type CanvasViewportHandle,
+} from "../framework/CanvasViewport";
 import ExpandableDemo from "../framework/ExpandableDemo";
 import { AutoMath } from "../framework/AutoMath";
 import KdeCard from "../framework/KdeCard";
@@ -26,7 +27,6 @@ import KdeButton from "../framework/KdeButton";
 import KdeBadge from "../framework/KdeBadge";
 import KdeWindowShell from "../framework/KdeWindowShell";
 import PresetSelector, { type PresetOption } from "../framework/PresetSelector";
-import { useCanvas2D } from "../framework/useCanvas2D";
 
 import "./BezierGlobalVsLocalDemo.css";
 import "./BezierSplineWorkspace.css";
@@ -235,207 +235,19 @@ export default function BezierGlobalVsLocalDemo() {
   ]);
 
   // Set up 2D Canvas
+  const vpRef = useRef<CanvasViewportHandle | null>(null);
   const pointsRef = useRef(currentPoints);
   useEffect(() => {
     pointsRef.current = currentPoints;
+    vpRef.current?.redraw();
   }, [currentPoints]);
 
   const dragIndexRef = useRef<number | null>(null);
 
-  const { containerRef, canvasRef, resetBounds } = useCanvas2D(
-    {
-      initialBounds: { xMin: -6, xMax: 6, yMin: -3.8, yMax: 4.2 },
-      margin: 34,
-      draw(ctx, plot, theme) {
-        drawAdaptiveAxes(ctx, plot, theme);
-
-        const pts = pointsRef.current;
-        const n = pts.length - 1;
-        const p = bsplineDegree;
-
-        // 1. Draw Ghost Baseline Curves (if in global_vs_local and toggled)
-        if (mode === "global_vs_local" && showGhostBaseline) {
-          if (showBezier) {
-            const ghostBezier = sampleBezier(baselinePoints, 120);
-            drawPolyline(ctx, plot, ghostBezier, {
-              color: "rgba(245, 124, 0, 0.4)",
-              width: 1.5,
-              dash: [4, 4],
-            });
-          }
-
-          if (showBSpline) {
-            const ghostBSpline = sampleBSpline(
-              baselinePoints,
-              p,
-              baselineKnots,
-              30,
-            );
-            drawPolyline(ctx, plot, ghostBSpline, {
-              color: "rgba(0, 153, 123, 0.4)",
-              width: 1.5,
-              dash: [4, 4],
-            });
-          }
-        }
-
-        // 2. Draw Displacement Vector Field
-        if (mode === "global_vs_local" && showDisplacementField) {
-          const arrowSteps = 16;
-          for (let i = 1; i < arrowSteps; i += 1) {
-            const t = i / arrowSteps;
-            if (showBezier) {
-              const pBase = evaluateBezier(baselinePoints, t);
-              const pCurr = evaluateBezier(pts, t);
-              const dist = Math.hypot(pCurr[0] - pBase[0], pCurr[1] - pBase[1]);
-              if (dist > 0.04) {
-                drawSegment(ctx, plot, pBase[0], pBase[1], pCurr[0], pCurr[1], {
-                  color: "rgba(245, 124, 0, 0.6)",
-                  width: 1.2,
-                });
-              }
-            }
-
-            if (showBSpline) {
-              const totalSpan = knots[knots.length - 1] - knots[0];
-              const u = knots[0] + t * totalSpan;
-              const pBase = evaluateBSpline(
-                baselinePoints,
-                p,
-                u,
-                baselineKnots,
-              );
-              const pCurr = evaluateBSpline(pts, p, u, knots);
-              const dist = Math.hypot(pCurr[0] - pBase[0], pCurr[1] - pBase[1]);
-              if (dist > 0.04) {
-                drawSegment(ctx, plot, pBase[0], pBase[1], pCurr[0], pCurr[1], {
-                  color: "rgba(0, 153, 123, 0.75)",
-                  width: 1.5,
-                });
-              }
-            }
-          }
-        }
-
-        // 3. Draw Control Polygon
-        drawPolyline(ctx, plot, pts, {
-          color: "rgba(100, 115, 130, 0.4)",
-          width: 1.2,
-          dash: [3, 3],
-        });
-
-        // 4. Draw Bézier Curve
-        if (showBezier) {
-          const bezierSamples = sampleBezier(pts, 160);
-          drawPolyline(ctx, plot, bezierSamples, {
-            color: "#f57c00",
-            width: 2.5,
-          });
-        }
-
-        // 5. Draw B-Spline Curve
-        if (showBSpline) {
-          const bsplineSamples = sampleBSpline(pts, p, knots, 35);
-          drawPolyline(ctx, plot, bsplineSamples, {
-            color: "#00997b",
-            width: 2.8,
-          });
-        }
-
-        // 6. Draw Control Points & Handles
-        pts.forEach(([x, y], idx) => {
-          const isDragged = idx === activePointIndex;
-          const ptColor = isDragged
-            ? "#3daee9"
-            : idx === 0 || idx === n
-              ? "#232629"
-              : "#626b73";
-
-          drawPoint(ctx, plot, x, y, {
-            color: ptColor,
-            filled: true,
-            radius: isDragged ? 7 : 5,
-            width: 2,
-          });
-
-          // Label
-          ctx.fillStyle = isDragged ? "#1d72b8" : theme.ink;
-          ctx.font = isDragged
-            ? "bold 12px ui-sans-serif, system-ui, sans-serif"
-            : "11px ui-sans-serif, system-ui, sans-serif";
-          ctx.fillText(`P${idx}`, plot.toScreenX(x) + 8, plot.toScreenY(y) - 8);
-        });
-      },
-      onLeftDown(event, plot) {
-        const target = event.currentTarget as HTMLElement | null;
-        const rect = target?.getBoundingClientRect();
-        if (!rect) return false;
-        const px = event.clientX - rect.left;
-        const py = event.clientY - rect.top;
-
-        let nearest: number | null = null;
-        let minDist = 22;
-
-        pointsRef.current.forEach(([x, y], idx) => {
-          const dist = Math.hypot(
-            plot.toScreenX(x) - px,
-            plot.toScreenY(y) - py,
-          );
-          if (dist < minDist) {
-            minDist = dist;
-            nearest = idx;
-          }
-        });
-
-        dragIndexRef.current = nearest;
-        if (nearest !== null) {
-          setActivePointIndex(nearest);
-          return true;
-        }
-        return false;
-      },
-      onLeftMove(event, plot) {
-        const idx = dragIndexRef.current;
-        if (idx === null) return;
-        const target = event.currentTarget as HTMLElement | null;
-        const rect = target?.getBoundingClientRect();
-        if (!rect) return;
-
-        const nextX =
-          Math.round(plot.toWorldX(event.clientX - rect.left) * 100) / 100;
-        const nextY =
-          Math.round(plot.toWorldY(event.clientY - rect.top) * 100) / 100;
-
-        const prev = pointsRef.current;
-        const nextPts = prev.map(
-          (pt, i): Point2 => (i === idx ? [nextX, nextY] : pt),
-        );
-
-        pointsRef.current = nextPts;
-        if (mode === "global_vs_local") {
-          setPointsGlobal(nextPts);
-        } else {
-          setPointsOscillation(nextPts);
-        }
-      },
-      onLeftUp() {
-        dragIndexRef.current = null;
-      },
-    },
-    [
-      mode,
-      pointsGlobal,
-      pointsOscillation,
-      baselinePoints,
-      knots,
-      baselineKnots,
-      showBezier,
-      showBSpline,
-      showDisplacementField,
-      showGhostBaseline,
-      activePointIndex,
-    ],
-  );
+  const reset = () => {
+    handleResetPerturbation();
+    vpRef.current?.resetBounds();
+  };
 
   return (
     <AutoMath>
@@ -476,7 +288,7 @@ export default function BezierGlobalVsLocalDemo() {
                   <KdeButton
                     variant="default"
                     size="xs"
-                    onClick={handleResetPerturbation}
+                    onClick={reset}
                     title="重置控制点至初始基准"
                   >
                     ↺ 重置位置
@@ -563,17 +375,224 @@ export default function BezierGlobalVsLocalDemo() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-stretch">
                 {/* Canvas Viewport (Span 2) */}
                 <div className="lg:col-span-2 flex flex-col h-full min-h-0">
-                  <div
-                    ref={containerRef}
-                    className="relative flex-1 min-h-[var(--demo-height,18rem)] overflow-hidden rounded-[var(--kde-control-radius,0.35rem)] border border-[var(--kde-border,#bec5cc)] bg-[var(--kde-canvas-bg,#fcfcfd)] bgl-canvas-container"
-                  >
-                    <canvas
-                      ref={canvasRef}
-                      className="h-full w-full block cursor-crosshair"
-                    />
-                    <CanvasToolbar onReset={resetBounds} />
-                  </div>
-                  <CanvasResizer />
+                  <CanvasViewport
+                    ref={vpRef}
+                    initialBounds={{
+                      xMin: -6,
+                      xMax: 6,
+                      yMin: -3.8,
+                      yMax: 4.2,
+                    }}
+                    margin={34}
+                    heightClass="min-h-[var(--demo-height,18rem)] h-full w-full"
+                    onReset={reset}
+                    onDraw={(ctx, plot, theme) => {
+                      drawAdaptiveAxes(ctx, plot, theme);
+
+                      const pts = pointsRef.current;
+                      const n = pts.length - 1;
+                      const p = bsplineDegree;
+
+                      // 1. Draw Ghost Baseline Curves (if in global_vs_local and toggled)
+                      if (mode === "global_vs_local" && showGhostBaseline) {
+                        if (showBezier) {
+                          const ghostBezier = sampleBezier(baselinePoints, 120);
+                          drawPolyline(ctx, plot, ghostBezier, {
+                            color: "rgba(245, 124, 0, 0.4)",
+                            width: 1.5,
+                            dash: [4, 4],
+                          });
+                        }
+
+                        if (showBSpline) {
+                          const ghostBSpline = sampleBSpline(
+                            baselinePoints,
+                            p,
+                            baselineKnots,
+                            30,
+                          );
+                          drawPolyline(ctx, plot, ghostBSpline, {
+                            color: "rgba(0, 153, 123, 0.4)",
+                            width: 1.5,
+                            dash: [4, 4],
+                          });
+                        }
+                      }
+
+                      // 2. Draw Displacement Vector Field
+                      if (mode === "global_vs_local" && showDisplacementField) {
+                        const arrowSteps = 16;
+                        for (let i = 1; i < arrowSteps; i += 1) {
+                          const t = i / arrowSteps;
+                          if (showBezier) {
+                            const pBase = evaluateBezier(baselinePoints, t);
+                            const pCurr = evaluateBezier(pts, t);
+                            const dist = Math.hypot(
+                              pCurr[0] - pBase[0],
+                              pCurr[1] - pBase[1],
+                            );
+                            if (dist > 0.04) {
+                              drawSegment(
+                                ctx,
+                                plot,
+                                pBase[0],
+                                pBase[1],
+                                pCurr[0],
+                                pCurr[1],
+                                {
+                                  color: "rgba(245, 124, 0, 0.6)",
+                                  width: 1.2,
+                                },
+                              );
+                            }
+                          }
+
+                          if (showBSpline) {
+                            const totalSpan =
+                              knots[knots.length - 1] - knots[0];
+                            const u = knots[0] + t * totalSpan;
+                            const pBase = evaluateBSpline(
+                              baselinePoints,
+                              p,
+                              u,
+                              baselineKnots,
+                            );
+                            const pCurr = evaluateBSpline(pts, p, u, knots);
+                            const dist = Math.hypot(
+                              pCurr[0] - pBase[0],
+                              pCurr[1] - pBase[1],
+                            );
+                            if (dist > 0.04) {
+                              drawSegment(
+                                ctx,
+                                plot,
+                                pBase[0],
+                                pBase[1],
+                                pCurr[0],
+                                pCurr[1],
+                                {
+                                  color: "rgba(0, 153, 123, 0.75)",
+                                  width: 1.5,
+                                },
+                              );
+                            }
+                          }
+                        }
+                      }
+
+                      // 3. Draw Control Polygon
+                      drawPolyline(ctx, plot, pts, {
+                        color: "rgba(100, 115, 130, 0.4)",
+                        width: 1.2,
+                        dash: [3, 3],
+                      });
+
+                      // 4. Draw Bézier Curve
+                      if (showBezier) {
+                        const bezierSamples = sampleBezier(pts, 160);
+                        drawPolyline(ctx, plot, bezierSamples, {
+                          color: "#f57c00",
+                          width: 2.5,
+                        });
+                      }
+
+                      // 5. Draw B-Spline Curve
+                      if (showBSpline) {
+                        const bsplineSamples = sampleBSpline(pts, p, knots, 35);
+                        drawPolyline(ctx, plot, bsplineSamples, {
+                          color: "#00997b",
+                          width: 2.8,
+                        });
+                      }
+
+                      // 6. Draw Control Points & Handles
+                      pts.forEach(([x, y], idx) => {
+                        const isDragged = idx === activePointIndex;
+                        const ptColor = isDragged
+                          ? "#3daee9"
+                          : idx === 0 || idx === n
+                            ? "#232629"
+                            : "#626b73";
+
+                        drawPoint(ctx, plot, x, y, {
+                          color: ptColor,
+                          filled: true,
+                          radius: isDragged ? 7 : 5,
+                          width: 2,
+                        });
+
+                        // Label
+                        ctx.fillStyle = isDragged ? "#1d72b8" : theme.ink;
+                        ctx.font = isDragged
+                          ? "bold 12px ui-sans-serif, system-ui, sans-serif"
+                          : "11px ui-sans-serif, system-ui, sans-serif";
+                        ctx.fillText(
+                          `P${idx}`,
+                          plot.toScreenX(x) + 8,
+                          plot.toScreenY(y) - 8,
+                        );
+                      });
+                    }}
+                    onLeftDown={(event, plot) => {
+                      const target = event.currentTarget as HTMLElement | null;
+                      const rect = target?.getBoundingClientRect();
+                      if (!rect) return false;
+                      const px = event.clientX - rect.left;
+                      const py = event.clientY - rect.top;
+
+                      let nearest: number | null = null;
+                      let minDist = 22;
+
+                      pointsRef.current.forEach(([x, y], idx) => {
+                        const dist = Math.hypot(
+                          plot.toScreenX(x) - px,
+                          plot.toScreenY(y) - py,
+                        );
+                        if (dist < minDist) {
+                          minDist = dist;
+                          nearest = idx;
+                        }
+                      });
+
+                      dragIndexRef.current = nearest;
+                      if (nearest !== null) {
+                        setActivePointIndex(nearest);
+                        return true;
+                      }
+                      return false;
+                    }}
+                    onLeftMove={(event, plot) => {
+                      const idx = dragIndexRef.current;
+                      if (idx === null) return;
+                      const target = event.currentTarget as HTMLElement | null;
+                      const rect = target?.getBoundingClientRect();
+                      if (!rect) return;
+
+                      const nextX =
+                        Math.round(
+                          plot.toWorldX(event.clientX - rect.left) * 100,
+                        ) / 100;
+                      const nextY =
+                        Math.round(
+                          plot.toWorldY(event.clientY - rect.top) * 100,
+                        ) / 100;
+
+                      const prev = pointsRef.current;
+                      const nextPts = prev.map(
+                        (pt, i): Point2 => (i === idx ? [nextX, nextY] : pt),
+                      );
+
+                      pointsRef.current = nextPts;
+                      if (mode === "global_vs_local") {
+                        setPointsGlobal(nextPts);
+                      } else {
+                        setPointsOscillation(nextPts);
+                      }
+                    }}
+                    onLeftUp={() => {
+                      dragIndexRef.current = null;
+                    }}
+                  />
                 </div>
 
                 {/* Mathematical Telemetry (Span 1) */}
