@@ -58,18 +58,55 @@ $$
 
 几何上，一个原空间向量 $\mathbf{v} \in V$ 表现为一个带方向的“箭头”。那么一个对偶泛函 $f \in V^*$ 应当如何具象化？
 
-答案是：<strong>一族具有特定间距和方向的平行等值超平面（Equispaced Parallel Hyperplanes）</strong>！
+对于<strong>非零线性泛函</strong>，答案是：<strong>一族平行等值超平面</strong>！当等值标签按固定步长选取，并给空间选定欧氏内积后，这些超平面等间距排列。
 
 <DualFunctionalHyperplanesDemo client:visible />
 
 1. <strong>零核（Kernel / Nullspace）</strong>：
-   所有使泛函为零的向量集合 $\ker(f) = \{ \mathbf{v} \in V \mid f(\mathbf{v}) = 0 \}$，构成空间中一个穿过原点的 <strong>$n-1$ 维超平面（Hyperplane）</strong>；
+   对于非零泛函，所有使泛函为零的向量集合 $\ker(f) = \{ \mathbf{v} \in V \mid f(\mathbf{v}) = 0 \}$，构成空间中一个穿过原点的 <strong>$n-1$ 维超平面（Hyperplane）</strong>；
 2. <strong>等值面（Level Sets）</strong>：
-   对于任意实数 $c \in \mathbb{R}$，集合 $\{ \mathbf{v} \in V \mid f(\mathbf{v}) = c \}$ 都是与 $\ker(f)$ 平行的超平面；
+   对于非零泛函及任意实数 $c \in \mathbb{R}$，集合 $\{ \mathbf{v} \in V \mid f(\mathbf{v}) = c \}$ 都是与 $\ker(f)$ 平行的超平面；
 3. <strong>求值即穿透</strong>：
    将泛函 $f$ 作用于向量 $\mathbf{v}$ 计算标量 $f(\mathbf{v})$，在几何上等价于 <strong>数出向量 $\mathbf{v}$ 从原点出发所刺穿的等值超平面的层数</strong>！
    - 超平面间距越密集，代表泛函的“刻度越精细/幅值越大”，同样的向量穿透的层数越多；
-   - 两个平行的超平面网格如果间距和方向相同，就代表同一个线性泛函。
+   - 等值标签与数值增长方向也属于图景的一部分；只有包含这些信息的等值网格才能确定泛函。例如 $f$ 与 $-f$ 的无标签等值面相同，但取值符号相反。
+
+零泛函是边界情况：若 $f \equiv 0$，则 $\ker f = V$；$f(\mathbf{v}) = c$ 在 $c = 0$ 时对所有向量成立，在 $c \ne 0$ 时无解，其等值集不再是上述超平面。
+
+### 1.4 从单个泛函到线性方程组：核与等值集的交集
+
+以 $V = \mathbb{R}^2$ 为例，定义线性泛函：
+
+$$
+f(\mathbf{x}) = 2x_1 - x_2
+$$
+
+这里 $f$ 是<strong>映射</strong>，而方程 $f(\mathbf{x}) = c$ 的解集是该映射的一个<strong>等值集</strong>。当 $c = 0$ 时，它就是齐次方程 $2x_1 - x_2 = 0$ 的解空间：
+
+$$
+\ker f = \{t(1, 2)^\top : t \in \mathbb{R}\}
+$$
+
+当 $c = 1$ 时，$\mathbf{x}_p = (1, 1)^\top$ 是一个特解，所以非齐次方程的完整解集为：
+
+$$
+\{\mathbf{x} : f(\mathbf{x}) = 1\}
+= (1, 1)^\top + \ker f
+= \{(1, 1)^\top + t(1, 2)^\top : t \in \mathbb{R}\}
+$$
+
+两条直线平行，前者经过原点，后者不经过原点。<strong>非零的指定值并没有让 $f$ 失去线性性，而是让所选等值集成为不经过原点的仿射子空间。</strong>
+
+当我们同时使用 $m$ 个泛函 $f_1, \ldots, f_m$ 时，在选定基后，把它们的行坐标依次排列成矩阵 $A$，便得到：
+
+$$
+A\mathbf{x} = \mathbf{b}
+\iff f_i(\mathbf{x}) = b_i \quad (i = 1, \ldots, m)
+$$
+
+于是齐次系统的解空间是 $\ker A = \bigcap_{i=1}^{m} \ker f_i$，一般系统的解集则是 $\bigcap_{i=1}^{m} \{\mathbf{x} : f_i(\mathbf{x}) = b_i\}$。后者可能为空；若存在特解 $\mathbf{x}_p$，就等于 $\mathbf{x}_p + \ker A$。其自由度由<strong>独立约束的数量</strong>决定，即 $n - \operatorname{rank}(A)$，而不一定是 $n - m$。
+
+这正是 [《线性方程组的几何全景》第一节](/posts/linear-algebra/linear-systems-row-column-and-solution-manifolds#一双重视角行视角row-picture-vs-列视角column-picture)中“行视角”的泛函解释。关于特解加零空间的完整证明，参见该文[第四节](/posts/linear-algebra/linear-systems-row-column-and-solution-manifolds#四解集流形齐次约束与非齐次约束的本质分野)；关于无解、唯一解与无穷多解的判据，参见该文[第五节](/posts/linear-algebra/linear-systems-row-column-and-solution-manifolds#五可解性判据维数公式与解的三种命运)。
 
 ---
 
@@ -342,4 +379,5 @@ $$
 - <strong>多维映射与转置伴随</strong>：理解前向投射与反向拉回的代数实现，详见 [《矩阵与线性映射基础》](/posts/linear-algebra/matrix-fundamentals-linear-mappings)；
 - <strong>度量与内积空间</strong>：探究内积如何将对偶空间与原空间建立等距同构，详见 [《内积空间与度量张量》](/posts/linear-algebra/inner-product-spaces)；
 - <strong>子空间与正交直和</strong>：理解零化子在赋予欧氏度量后如何演化为四大正交子空间，详见 [《四大基本子空间与正交直和分解》](/posts/linear-algebra/four-fundamental-subspaces)；
+- <strong>线性约束与解集</strong>：把多个泛函的等值条件联立，理解齐次核的交集与非齐次仿射平移，详见 [《线性方程组的几何全景》](/posts/linear-algebra/linear-systems-row-column-and-solution-manifolds)；
 - <strong>微积分与流形梯度</strong>：理解微分形式 $\mathrm{d}f$ 与梯度矢量的升标降标机制，详见 [《导数、梯度与 Jacobian 矩阵》](/posts/calculus/derivative-gradient-jacobian)。

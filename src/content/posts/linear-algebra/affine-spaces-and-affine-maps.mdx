@@ -1193,6 +1193,14 @@ $$
 - $\dim(S) = 2$：<strong>仿射平面（Affine Plane）</strong>；
 - $\dim(S) = n - 1$：<strong>仿射超平面（Affine Hyperplane）</strong>。
 
+#### 6.1.2 代数对应：仿射子空间即非齐次线性方程组的解集
+
+从方程组的代数视角审视，仿射子空间拥有极其纯粹的一一对应：
+- <strong>线性子空间</strong>：对应一组<strong>齐次</strong>线性约束 $A\mathbf{x} = \mathbf{0}$ 的解集（必过原点）；
+- <strong>仿射子空间</strong>：对应一组<strong>非齐次</strong>线性约束 $A\mathbf{x} = \mathbf{b}$ 的解集（通过特解 $\mathbf{x}_p$ 将齐次零空间平移出原点：$S = \mathbf{x}_p + \ker A$）。
+
+有关从初等消元法到非齐次解空间平移流形的完整推导与交互演示，详见 [《线性方程组的几何全景》](/posts/linear-algebra/linear-systems-row-column-and-solution-manifolds#四解集流形齐次约束与非齐次约束的本质分野)。
+
 ---
 
 ### 6.2 仿射子空间与商空间 $V/U$ 陪集的几何同构
