@@ -252,6 +252,11 @@ const CanvasViewport = forwardRef<CanvasViewportHandle, CanvasViewportProps>(
       [initController],
     );
 
+    // Callback Ref for Scene2D managed DOM/KaTeX label layer
+    const setLabelLayerRef = useCallback((node: HTMLDivElement | null) => {
+      sceneRef.current.attachLabelLayer(node);
+    }, []);
+
     const isFirstMount = useRef(true);
     useEffect(() => {
       if (isFirstMount.current) {
@@ -315,6 +320,10 @@ const CanvasViewport = forwardRef<CanvasViewportHandle, CanvasViewportProps>(
           ref={setCanvasRef}
           className={`absolute inset-0 h-full w-full ${canvasProps?.className ?? ""}`.trim()}
           {...canvasProps}
+        />
+        <div
+          ref={setLabelLayerRef}
+          className="pointer-events-none absolute inset-0 z-[5] overflow-hidden"
         />
         <AutoMath>{children}</AutoMath>
         {resizer && (

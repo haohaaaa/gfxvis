@@ -1,3 +1,4 @@
+import katex from "katex";
 import {
   drawAdaptiveAxes,
   drawArrow,
@@ -6,6 +7,66 @@ import {
   type Plot2D,
   type ThemeColors,
 } from "./plot2d";
+
+const sceneMathCache = new Map<string, string>();
+const SCENE_MATH_REGEX = /(\$\$[\s\S]+?\$\$|\$(?!\$)(?:\\\$|[^$])+\$)/g;
+
+function escapeHtml(raw: string): string {
+  return raw
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function renderKatexCached(tex: string, displayMode: boolean): string {
+  const key = `${displayMode ? "D:" : "I:"}${tex}`;
+  const hit = sceneMathCache.get(key);
+  if (hit !== undefined) return hit;
+  try {
+    const html = katex.renderToString(tex, {
+      throwOnError: false,
+      displayMode,
+      output: "html",
+    });
+    sceneMathCache.set(key, html);
+    return html;
+  } catch {
+    return escapeHtml(tex);
+  }
+}
+
+/**
+ * Render a label string that may contain inline `$...$` LaTeX math into HTML.
+ */
+export function renderSceneLabelHtml(text: string): string {
+  if (!text.includes("$")) {
+    return escapeHtml(text);
+  }
+  SCENE_MATH_REGEX.lastIndex = 0;
+  let result = "";
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = SCENE_MATH_REGEX.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      result += escapeHtml(text.slice(lastIndex, match.index));
+    }
+    const token = match[0];
+    if (token.startsWith("$$") && token.endsWith("$$")) {
+      result += renderKatexCached(token.slice(2, -2).trim(), true);
+    } else if (token.startsWith("$") && token.endsWith("$")) {
+      result += renderKatexCached(token.slice(1, -1).trim(), false);
+    } else {
+      result += escapeHtml(token);
+    }
+    lastIndex = SCENE_MATH_REGEX.lastIndex;
+  }
+  if (lastIndex < text.length) {
+    result += escapeHtml(text.slice(lastIndex));
+  }
+  return result;
+}
 
 export interface SceneLineOptions {
   normal?: [number, number]; // [a, b] for ax + by = c
@@ -76,6 +137,15 @@ export interface SceneRawBlock {
   fn(ctx: CanvasRenderingContext2D, plot: Plot2D, theme: ThemeColors): void;
 }
 
+export interface SceneLabelOptions {
+  at: [number, number];
+  text: string;
+  color?: string;
+  offset?: [number, number];
+  priority?: number;
+  chip?: boolean;
+}
+
 export interface QueuedLabel {
   text: string;
   x: number;
@@ -83,6 +153,15 @@ export interface QueuedLabel {
   color: string;
   font: string;
   priority: number;
+  chip?: boolean;
+}
+
+interface PooledDomLabel {
+  el: HTMLDivElement;
+  lastText: string;
+  lastColor: string;
+  lastLight: boolean;
+  lastChip: boolean;
 }
 
 /**
@@ -96,6 +175,7 @@ export class Scene2D {
   private vectors: SceneVectorOptions[] = [];
   private polylines: ScenePolylineOptions[] = [];
   private points: ScenePointOptions[] = [];
+  private labels: SceneLabelOptions[] = [];
   private rawBlocks: ((
     ctx: CanvasRenderingContext2D,
     plot: Plot2D,
@@ -104,6 +184,26 @@ export class Scene2D {
 
   private draggingPoint: ScenePointOptions | null = null;
   private hasRendered = false;
+  private labelLayer: HTMLElement | null = null;
+  private labelPool: PooledDomLabel[] = [];
+
+  /** Attach a managed DOM overlay container for hardware-accelerated KaTeX/HTML labels */
+  attachLabelLayer(layer: HTMLElement | null): void {
+    if (this.labelLayer === layer) return;
+    if (this.labelLayer) {
+      this.labelLayer.innerHTML = "";
+    }
+    this.labelLayer = layer;
+    this.labelPool = [];
+  }
+
+  private hideAllDomLabels(): void {
+    for (const item of this.labelPool) {
+      if (item.el.style.display !== "none") {
+        item.el.style.display = "none";
+      }
+    }
+  }
 
   get isRendered(): boolean {
     return this.hasRendered;
@@ -116,6 +216,7 @@ export class Scene2D {
       this.vectors.length === 0 &&
       this.polylines.length === 0 &&
       this.points.length === 0 &&
+      this.labels.length === 0 &&
       this.rawBlocks.length === 0
     );
   }
@@ -127,8 +228,10 @@ export class Scene2D {
     this.vectors = [];
     this.polylines = [];
     this.points = [];
+    this.labels = [];
     this.rawBlocks = [];
     this.hasRendered = false;
+    this.hideAllDomLabels();
   }
 
   /** Add standard adaptive axes with ticks */
@@ -195,6 +298,12 @@ export class Scene2D {
   /** Add a point, probe or interactive draggable handle */
   addPoint(options: ScenePointOptions): this {
     this.points.push(options);
+    return this;
+  }
+
+  /** Add a standalone text or LaTeX ($...$) label at a mathematical coordinate */
+  addLabel(options: SceneLabelOptions): this {
+    this.labels.push(options);
     return this;
   }
 
@@ -403,13 +512,29 @@ export class Scene2D {
       ctx.restore();
 
       if (vec.label) {
+        let lx = pToX + 8;
+        let ly = pToY - 6;
+        if (vec.labelPosition === "top") {
+          lx = pToX;
+          ly = pToY - 14;
+        } else if (vec.labelPosition === "bottom") {
+          lx = pToX;
+          ly = pToY + 14;
+        } else if (vec.labelPosition === "left") {
+          lx = pToX - 36;
+          ly = pToY;
+        } else if (vec.labelPosition === "right") {
+          lx = pToX + 10;
+          ly = pToY;
+        }
         queuedLabels.push({
           text: vec.label,
-          x: pToX + 8,
-          y: pToY - 6,
+          x: lx,
+          y: ly,
           color,
           font: "bold 11px system-ui, sans-serif",
           priority: 2,
+          chip: true,
         });
       }
     }
@@ -441,8 +566,24 @@ export class Scene2D {
           color,
           font: "bold 12px system-ui, sans-serif",
           priority: 3,
+          chip: true,
         });
       }
+    }
+
+    // 4.5. Standalone Labels
+    for (const lbl of this.labels) {
+      const px = plot.toScreenX(lbl.at[0]) + (lbl.offset?.[0] ?? 0);
+      const py = plot.toScreenY(lbl.at[1]) + (lbl.offset?.[1] ?? 0);
+      queuedLabels.push({
+        text: lbl.text,
+        x: px,
+        y: py,
+        color: lbl.color ?? theme.ink,
+        font: "bold 11px system-ui, sans-serif",
+        priority: lbl.priority ?? 2,
+        chip: lbl.chip ?? true,
+      });
     }
 
     // 5. Custom Raw Blocks
@@ -474,16 +615,22 @@ export class Scene2D {
       }
     }
 
-    // Render queued labels cleanly with KDE Breeze glassmorphic chip pills
-    ctx.save();
-    ctx.font = "bold 11px system-ui, -apple-system, sans-serif";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-
     const isLight =
       theme.bg === "#ffffff" ||
       theme.bg === "#f8fafc" ||
       theme.bg.startsWith("#f");
+
+    // 7. Managed DOM Label Layer (supports full KaTeX $...$ math and KDE Breeze chip pills)
+    if (this.labelLayer) {
+      this.syncDomLabels(queuedLabels, isLight);
+      return;
+    }
+
+    // Fallback: Render queued labels onto Canvas when no DOM labelLayer is attached
+    ctx.save();
+    ctx.font = "bold 11px system-ui, -apple-system, sans-serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
 
     for (const label of queuedLabels) {
       const text = label.text;
@@ -496,30 +643,117 @@ export class Scene2D {
       const chipY = label.y - chipH / 2;
       const radius = 4;
 
-      // Draw glassmorphism chip pill background
-      ctx.beginPath();
-      if (typeof ctx.roundRect === "function") {
-        ctx.roundRect(chipX, chipY, chipW, chipH, radius);
-      } else {
-        ctx.rect(chipX, chipY, chipW, chipH);
+      if (label.chip !== false) {
+        ctx.beginPath();
+        if (typeof ctx.roundRect === "function") {
+          ctx.roundRect(chipX, chipY, chipW, chipH, radius);
+        } else {
+          ctx.rect(chipX, chipY, chipW, chipH);
+        }
+
+        ctx.fillStyle = isLight
+          ? "rgba(255, 255, 255, 0.92)"
+          : "rgba(30, 41, 59, 0.92)";
+        ctx.fill();
+
+        ctx.strokeStyle = label.color.startsWith("#")
+          ? `${label.color}44`
+          : "rgba(148, 163, 184, 0.4)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
       }
 
-      ctx.fillStyle = isLight
-        ? "rgba(255, 255, 255, 0.92)"
-        : "rgba(30, 41, 59, 0.92)";
-      ctx.fill();
-
-      // Colored border matching entity color
-      ctx.strokeStyle = label.color.startsWith("#")
-        ? `${label.color}44`
-        : "rgba(148, 163, 184, 0.4)";
-      ctx.lineWidth = 1;
-      ctx.stroke();
-
-      // Text inside chip
       ctx.fillStyle = label.color;
       ctx.fillText(text, label.x, label.y);
     }
     ctx.restore();
+  }
+
+  private syncDomLabels(queuedLabels: QueuedLabel[], isLight: boolean): void {
+    const layer = this.labelLayer;
+    if (!layer) return;
+
+    for (let i = 0; i < queuedLabels.length; i++) {
+      const label = queuedLabels[i];
+      const useChip = label.chip !== false;
+      let item = this.labelPool[i];
+
+      if (!item) {
+        const el = document.createElement("div");
+        el.style.position = "absolute";
+        el.style.left = "0";
+        el.style.top = "0";
+        el.style.pointerEvents = "none";
+        el.style.userSelect = "none";
+        el.style.whiteSpace = "nowrap";
+        el.style.fontSize = "11px";
+        el.style.fontWeight = "600";
+        el.style.lineHeight = "1.2";
+        el.style.willChange = "transform";
+        layer.appendChild(el);
+        item = {
+          el,
+          lastText: "",
+          lastColor: "",
+          lastLight: !isLight,
+          lastChip: !useChip,
+        };
+        this.labelPool.push(item);
+      }
+
+      const { el } = item;
+      if (el.style.display !== "inline-flex") {
+        el.style.display = "inline-flex";
+        el.style.alignItems = "center";
+        el.style.gap = "2px";
+      }
+
+      if (item.lastText !== label.text) {
+        el.innerHTML = renderSceneLabelHtml(label.text);
+        item.lastText = label.text;
+      }
+
+      if (
+        item.lastColor !== label.color ||
+        item.lastLight !== isLight ||
+        item.lastChip !== useChip
+      ) {
+        el.style.color = label.color;
+        if (useChip) {
+          el.style.padding = "2px 6px";
+          el.style.borderRadius = "4px";
+          el.style.backgroundColor = isLight
+            ? "rgba(255, 255, 255, 0.92)"
+            : "rgba(30, 41, 59, 0.92)";
+          const borderColor = label.color.startsWith("#")
+            ? `${label.color}44`
+            : "rgba(148, 163, 184, 0.4)";
+          el.style.border = `1px solid ${borderColor}`;
+          el.style.boxShadow = isLight
+            ? "0 1px 2px rgba(15, 23, 42, 0.06)"
+            : "0 1px 2px rgba(0, 0, 0, 0.25)";
+        } else {
+          el.style.padding = "0";
+          el.style.borderRadius = "0";
+          el.style.backgroundColor = "transparent";
+          el.style.border = "none";
+          el.style.boxShadow = "none";
+        }
+        item.lastColor = label.color;
+        item.lastLight = isLight;
+        item.lastChip = useChip;
+      }
+
+      const offsetX = useChip ? label.x - 6 : label.x;
+      const offsetY = label.y;
+      el.style.transform = `translate3d(${Math.round(offsetX)}px, ${Math.round(offsetY)}px, 0) translateY(-50%)`;
+    }
+
+    for (let i = queuedLabels.length; i < this.labelPool.length; i++) {
+      const el = this.labelPool[i].el;
+      if (el.style.display !== "none") {
+        el.style.display = "none";
+      }
+    }
   }
 }
