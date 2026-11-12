@@ -137,20 +137,40 @@ $$
 \boxed{|\langle \mathbf{u}, \mathbf{v} \rangle| \le \lVert\mathbf{u}\rVert \lVert\mathbf{v}\rVert}
 $$
 
-#### 证明概要
+#### 证明概要与判别式法的第一性几何本质
 
-对任意实数 $t \in \mathbb{R}$，由正定性公理知 $\langle \mathbf{u} + t \mathbf{v}, \mathbf{u} + t \mathbf{v} \rangle \ge 0$。根据线性与对称性展开：
+对任意实数 $t \in \mathbb{R}$，由内积的正定性公理知，向量 $\mathbf{u} + t \mathbf{v}$ 的范数平方恒非负：$\langle \mathbf{u} + t \mathbf{v}, \mathbf{u} + t \mathbf{v} \rangle \ge 0$。根据内积的第一变元线性与对称性展开：
 
 $$
-\lVert\mathbf{u}\rVert^2 + 2 t \langle \mathbf{u}, \mathbf{v} \rangle + t^2 \lVert\mathbf{v}\rVert^2 \ge 0
+P(t) = \lVert\mathbf{u}\rVert^2 + 2 t \langle \mathbf{u}, \mathbf{v} \rangle + t^2 \lVert\mathbf{v}\rVert^2 \ge 0
 $$
 
-这是一个关于实变量 $t$ 恒非负的一元二次多项式，其判别式必须满足 $\Delta = 4 \langle \mathbf{u}, \mathbf{v} \rangle^2 - 4 \lVert\mathbf{u}\rVert^2 \lVert\mathbf{v}\rVert^2 \le 0$，开方移项即得证。
+若 $\mathbf{v} = \mathbf{0}$，不等式显然平凡成立（两端均为 0）。当 $\mathbf{v} \ne \mathbf{0}$ 时，$\lVert\mathbf{v}\rVert^2 > 0$，$P(t)$ 是一个关于实变量 $t$ 恒非负的一元二次函数。其开口向上（二次项系数 $\lVert\mathbf{v}\rVert^2 > 0$），在实数轴上要么没有实根（严格悬于 $t$ 轴上方），要么最多只有一个重根（抛物线顶点恰好与 $t$ 轴相切）。因此，该二次方程的判别式 $\Delta$ 必须满足：
 
-> 💡 <strong>空间夹角的几何定义</strong>：正是柯西-施瓦茨不等式保证了比值严格满足 $-1 \le \dfrac{\langle \mathbf{u}, \mathbf{v} \rangle}{\lVert\mathbf{u}\rVert \lVert\mathbf{v}\rVert} \le 1$，使得我们能在任意抽象内积空间中自然定义向量夹角 $\theta$：
+$$
+\Delta = (2 \langle \mathbf{u}, \mathbf{v} \rangle)^2 - 4 \lVert\mathbf{v}\rVert^2 \lVert\mathbf{u}\rVert^2 = 4 \left( \langle \mathbf{u}, \mathbf{v} \rangle^2 - \lVert\mathbf{u}\rVert^2 \lVert\mathbf{v}\rVert^2 \right) \le 0
+$$
+
+消去常数因子 4 并移项开方，即得证：
+
+$$
+|\langle \mathbf{u}, \mathbf{v} \rangle| \le \lVert\mathbf{u}\rVert \lVert\mathbf{v}\rVert
+$$
+
+> 💡 <strong>等号成立的第一性几何条件</strong>：
+>
+> 判别式等号 $\Delta = 0$ 成立，当且仅当方程 $P(t) = 0$ 存在唯一实根 $t_0$。根据正定性公理，$\lVert\mathbf{u} + t_0 \mathbf{v}\rVert^2 = 0 \iff \mathbf{u} + t_0 \mathbf{v} = \mathbf{0} \iff \mathbf{u} = -t_0 \mathbf{v}$。这表明：<strong>柯西-施瓦茨不等式等号成立的充要条件，就是两向量 $\mathbf{u}$ 与 $\mathbf{v}$ 线性相关（共线平行）</strong>！只要两向量线性无关，抛物线就绝不可能触碰横轴，不等式严格成立。
+>
+> 进一步地，该不等式严密保证了比值严格位于闭区间 $[-1, 1]$ 之间：
 >
 > $$
-> \cos \theta = \frac{\langle \mathbf{u}, \mathbf{v} \rangle}{\lVert\mathbf{u}\rVert \lVert\mathbf{v}\rVert}
+> -1 \le \frac{\langle \mathbf{u}, \mathbf{v} \rangle}{\lVert\mathbf{u}\rVert \lVert\mathbf{v}\rVert} \le 1
+> $$
+>
+> 这正是我们在任意抽象内积空间（包括高维空间与连续函数空间）中，能够合法定义反余弦夹角 $\theta$ 的充要保证：
+>
+> $$
+> \theta = \arccos \left( \frac{\langle \mathbf{u}, \mathbf{v} \rangle}{\lVert\mathbf{u}\rVert \lVert\mathbf{v}\rVert} \right) \in [0, \pi]
 > $$
 
 ---
@@ -163,30 +183,67 @@ $$
 \boxed{\lVert\mathbf{u} + \mathbf{v}\rVert^2 + \lVert\mathbf{u} - \mathbf{v}\rVert^2 = 2 \lVert\mathbf{u}\rVert^2 + 2 \lVert\mathbf{v}\rVert^2}
 $$
 
-> 💡 <strong>冯·诺伊曼定理（von Neumann Theorem）</strong>：一个赋范向量空间（Normed Space）中的范数能够由某个内积诱导出来的 <strong>充要条件</strong>，就是该范数满足平行四边形恒等式。
+> 💡 <strong>冯·诺伊曼定理（von Neumann Theorem）</strong>：一个赋范向量空间（Normed Space）中的范数能够由某个内积诱导出来的 <strong>充要条件</strong>，就是该范数满足平行四边形恒等式。若空间仅配备范数而不满足平行四边形律（如 $L^1$ 范数与 $L^\infty$ 范数），则该空间无法定义保持保距性质的双线性内积。
 
 ---
 
 ## 四、多模式交互可视化演示
 
-在下方交互演示中，你可以自由切换三种模式：
+在下方现代交互工作台中，你可以自由探索内积在有限维度规、无穷维函数空间与几何定理中的三大核心图景：
 
-1. <strong>加权内积模式</strong>：滑动调节权重 $w_{11}, w_{22}$，观察单位圆变形成椭圆，以及在加权度规下保持正交的向量对；
-2. <strong>函数空间内积模式</strong>：选择不同的基函数（如正交三角函数、多项式），观察函数曲线与其乘积的积分重叠区域；
-3. <strong>几何定理模式</strong>：拖动向量端点，实时验证柯西-施瓦茨不等式与平行四边形恒等式。
+1. <strong>加权度规椭圆模式</strong>：自由拖拽 $\mathbf{u}$ 与 $\mathbf{v}$，调节对角度规矩阵 $W = \operatorname{diag}(w_{11}, w_{22})$。观察单位圆变形成椭圆，开启 <strong>$G$-正交共轭方向探针 $\mathbf{u}_G^\perp$</strong>，直观领悟“各向异性度规下，代数正交与欧氏视觉直角彻底解耦”的几何真谛；
+2. <strong>函数空间积分内积模式</strong>：选择三角基、傅里叶高阶谐波与勒让德正交多项式，开启 <strong>正负微元面积分割着色</strong>，一秒洞悉“函数积分正交的几何本质是正负波形能量完全对消（$\langle f, g\rangle = 0$）”；
+3. <strong>几何定理与投影模式</strong>：拖动向量端点，实时观察正交投影垂足与 $\operatorname{proj}_\mathbf{v}\mathbf{u}$、原点夹角弧 $\theta$、柯西-施瓦茨 <strong>不等式饱和度进度条</strong>（等号共线成立 vs 正交归零）以及平行四边形恒等式的能量绝对守恒。
 
 <InnerProductSpaceDemo client:visible />
 
 ---
 
-## 五、希尔伯特空间（Hilbert Space）与图形学前沿
+## 五、希尔伯特空间、全微分与泛函导数
 
 当一个内积空间按其诱导的距离是 <strong>完备的（Complete，即空间内所有柯西序列均收敛到空间内部）</strong> 时，称其为 <strong>希尔伯特空间（Hilbert Space）</strong>。
 
-在计算机图形学、数字信号处理与物理模拟中，希尔伯特空间提供了最完美的投影框架：
+在微积分、现代微分几何与理论物理中，内积扮演着连接“线性泛函”与“几何实体向量”的唯一桥梁。这一机制从有限维到无穷维呈现出令人震撼的数学统一性：
 
-- <strong>最佳逼近与正交投影</strong>：将复杂连续信号 $f(x)$ 投影到有限维基函数子空间（如 SH 或小波基），使得平方误差最小，本质就是将 $f(x)$ 减去投影分量，使其与子空间严格正交；
-- <strong>Gram 矩阵与正交化</strong>：一组函数或向量的 Gram 矩阵 $G_{ij} = \langle \mathbf{v}_i, \mathbf{v}_j \rangle$ 决定了基变换、最小二乘与 Gram-Schmidt 正交化的所有度规性质。
+### 5.1 有限维切空间：全微分、内积与梯度
+
+在有限维欧氏空间或微分流形上，多元函数 $f(\mathbf{x})$ 的 <strong>全微分（Total Differential）</strong> $\mathrm{d}f$ 在数学本质上是一个 <strong>余切向量 / 线性泛函（1-Form / Covector）</strong>：它接收一个切向量方向 $\mathbf{v}$，输出该方向上的方向导数 $\mathrm{d}f(\mathbf{v})$。此时空间中根本不需要“度规”或“内积”。
+
+只有当我们为切空间注入了一个 <strong>内积（度规张量 $g$）</strong> 之后，根据 <strong>里斯表示定理（Riesz Representation Theorem）</strong>，这个线性泛函 $\mathrm{d}f$ 才在切空间中被投射为一个客观存在的 <strong>物理几何向量——梯度（Gradient）$\nabla f$</strong>：
+
+$$
+\mathrm{d}f(\mathbf{v}) = \langle \nabla f, \mathbf{v} \rangle = \mathbf{v}^\top G \nabla f
+$$
+
+梯度就是线性泛函在“内积”这面镜子中的向量化身。
+
+### 5.2 无穷维函数空间：泛函变分与变分导数
+
+现在，我们将整套几何机制搬到无穷维连续函数空间（希尔伯特空间 $L^2[a, b]$）：
+
+- <strong>状态点</strong>：从离散的坐标点 $\mathbf{x} \in \mathbb{R}^n$ 变成了连续的整条曲线函数 $y(x) \in L^2[a, b]$；
+- <strong>切向量（位移扰动）</strong>：从微小切向量 $\mathrm{d}\mathbf{x}$ 变成了微小测试扰动函数 $\eta(x)$；
+- <strong>全微分 $\to$ 泛函变分（First Variation）</strong>：目标泛函 $J[y]$ 经历切向扰动 $\eta(x)$ 产生的全微分，在变分法中被称为 <strong>泛函变分 $\delta J[\eta]$</strong>。其本质依然是一个作用在扰动函数空间上的 <strong>连续线性泛函</strong>：
+
+$$
+\delta J[\eta] = \lim_{\varepsilon \to 0} \frac{J[y + \varepsilon \eta] - J[y]}{\varepsilon}
+$$
+
+- <strong>内积投射 $\to$ 泛函导数（变分导数）</strong>：
+  借助函数空间的标准 $L^2$ 积分内积 $\langle f, g \rangle = \int_a^b f(x) g(x) \, \mathrm{d}x$，根据无穷维希尔伯特空间的里斯表示定理，这个变分线性泛函 $\delta J[\cdot]$ 同样唯一对应着一个函数——它就是 <strong>泛函导数（变分导数）$\dfrac{\delta J}{\delta y}(x)$</strong>，满足积分内积配对：
+
+$$
+\delta J[\eta] = \left\langle \frac{\delta J}{\delta y}, \eta \right\rangle = \int_a^b \frac{\delta J}{\delta y}(x) \, \eta(x) \, \mathrm{d}x
+$$
+
+物理学中要求作用量在驻点处取极值（最小作用量原理），本质就是令这个无穷维梯度向量归零：$\dfrac{\delta J}{\delta y}(x) \equiv 0$！分部积分后展开这个内积，立刻得出了经典分析力学的核心基石——<strong>欧拉-拉格朗日方程（Euler-Lagrange Equation）</strong>！
+
+### 5.3 图形学与信号处理中的希尔伯特正交投影
+
+在计算机图形学、数字信号处理与物理模拟中，希尔伯特空间为我们提供了最完美的正交投影分析框架：
+
+- <strong>最佳逼近与正交投影</strong>：将复杂高频连续信号 $f(x)$ 投影到有限维正交基函数子空间（如球面调和函数 SH、Haar 小波或正交多项式），使得均方误差最小，其充要条件是逼近残差与基函数子空间在该积分内积下严格正交；
+- <strong>Gram 矩阵与正交化</strong>：一组函数基底 $\{\phi_i(x)\}$ 的 Gram 矩阵 $G_{ij} = \langle \phi_i, \phi_j \rangle = \int_a^b \phi_i(x) \phi_j(x) \, \mathrm{d}x$ 决定了基变换、最小二乘投影与 Gram-Schmidt 正交化的所有度规度量。
 
 ---
 

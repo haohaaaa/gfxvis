@@ -82,8 +82,9 @@ GFXVis 交互 Island 整体遵循 **KDE Plasma Breeze 桌面视窗体系**，提
    - 画布内部的状态读数、图例与代数方程必须使用 `<CanvasOverlay position="top-left" | "bottom-left" | ...>` 呈现。
    - 内置暗色主题作用域，并自动计算边距避让右上角 Toolbar 与贴底 Resizer 手柄。
 4. **2D 高阶场景管线 `Scene2D`**：
-   - 在 2D 几何演示中，优先通过 `Scene2D` 声明几何实体：`scene.addAxes()`、`scene.addLine()`、`scene.addVector()` 与 `scene.addPoint()`。
+   - 在 2D 几何演示中，优先通过 `Scene2D` 声明几何实体：`scene.addAxes()`、`scene.addLine()`、`scene.addVector()`、`scene.addPoint()` 与 `scene.addLabel()`。
    - `addVector` 原生支持 `{ draggable: true, onDrag: (tip) => ... }`，自动生成屏幕像素级（`hitRadiusPx = 24`）磁吸手柄与标签碰撞避让。
+   - **原生 LaTeX 标签层托管**：`<CanvasViewport>` 自动为 `Scene2D` 挂载硬件加速的 DOM 标签池（`attachLabelLayer`）。所有实体的 `label` 属性及 `scene.addLabel({ at, text })` 均原生支持 `$...$` 行内 KaTeX 公式与图文混排（如 `label: "$\\mathbf{u}_G^\\perp$"`），自动完成碰撞避让与 KDE Breeze 毛玻璃胶囊渲染，无需在业务组件外层手动拼接 DOM 浮层。
 
 ### 2.3 控件与输入规范
 
